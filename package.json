@@ -12,7 +12,8 @@
     "bot": "node src/bot.js",
     "dashboard": "node dashboard/server.js",
     "deploy": "node src/deploy-commands.js",
-    "deploy:global": "node src/deploy-commands.js --global"
+    "deploy:global": "node src/deploy-commands.js --global",
+    "update": "git pull && npm ci && pm2 restart norift"
   },
   "keywords": [
     "discord",
