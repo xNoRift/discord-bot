@@ -48,6 +48,10 @@ function serializeChannels(guild) {
       .filter((c) => c.type === ChannelType.GuildText || c.type === ChannelType.GuildAnnouncement)
       .map((c) => ({ id: c.id, name: c.name, parentId: c.parentId, position: c.rawPosition }))
       .sort((a, b) => a.position - b.position),
+    voice: list
+      .filter((c) => c.type === ChannelType.GuildVoice || c.type === ChannelType.GuildStageVoice)
+      .map((c) => ({ id: c.id, name: c.name, parentId: c.parentId, position: c.rawPosition }))
+      .sort((a, b) => a.position - b.position),
   };
 }
 
@@ -345,6 +349,32 @@ router.post(
       if (kind === 'leave') await welcomeService.sendLeave(me);
       else await welcomeService.sendJoin(me);
       res.json({ ok: true });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
+/* ----------------------------------------------------------------
+ *  Temp-Voice – Hub-Kanal anlegen
+ * ---------------------------------------------------------------- */
+
+router.post(
+  '/guilds/:guildId/tempvoice/create-hub',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const me = req.guild.members.me ?? (await req.guild.members.fetchMe().catch(() => null));
+    if (!me?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      return res.status(403).json({ error: 'Dem Bot fehlt „Kanäle verwalten".' });
+    }
+    try {
+      const channel = await req.guild.channels.create({
+        name: '➕ Kanal erstellen',
+        type: ChannelType.GuildVoice,
+        reason: 'Temp-Voice Hub-Kanal (Dashboard)',
+      });
+      settingsModel.update(req.guild.id, { tempvoice_hub_channel_id: channel.id });
+      res.json({ ok: true, id: channel.id, name: channel.name });
     } catch (err) {
       res.status(400).json({ error: discordErr(err) });
     }

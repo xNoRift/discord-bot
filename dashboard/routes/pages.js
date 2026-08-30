@@ -15,6 +15,8 @@ const NAV = [
     label: 'Serververwaltung',
     items: [
       { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
+      { key: 'welcome', label: 'Willkommen', icon: 'bell', path: '/welcome' },
+      { key: 'tempvoice', label: 'Temp-Voice', icon: 'hash', path: '/tempvoice' },
       { key: 'tickets', label: 'Tickets', icon: 'ticket', path: '/tickets' },
       { key: 'giveaways', label: 'Giveaways', icon: 'gift', path: '/giveaways' },
       { key: 'applications', label: 'Bewerbungen', icon: 'clipboard', path: '/applications' },
@@ -26,7 +28,6 @@ const NAV = [
   {
     label: 'Weitere Funktionen',
     items: [
-      { key: 'welcome', label: 'Willkommen', icon: 'bell', path: '/welcome' },
       { key: 'settings', label: 'Einstellungen', icon: 'settings', path: '/settings' },
       { key: 'logs', label: 'Logs', icon: 'file', path: '/logs' },
       { key: 'suggestions', label: 'Vorschläge', icon: 'bulb', path: '/suggestions' },
@@ -44,6 +45,7 @@ const CRUMB = {
   overview: { crumb: 'Übersicht', crumbIcon: 'home' },
   messages: { crumb: 'Nachrichten', crumbIcon: 'send' },
   welcome: { crumb: 'Willkommen', crumbIcon: 'bell' },
+  tempvoice: { crumb: 'Temp-Voice', crumbIcon: 'hash' },
   tickets: { crumb: 'Tickets', crumbIcon: 'ticket' },
   giveaways: { crumb: 'Giveaways', crumbIcon: 'gift' },
   applications: { crumb: 'Bewerbungen', crumbIcon: 'clipboard' },
@@ -112,6 +114,7 @@ const PAGES = [
   ['/', 'overview'],
   ['/messages', 'messages'],
   ['/welcome', 'welcome'],
+  ['/tempvoice', 'tempvoice'],
   ['/tickets', 'tickets'],
   ['/giveaways', 'giveaways'],
   ['/applications', 'applications'],

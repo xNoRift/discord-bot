@@ -15,6 +15,7 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages, // Ticket-Aktivität (Auto-Close) – nicht privilegiert
+    GatewayIntentBits.GuildVoiceStates, // Temp-Voice ("Join to Create") – nicht privilegiert
     GatewayIntentBits.GuildMembers, // Auto-Rolle & "Aktion beim Verlassen" – PRIVILEGIERT!
   ],
   partials: [Partials.Channel, Partials.Message, Partials.GuildMember],

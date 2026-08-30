@@ -266,6 +266,10 @@ async function fillSelectors(selected = {}) {
       options += channels.categories
         .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`)
         .join('');
+    } else if (type === 'voice' && channels) {
+      options += (channels.voice || [])
+        .map((c) => `<option value="${c.id}">🔊 ${escapeHtml(c.name)}</option>`)
+        .join('');
     } else if (channels) {
       options += channels.text
         .map((c) => `<option value="${c.id}">#${escapeHtml(c.name)}</option>`)

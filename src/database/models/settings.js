@@ -60,6 +60,12 @@ const EDITABLE_FIELDS = [
   'leave_enabled',
   'leave_channel_id',
   'leave_message',
+  // Temp-Voice
+  'tempvoice_enabled',
+  'tempvoice_hub_channel_id',
+  'tempvoice_category_id',
+  'tempvoice_name_format',
+  'tempvoice_user_limit',
 ];
 
 const insertStmt = db.prepare(`

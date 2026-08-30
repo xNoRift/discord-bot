@@ -86,6 +86,13 @@ ensureColumn('guild_settings', 'leave_enabled', 'INTEGER DEFAULT 0');
 ensureColumn('guild_settings', 'leave_channel_id', 'TEXT');
 ensureColumn('guild_settings', 'leave_message', 'TEXT');
 
+// Temp-Voice ("Join to Create")
+ensureColumn('guild_settings', 'tempvoice_enabled', 'INTEGER DEFAULT 0');
+ensureColumn('guild_settings', 'tempvoice_hub_channel_id', 'TEXT');
+ensureColumn('guild_settings', 'tempvoice_category_id', 'TEXT');
+ensureColumn('guild_settings', 'tempvoice_name_format', "TEXT DEFAULT '{user} • Voice'");
+ensureColumn('guild_settings', 'tempvoice_user_limit', 'INTEGER DEFAULT 0');
+
 logger.info(`[db] Datenbank verbunden: ${config.database.path}`);
 
 process.on('exit', () => {

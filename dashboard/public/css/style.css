@@ -355,6 +355,9 @@ code {
 .card__head h2 .icon { color: var(--accent-2); }
 .card__head .spacer { flex: 1; }
 .card__sub { color: var(--text-2); font-size: .88rem; margin: -8px 0 14px; }
+.bullet-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
+.bullet-list li { color: var(--text-2); font-size: .92rem; line-height: 1.5; }
+.bullet-list li b { color: var(--text); }
 
 .col-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .col-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }

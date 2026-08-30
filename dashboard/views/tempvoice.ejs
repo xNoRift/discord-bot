@@ -1,0 +1,67 @@
+<%- include('partials/head', { title: guild.name + ' – Temp-Voice' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('hash') %> Temp-Voice</h1></div>
+  <p>„Join to Create": Betritt jemand den Hub-Kanal, bekommt er automatisch einen eigenen Sprachkanal, den er selbst steuern kann. Ist der Kanal leer, wird er gelöscht.</p>
+</div>
+
+<form id="tvForm">
+  <div class="card">
+    <div class="card__head"><h2><%- icon('settings') %> Einstellungen</h2></div>
+
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Temp-Voice aktivieren</b><span>Der Bot braucht „Kanäle verwalten" und „Mitglieder verschieben"</span></div>
+      <label class="toggle"><input type="checkbox" name="tempvoice_enabled" /><span class="toggle__track"></span></label>
+    </div>
+
+    <div class="field">
+      <label>Hub-Kanal (zum Erstellen)</label>
+      <select name="tempvoice_hub_channel_id" data-type="voice"></select>
+      <div class="field-hint">
+        Noch keinen passenden Kanal?
+        <button type="button" class="btn btn--ghost btn--sm" id="tvMakeHub" style="margin-left:6px;"><%- icon('plus', 'icon--sm') %> Kanal „➕ Kanal erstellen" anlegen</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Kategorie für neue Kanäle</label>
+      <select name="tempvoice_category_id" data-type="category"></select>
+      <div class="field-hint">Leer = gleiche Kategorie wie der Hub-Kanal.</div>
+    </div>
+
+    <div class="col-2">
+      <div class="field">
+        <label>Namensvorlage</label>
+        <input name="tempvoice_name_format" type="text" maxlength="100" placeholder="{user} • Voice" />
+        <div class="field-hint">Platzhalter: <code>{user}</code> · <code>{username}</code> · <code>{server}</code></div>
+      </div>
+      <div class="field">
+        <label>Standard User-Limit</label>
+        <input name="tempvoice_user_limit" type="number" min="0" max="99" placeholder="0 = kein Limit" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('sparkles') %> Steuerung durch die Nutzer</h2></div>
+    <p class="card__sub">Im neuen Sprachkanal erscheint automatisch ein Panel mit Buttons. Der Besitzer (und Server-Admins) können damit:</p>
+    <ul class="bullet-list">
+      <li>✏️ <b>Umbenennen</b> – Kanalname ändern</li>
+      <li>👥 <b>User-Limit</b> – maximale Teilnehmerzahl setzen</li>
+      <li>🔒 <b>Sperren / Freigeben</b> – nur zugelassene Mitglieder dürfen rein</li>
+      <li>👁️ <b>Verbergen / Zeigen</b> – Kanal für andere unsichtbar machen</li>
+      <li>👑 <b>Übernehmen</b> – Besitz übernehmen, wenn der Ersteller weg ist</li>
+      <li>🗑️ <b>Löschen</b> – Kanal sofort entfernen</li>
+    </ul>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn--primary" type="submit"><%- icon('check') %> Speichern</button>
+    <span class="muted" id="tvStatus"></span>
+  </div>
+</form>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/tempvoice.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

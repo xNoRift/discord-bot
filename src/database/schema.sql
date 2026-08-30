@@ -49,6 +49,13 @@ CREATE TABLE IF NOT EXISTS guild_settings (
   leave_channel_id    TEXT,
   leave_message       TEXT,
 
+  -- Temp-Voice ("Join to Create")
+  tempvoice_enabled        INTEGER DEFAULT 0,
+  tempvoice_hub_channel_id TEXT,
+  tempvoice_category_id    TEXT,
+  tempvoice_name_format    TEXT DEFAULT '{user} • Voice',
+  tempvoice_user_limit     INTEGER DEFAULT 0,
+
   -- Tickets
   tickets_enabled         INTEGER DEFAULT 1,
   ticket_team_ping        INTEGER DEFAULT 1,
@@ -285,6 +292,17 @@ CREATE TABLE IF NOT EXISTS bot_config (
   activity_url    TEXT,                     -- nur für "streaming"
   updated_at      INTEGER
 );
+
+-- ---------- Temp-Voice: aktive temporäre Sprachkanäle ----------
+CREATE TABLE IF NOT EXISTS temp_voice_channels (
+  channel_id TEXT PRIMARY KEY,
+  guild_id   TEXT NOT NULL,
+  owner_id   TEXT NOT NULL,
+  locked     INTEGER DEFAULT 0,
+  hidden     INTEGER DEFAULT 0,
+  created_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_temp_voice_guild ON temp_voice_channels(guild_id);
 
 -- ---------- Dashboard-Nutzer (OAuth2) ----------
 CREATE TABLE IF NOT EXISTS dashboard_users (
