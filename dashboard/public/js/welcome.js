@@ -50,8 +50,7 @@ colorText.addEventListener('input', () => {
   if (/^#?[0-9a-fA-F]{6}$/.test(v)) colorPick.value = v[0] === '#' ? v : '#' + v;
 });
 
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
+async function saveWelcome() {
   const a = readForm(form);
   try {
     await apiFor('PATCH', '/settings', {
@@ -75,8 +74,9 @@ form.addEventListener('submit', async (e) => {
   } catch (err) {
     toast(err.message, 'error');
     statusEl.textContent = err.message;
+    throw err;
   }
-});
+}
 
 document.getElementById('joinRoleApplyAll').addEventListener('click', async () => {
   const st = document.getElementById('joinRoleStatus');
@@ -104,4 +104,11 @@ document.getElementById('wcTest').addEventListener('click', async () => {
   }
 });
 
-load().catch((e) => toast(e.message, 'error'));
+load()
+  .then(() =>
+    Dash.trackForm(form, saveWelcome, {
+      extra: () => collectRoles('joinRoleChecks') + '|' + collectRoles('joinRoleBotChecks'),
+      reset: load,
+    }),
+  )
+  .catch((e) => toast(e.message, 'error'));

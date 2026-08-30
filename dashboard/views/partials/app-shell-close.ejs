@@ -2,6 +2,17 @@
   </div>
 </div>
 
+<div class="savebar" id="saveBar" role="alert" hidden>
+  <span class="savebar__icon">⚠️</span>
+  <span class="savebar__text">
+    <b>Ungespeicherte Änderungen</b>
+    <span>Nicht vergessen zu speichern.</span>
+  </span>
+  <button class="savebar__cancel" id="saveBarCancel" type="button" title="Änderungen verwerfen" aria-label="Änderungen verwerfen"><%- icon('x', 'icon--sm') %></button>
+  <button class="savebar__save" id="saveBarSave" type="button" title="Speichern" aria-label="Speichern"><%- icon('check', 'icon--sm') %> Speichern</button>
+  <span class="savebar__track"><span></span></span>
+</div>
+
 <div class="toast-stack" id="toastStack" aria-live="polite"></div>
 <div class="modal-root" id="modalRoot"></div>
 

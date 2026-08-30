@@ -3,20 +3,23 @@
 
 const { apiFor, fillSelectors, readForm, toast } = Dash;
 
-(async function init() {
-  try {
-    const s = await apiFor('GET', '/settings');
-    await fillSelectors(s);
-    const el = document.querySelector('#modForm [name=mod_log_channel_id]');
-    if (el && s.mod_log_channel_id) el.value = s.mod_log_channel_id;
-  } catch (e) { toast(e.message, 'error'); }
-})();
+const modForm = document.getElementById('modForm');
 
-document.getElementById('modForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  try { await apiFor('PATCH', '/settings', readForm(e.target)); toast('Gespeichert.', 'success'); }
-  catch (err) { toast(err.message, 'error'); }
-});
+async function loadModForm() {
+  const s = await apiFor('GET', '/settings');
+  await fillSelectors(s);
+  const el = document.querySelector('#modForm [name=mod_log_channel_id]');
+  if (el) el.value = s.mod_log_channel_id || '';
+}
+
+async function saveModForm() {
+  try { await apiFor('PATCH', '/settings', readForm(modForm)); toast('Gespeichert.', 'success'); }
+  catch (err) { toast(err.message, 'error'); throw err; }
+}
+
+loadModForm()
+  .then(() => Dash.trackForm(modForm, saveModForm, { reset: loadModForm }))
+  .catch((e) => toast(e.message, 'error'));
 
 /* ---------------- Aktion gegen einen Nutzer ---------------- */
 

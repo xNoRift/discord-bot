@@ -396,6 +396,118 @@ async function fillSelectors(selected = {}) {
   }
 }
 
+/* ---------------- Speicher-Leiste (ungespeicherte Änderungen) ---------------- */
+
+const saveBar = {
+  el: null,
+  saveBtn: null,
+  current: null,
+  ensure() {
+    if (this.el) return this.el;
+    this.el = document.getElementById('saveBar');
+    if (!this.el) return null;
+    this.saveBtn = document.getElementById('saveBarSave');
+    this.saveBtn.addEventListener('click', () => this.current && this.current.onSave());
+    document.getElementById('saveBarCancel').addEventListener('click', () => this.current && this.current.onCancel());
+    return this.el;
+  },
+  show(handlers) {
+    if (!this.ensure()) return;
+    this.current = handlers;
+    this.el.hidden = false;
+  },
+  hide() {
+    if (!this.ensure()) return;
+    this.el.hidden = true;
+    this.current = null;
+  },
+  busy(on) {
+    if (this.saveBtn) this.saveBtn.disabled = !!on;
+    if (this.el) this.el.classList.toggle('is-busy', !!on);
+  },
+};
+
+/**
+ * Beobachtet ein <form> auf Änderungen und blendet die Speicher-Leiste ein.
+ * @param {HTMLFormElement} form
+ * @param {() => Promise<void>} saveFn  wird beim Speichern aufgerufen (wirft bei Fehler)
+ * @param {{extra?: () => string, reset?: () => (void|Promise)}} [o]
+ *   extra: zusätzlicher Zustand (z. B. Checklisten außerhalb der Felder)
+ *   reset: eigenes Zurücksetzen (sonst: nur Feldwerte wiederherstellen)
+ */
+function trackForm(form, saveFn, o) {
+  if (!form || form.dataset.sbTracked) return;
+  form.dataset.sbTracked = '1';
+  const extra = o && o.extra;
+  const resetFn = o && o.reset;
+
+  const snapshot = () => {
+    const m = {};
+    for (const el of form.elements) {
+      if (!el.name) continue;
+      m[el.name] = el.type === 'checkbox' ? el.checked : el.value;
+    }
+    return JSON.stringify(m) + (extra ? ' ' + extra() : '');
+  };
+  let clean = snapshot();
+  let open = false;
+
+  const restore = async () => {
+    if (resetFn) {
+      await resetFn();
+    } else {
+      const m = JSON.parse(clean);
+      for (const el of form.elements) {
+        if (!el.name || !(el.name in m)) continue;
+        if (el.type === 'checkbox') el.checked = m[el.name];
+        else el.value = m[el.name];
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  };
+
+  const doSave = async () => {
+    saveBar.busy(true);
+    try {
+      await saveFn();
+      clean = snapshot();
+      open = false;
+      saveBar.hide();
+    } catch (e) {
+      /* Fehler-Toast kommt aus saveFn */
+    } finally {
+      saveBar.busy(false);
+    }
+  };
+
+  const check = () => {
+    const dirty = snapshot() !== clean;
+    if (dirty && !open) {
+      open = true;
+      saveBar.show({
+        onSave: doSave,
+        onCancel: async () => {
+          saveBar.busy(true);
+          try { await restore(); } finally { saveBar.busy(false); }
+          clean = snapshot();
+          open = false;
+          saveBar.hide();
+        },
+      });
+    } else if (!dirty && open) {
+      open = false;
+      saveBar.hide();
+    }
+  };
+
+  form.addEventListener('input', check);
+  form.addEventListener('change', check);
+  form.addEventListener('submit', (e) => { e.preventDefault(); doSave(); });
+
+  // Von außen (nach eigenem Speichern der Seite) aufrufbar.
+  form.sbMarkClean = () => { clean = snapshot(); open = false; saveBar.hide(); };
+}
+
 /* ---------------- Sidebar (Mobile) ---------------- */
 
 (function initSidebar() {
@@ -540,6 +652,8 @@ window.Dash = {
   openEmojiPicker,
   attachEmojiPicker,
   initEmojiInputs,
+  trackForm,
+  saveBar,
   getChannels,
   getRoles,
   fillSelectors,

@@ -12,8 +12,7 @@ async function load() {
   applyToForm(form, s);
 }
 
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
+async function saveTv() {
   const a = readForm(form);
   try {
     await apiFor('PATCH', '/settings', {
@@ -29,8 +28,9 @@ form.addEventListener('submit', async (e) => {
   } catch (err) {
     toast(err.message, 'error');
     statusEl.textContent = err.message;
+    throw err;
   }
-});
+}
 
 document.getElementById('tvMakeHub').addEventListener('click', async () => {
   try {
@@ -46,12 +46,15 @@ document.getElementById('tvMakeHub').addEventListener('click', async () => {
         sel.insertAdjacentHTML('beforeend', `<option value="${r.id}">🔊 ${r.name}</option>`);
       }
       sel.value = r.id;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
     }
-    statusEl.textContent = 'Nicht vergessen: „Speichern" klicken.';
+    statusEl.textContent = 'Nicht vergessen zu speichern.';
   } catch (err) {
     toast(err.message, 'error');
     statusEl.textContent = err.message;
   }
 });
 
-load().catch((e) => toast(e.message, 'error'));
+load()
+  .then(() => Dash.trackForm(form, saveTv, { reset: load }))
+  .catch((e) => toast(e.message, 'error'));

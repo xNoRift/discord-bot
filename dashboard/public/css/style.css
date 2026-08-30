@@ -918,6 +918,61 @@ input[type="range"]::-moz-range-thumb {
 .toast--warn { border-left-color: var(--amber); }
 @keyframes toastIn { from { opacity: 0; transform: translateX(18px) scale(.96); } }
 
+/* ---------------- Speicher-Leiste ---------------- */
+.savebar {
+  position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+  z-index: 210;
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 10px 12px 13px;
+  max-width: calc(100vw - 24px);
+  overflow: hidden;
+  animation: savebarIn .3s var(--ease) both;
+}
+@keyframes savebarIn { from { opacity: 0; transform: translate(-50%, 22px); } }
+.savebar.is-busy { opacity: .75; pointer-events: none; }
+.savebar__icon { font-size: 1.2rem; line-height: 1; flex-shrink: 0; }
+.savebar__text { display: flex; flex-direction: column; line-height: 1.3; margin-right: 4px; min-width: 0; }
+.savebar__text b { font-size: .9rem; white-space: nowrap; }
+.savebar__text span { font-size: .78rem; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.savebar__cancel, .savebar__save {
+  flex-shrink: 0; height: 34px; border-radius: 9px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  font: inherit; font-weight: 650; font-size: .84rem;
+  border: 1px solid var(--line-2);
+}
+.savebar__cancel {
+  width: 34px;
+  background: rgba(240, 97, 109, .15);
+  color: var(--red);
+  border-color: rgba(240, 97, 109, .45);
+}
+.savebar__cancel:hover { background: rgba(240, 97, 109, .28); }
+.savebar__save {
+  padding: 0 14px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--accent-ink); border-color: transparent;
+}
+.savebar__save:hover { filter: brightness(1.08); }
+.savebar__save .icon, .savebar__cancel .icon { width: 15px; height: 15px; }
+.savebar__track { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.savebar__track > span {
+  position: absolute; top: 0; bottom: 0; width: 38%;
+  background: var(--green);
+  border-radius: 3px;
+  animation: savebarRun 1.5s linear infinite;
+}
+@keyframes savebarRun {
+  from { left: -40%; }
+  to { left: 100%; }
+}
+@media (max-width: 480px) {
+  .savebar__text span { display: none; }
+}
+
 .modal-root:empty { display: none; }
 .modal-overlay {
   position: fixed; inset: 0;

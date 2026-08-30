@@ -20,17 +20,22 @@ async function load() {
   ec.oninput = () => { ect.value = ec.value; };
 }
 
-document.getElementById('settingsForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
+const settingsForm = document.getElementById('settingsForm');
+async function saveSettings() {
   try {
-    settings = await apiFor('PATCH', '/settings', readForm(e.target));
+    settings = await apiFor('PATCH', '/settings', readForm(settingsForm));
     document.getElementById('sStatus').textContent = 'Gespeichert ✓';
     toast('Alle Einstellungen gespeichert.', 'success');
     await load();
-  } catch (err) { toast(err.message, 'error'); }
-});
+  } catch (err) {
+    toast(err.message, 'error');
+    throw err;
+  }
+}
 
-load().catch((e) => toast(e.message, 'error'));
+load()
+  .then(() => Dash.trackForm(settingsForm, saveSettings))
+  .catch((e) => toast(e.message, 'error'));
 
 /* ---------------- Bot auf diesem Server (Nickname + Server-Avatar) ---------------- */
 

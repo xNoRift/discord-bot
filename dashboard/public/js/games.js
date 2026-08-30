@@ -25,8 +25,7 @@ async function load() {
   paintStats(s);
 }
 
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
+async function saveCounting() {
   const a = readForm(form);
   try {
     const s = await apiFor('POST', '/games/counting', {
@@ -42,8 +41,9 @@ form.addEventListener('submit', async (e) => {
   } catch (err) {
     toast(err.message, 'error');
     statusEl.textContent = err.message;
+    throw err;
   }
-});
+}
 
 document.getElementById('cntReset').addEventListener('click', async () => {
   if (!(await Dash.confirmModal('Den Zähler wirklich auf 0 zurücksetzen? Der Rekord bleibt erhalten.'))) return;
@@ -56,4 +56,6 @@ document.getElementById('cntReset').addEventListener('click', async () => {
   }
 });
 
-load().catch((e) => toast(e.message, 'error'));
+load()
+  .then(() => Dash.trackForm(form, saveCounting, { reset: load }))
+  .catch((e) => toast(e.message, 'error'));
