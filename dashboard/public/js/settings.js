@@ -1,7 +1,7 @@
 /* global document, Dash */
 'use strict';
 
-const { api, apiFor, fillSelectors, readForm, escapeHtml, fmtDuration, fmtRelative, toast } = Dash;
+const { api, apiFor, fillSelectors, readForm, escapeHtml, fmtRelative, toast } = Dash;
 
 let settings = {};
 
@@ -11,8 +11,7 @@ async function load() {
   const form = document.getElementById('settingsForm');
   for (const el of form.elements) {
     if (!el.name || !(el.name in settings)) continue;
-    if (el.name === 'giveaway_winner_role_duration_ms') el.value = fmtDuration(settings[el.name] || 86400000);
-    else if (settings[el.name] != null) el.value = settings[el.name];
+    if (settings[el.name] != null) el.value = settings[el.name];
   }
   const ec = document.getElementById('ec');
   const ect = document.getElementById('ect');
@@ -167,63 +166,3 @@ async function loadSecurity() {
 }
 
 loadSecurity();
-
-/* ---------------- Auto-Rolle ---------------- */
-
-const { getRoles } = Dash;
-const arStatus = document.getElementById('autoRoleStatus');
-
-function roleChecklist(roles, selectedSet) {
-  return roles
-    .map(
-      (r) => `<label class="setting-row" style="cursor:pointer;padding:8px 0;">
-        <input type="checkbox" value="${r.id}" ${selectedSet.has(r.id) ? 'checked' : ''} style="width:17px;height:17px;accent-color:var(--accent);">
-        <span class="setting-row__text"><b>${escapeHtml(r.name)}</b></span>
-      </label>`,
-    )
-    .join('');
-}
-
-async function loadAutoRole() {
-  try {
-    const [roles, s] = await Promise.all([getRoles(), apiFor('GET', '/settings')]);
-    const sel = new Set((s.autorole_ids || '').split(',').filter(Boolean));
-    const selBot = new Set((s.autorole_bot_ids || '').split(',').filter(Boolean));
-    document.getElementById('autoRoleChecks').innerHTML = roleChecklist(roles, sel);
-    document.getElementById('autoRoleBotChecks').innerHTML = roleChecklist(roles, selBot);
-  } catch (e) {
-    arStatus.textContent = e.message;
-  }
-}
-
-function collect(id) {
-  return [...document.querySelectorAll(`#${id} input:checked`)].map((c) => c.value).join(',');
-}
-
-document.getElementById('autoRoleSave').addEventListener('click', async () => {
-  try {
-    await apiFor('PATCH', '/settings', {
-      autorole_ids: collect('autoRoleChecks'),
-      autorole_bot_ids: collect('autoRoleBotChecks'),
-    });
-    toast('Auto-Rolle gespeichert.', 'success');
-    arStatus.textContent = 'Gespeichert ✓';
-  } catch (e) {
-    toast(e.message, 'error');
-  }
-});
-
-document.getElementById('autoRoleApplyAll').addEventListener('click', async () => {
-  if (!(await Dash.confirmModal('Die Auto-Rolle(n) jetzt an ALLE aktuellen Mitglieder vergeben? Das kann bei großen Servern etwas dauern.'))) return;
-  try {
-    arStatus.textContent = 'Wird vergeben…';
-    const r = await apiFor('POST', '/autorole/apply-all', {}, { timeout: 120000 });
-    toast(`Fertig: ${r.humans} Mitglieder, ${r.bots} Bots aktualisiert.`, 'success');
-    arStatus.textContent = `${r.humans} Mitglieder, ${r.bots} Bots ✓`;
-  } catch (e) {
-    toast(e.message, 'error');
-    arStatus.textContent = e.message;
-  }
-});
-
-loadAutoRole();

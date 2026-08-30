@@ -12,26 +12,36 @@ const router = express.Router();
 const NAV = [
   { items: [{ key: 'overview', label: 'Übersicht', icon: 'home', path: '' }] },
   {
-    label: 'Serververwaltung',
+    label: 'Community',
     items: [
-      { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
       { key: 'welcome', label: 'Willkommen', icon: 'bell', path: '/welcome' },
       { key: 'tempvoice', label: 'Temp-Voice', icon: 'hash', path: '/tempvoice' },
       { key: 'games', label: 'Spiele', icon: 'sparkles', path: '/games' },
-      { key: 'tickets', label: 'Tickets', icon: 'ticket', path: '/tickets' },
       { key: 'giveaways', label: 'Giveaways', icon: 'gift', path: '/giveaways' },
+      { key: 'suggestions', label: 'Vorschläge', icon: 'bulb', path: '/suggestions' },
+    ],
+  },
+  {
+    label: 'Support & Team',
+    items: [
+      { key: 'tickets', label: 'Tickets', icon: 'ticket', path: '/tickets' },
       { key: 'applications', label: 'Bewerbungen', icon: 'clipboard', path: '/applications' },
-      { key: 'moderation', label: 'Moderation', icon: 'shield', path: '/moderation' },
-      { key: 'statistics', label: 'Server Statistiken', icon: 'chart', path: '/statistics' },
       { key: 'team', label: 'Teamverwaltung', icon: 'users', path: '/team' },
     ],
   },
   {
-    label: 'Weitere Funktionen',
+    label: 'Moderation',
     items: [
-      { key: 'settings', label: 'Einstellungen', icon: 'settings', path: '/settings' },
+      { key: 'moderation', label: 'Moderation', icon: 'shield', path: '/moderation' },
       { key: 'logs', label: 'Logs', icon: 'file', path: '/logs' },
-      { key: 'suggestions', label: 'Vorschläge', icon: 'bulb', path: '/suggestions' },
+    ],
+  },
+  {
+    label: 'Server',
+    items: [
+      { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
+      { key: 'statistics', label: 'Statistiken', icon: 'chart', path: '/statistics' },
+      { key: 'settings', label: 'Einstellungen', icon: 'settings', path: '/settings' },
     ],
   },
 ];
@@ -52,7 +62,7 @@ const CRUMB = {
   giveaways: { crumb: 'Giveaways', crumbIcon: 'gift' },
   applications: { crumb: 'Bewerbungen', crumbIcon: 'clipboard' },
   moderation: { crumb: 'Moderation', crumbIcon: 'shield' },
-  statistics: { crumb: 'Server Statistiken', crumbIcon: 'chart' },
+  statistics: { crumb: 'Statistiken', crumbIcon: 'chart' },
   team: { crumb: 'Teamverwaltung', crumbIcon: 'users' },
   settings: { crumb: 'Einstellungen', crumbIcon: 'settings' },
   logs: { crumb: 'Logs', crumbIcon: 'file' },

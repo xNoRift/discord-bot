@@ -51,11 +51,19 @@
   </div>
 
   <div class="card">
-    <div class="card__head"><h2><%- icon('users') %> Rolle beim Beitritt</h2></div>
+    <div class="card__head"><h2><%- icon('users') %> Rolle beim Beitritt <span class="muted">(Auto-Rolle)</span></h2></div>
     <p class="card__sub">Neue Mitglieder bekommen diese Rolle(n) automatisch. Der Bot braucht „Rollen verwalten" und muss <b>über</b> der Rolle stehen. (Benötigt den „Server Members"-Intent.)</p>
     <div class="field">
-      <label>Rollen</label>
+      <label>Rollen für neue Mitglieder</label>
       <div id="joinRoleChecks"><div class="loading">Lädt…</div></div>
+    </div>
+    <details style="margin-top:10px;">
+      <summary class="text-2" style="cursor:pointer;">Eigene Rollen für Bots (optional)</summary>
+      <div id="joinRoleBotChecks" style="margin-top:8px;"></div>
+    </details>
+    <div class="row-inline" style="margin-top:14px;flex-wrap:wrap;">
+      <button class="btn btn--ghost btn--sm" type="button" id="joinRoleApplyAll"><%- icon('refresh', 'icon--sm') %> Jetzt an alle aktuellen Mitglieder vergeben</button>
+      <span class="muted" id="joinRoleStatus"></span>
     </div>
   </div>
 

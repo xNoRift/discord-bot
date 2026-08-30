@@ -4,6 +4,7 @@
 const {
   apiFor, escapeHtml, fmtDate, icon,
   getChannels, getRoles, openModal, confirmModal, toast,
+  fillSelectors, readForm,
 } = Dash;
 
 let settings = {};
@@ -625,10 +626,32 @@ document.getElementById('ticketTabs').addEventListener('click', (e) => {
 
 /* ================= Init ================= */
 
+async function initDefaults() {
+  const f = document.getElementById('ticketDefaults');
+  if (!f) return;
+  await fillSelectors({
+    ticket_category_id: settings.ticket_category_id,
+    ticket_support_role_id: settings.ticket_support_role_id,
+  });
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const st = document.getElementById('tdStatus');
+    try {
+      settings = await apiFor('PATCH', '/settings', readForm(f));
+      toast('Standard-Einstellungen gespeichert.', 'success');
+      st.textContent = 'Gespeichert ✓';
+    } catch (err) {
+      toast(err.message, 'error');
+      st.textContent = err.message;
+    }
+  });
+}
+
 (async function init() {
   try {
     [CH, ROLES, settings] = await Promise.all([getChannels(), getRoles(), apiFor('GET', '/settings')]);
     renderModule();
+    await initDefaults();
     await loadPanels();
     await loadTickets();
     const m = window.location.hash.match(/panel-(\d+)/);

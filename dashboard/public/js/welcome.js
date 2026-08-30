@@ -33,8 +33,15 @@ async function load() {
   colorText.value = s.welcome_color || '';
 
   const sel = new Set((s.autorole_ids || '').split(',').filter(Boolean));
+  const selBot = new Set((s.autorole_bot_ids || '').split(',').filter(Boolean));
   document.getElementById('joinRoleChecks').innerHTML =
     roles.length ? roleChecklist(roles, sel) : '<p class="muted">Keine Rollen gefunden.</p>';
+  document.getElementById('joinRoleBotChecks').innerHTML =
+    roles.length ? roleChecklist(roles, selBot) : '';
+}
+
+function collectRoles(id) {
+  return [...document.querySelectorAll(`#${id} input:checked`)].map((c) => c.value).join(',');
 }
 
 colorPick.addEventListener('input', () => { colorText.value = colorPick.value; });
@@ -46,7 +53,6 @@ colorText.addEventListener('input', () => {
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const a = readForm(form);
-  const joinRoles = [...document.querySelectorAll('#joinRoleChecks input:checked')].map((c) => c.value).join(',');
   try {
     await apiFor('PATCH', '/settings', {
       welcome_enabled: a.welcome_enabled ? 1 : 0,
@@ -60,7 +66,8 @@ form.addEventListener('submit', async (e) => {
       leave_enabled: a.leave_enabled ? 1 : 0,
       leave_channel_id: a.leave_channel_id || null,
       leave_message: a.leave_message || null,
-      autorole_ids: joinRoles,
+      autorole_ids: collectRoles('joinRoleChecks'),
+      autorole_bot_ids: collectRoles('joinRoleBotChecks'),
     });
     toast('Willkommens-System gespeichert.', 'success');
     statusEl.textContent = 'Gespeichert ✓';
@@ -68,6 +75,20 @@ form.addEventListener('submit', async (e) => {
   } catch (err) {
     toast(err.message, 'error');
     statusEl.textContent = err.message;
+  }
+});
+
+document.getElementById('joinRoleApplyAll').addEventListener('click', async () => {
+  const st = document.getElementById('joinRoleStatus');
+  if (!(await Dash.confirmModal('Die Beitritts-Rolle(n) jetzt an ALLE aktuellen Mitglieder vergeben? Das kann bei großen Servern etwas dauern.'))) return;
+  try {
+    st.textContent = 'Wird vergeben…';
+    const r = await apiFor('POST', '/autorole/apply-all', {}, { timeout: 120000 });
+    toast(`Fertig: ${r.humans} Mitglieder, ${r.bots} Bots aktualisiert.`, 'success');
+    st.textContent = `${r.humans} Mitglieder, ${r.bots} Bots ✓`;
+  } catch (err) {
+    toast(err.message, 'error');
+    st.textContent = err.message;
   }
 });
 

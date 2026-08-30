@@ -84,6 +84,7 @@
 <form id="settingsForm">
   <div class="card">
     <div class="card__head"><h2><%- icon('settings') %> Allgemein</h2></div>
+    <p class="card__sub">Ticket-, Giveaway-, Bewerbungs- und Log-Einstellungen findest du jetzt direkt auf der jeweiligen Seite. Die Beitritts-Rolle steht unter „Willkommen".</p>
     <div class="col-2">
       <div class="field"><label>Embed-Farbe</label>
         <div class="row-inline">
@@ -104,59 +105,14 @@
       <div class="field"><label>Bot-Sprache</label>
         <select name="bot_language"><option value="de">Deutsch</option><option value="en">English</option></select>
       </div>
-      <div class="field"><label>Allgemeiner Log-Kanal</label><select name="log_channel_id" data-type="text"></select></div>
-    </div>
-  </div>
-
-  <div class="col-2">
-    <div class="card">
-      <div class="card__head"><h2><%- icon('ticket') %> Tickets</h2></div>
-      <div class="field"><label>Standard Discord-Kategorie</label><select name="ticket_category_id" data-type="category"></select></div>
-      <div class="field"><label>Standard Support-Rolle</label><select name="ticket_support_role_id" data-type="role"></select></div>
-      <div class="field"><label>Ticket-Log-Kanal</label><select name="ticket_log_channel_id" data-type="text"></select></div>
-    </div>
-    <div class="card">
-      <div class="card__head"><h2><%- icon('gift') %> Giveaways</h2></div>
-      <div class="field"><label>Giveaway-Kanal</label><select name="giveaway_channel_id" data-type="text"></select></div>
-      <div class="field"><label>Gewinnerrolle</label><select name="giveaway_winner_role_id" data-type="role"></select></div>
-      <div class="field"><label>Dauer der Gewinnerrolle</label><input name="giveaway_winner_role_duration_ms" type="text" placeholder="24h" /></div>
-      <div class="field"><label>Giveaway-Log-Kanal</label><select name="giveaway_log_channel_id" data-type="text"></select></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card__head"><h2><%- icon('clipboard') %> Bewerbungen &amp; Moderation</h2></div>
-    <div class="col-2">
-      <div class="field"><label>Bewerbungs-Kanal</label><select name="application_channel_id" data-type="text"></select></div>
-      <div class="field"><label>Bewerbungs-Team-Rolle</label><select name="application_team_role_id" data-type="role"></select></div>
-      <div class="field"><label>Bewerbungs-Log-Kanal</label><select name="application_log_channel_id" data-type="text"></select></div>
-      <div class="field"><label>Moderations-Log-Kanal</label><select name="mod_log_channel_id" data-type="text"></select></div>
     </div>
   </div>
 
   <div class="form-actions">
-    <button class="btn btn--primary" type="submit"><%- icon('check') %> Alle Einstellungen speichern</button>
+    <button class="btn btn--primary" type="submit"><%- icon('check') %> Speichern</button>
     <span class="muted" id="sStatus"></span>
   </div>
 </form>
-
-<div class="card">
-  <div class="card__head"><h2><%- icon('users') %> Auto-Rolle</h2></div>
-  <p class="card__sub">Neue Mitglieder bekommen diese Rolle(n) automatisch beim Beitritt. Benötigt den „Server Members"-Intent.</p>
-  <div class="field">
-    <label>Rollen für neue Mitglieder</label>
-    <div id="autoRoleChecks"><div class="loading">Lädt…</div></div>
-  </div>
-  <details style="margin-top:10px;">
-    <summary class="text-2" style="cursor:pointer;">Eigene Rollen für Bots (optional)</summary>
-    <div id="autoRoleBotChecks" style="margin-top:8px;"></div>
-  </details>
-  <div class="row-inline" style="margin-top:14px;flex-wrap:wrap;">
-    <button class="btn btn--primary btn--sm" id="autoRoleSave" type="button">Speichern</button>
-    <button class="btn btn--ghost btn--sm" id="autoRoleApplyAll" type="button"><%- icon('refresh', 'icon--sm') %> Jetzt an alle vergeben</button>
-    <span class="muted" id="autoRoleStatus"></span>
-  </div>
-</div>
 
 <%- include('partials/app-shell-close') %>
 <script src="/static/js/settings.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>

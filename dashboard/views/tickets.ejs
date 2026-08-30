@@ -23,6 +23,18 @@
   </div>
 
   <div class="card">
+    <div class="card__head"><h2><%- icon('settings') %> Standard-Einstellungen</h2></div>
+    <p class="card__sub">Gelten für Panels/Kategorien, die keine eigene Kategorie oder Support-Rolle gesetzt haben.</p>
+    <form id="ticketDefaults">
+      <div class="col-2">
+        <div class="field"><label>Standard Discord-Kategorie</label><select name="ticket_category_id" data-type="category"></select></div>
+        <div class="field"><label>Standard Support-Rolle</label><select name="ticket_support_role_id" data-type="role"></select></div>
+      </div>
+      <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" type="submit"><%- icon('check', 'icon--sm') %> Speichern</button> <span class="muted" id="tdStatus"></span></div>
+    </form>
+  </div>
+
+  <div class="card">
     <div class="card__head">
       <h2><%- icon('ticket') %> Tickets</h2>
       <div class="spacer"></div>
