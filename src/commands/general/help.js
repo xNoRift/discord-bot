@@ -18,7 +18,7 @@ module.exports = {
         {
           name: '🎵 Musik-Befehle',
           value:
-            '`/play` · `/radio` · `/skip` · `/stop` · `/pause` · `/resume` · `/queue` · `/np` · `/volume` · `/loop` · `/shuffle` · `/leave`',
+            '`/join` · `/play` · `/radio` · `/skip` · `/stop` · `/pause` · `/resume` · `/queue` · `/np` · `/volume` · `/loop` · `/shuffle` · `/leave`',
         },
         { name: '🎫 Tickets · 🎉 Giveaways · 📋 Bewerbungen', value: 'Alles im Dashboard.' },
         { name: '🌐 Dashboard öffnen', value: config.dashboard.url },

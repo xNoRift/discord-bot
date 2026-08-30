@@ -25,9 +25,9 @@ function fmtDur(sec, live) {
 function render(state) {
   const c = state.current;
   if (!c) {
-    npBox.innerHTML = `<div class="empty">${Dash.icon('music')}<b>Es läuft gerade nichts</b>Unten einen Song suchen oder einen Radio-Sender starten.</div>`;
+    npBox.innerHTML = `<div class="empty">${Dash.icon('music')}<b>Es läuft gerade nichts</b>${state.connected ? 'Der Bot ist im Sprachkanal – starte unten einen Song oder Sender.' : 'Unten einen Song suchen oder einen Radio-Sender starten.'}</div>`;
     npControls.hidden = true;
-    npVoice.textContent = '';
+    npVoice.textContent = state.connected ? '🔊 verbunden' : '';
   } else {
     npControls.hidden = false;
     npVoice.textContent = state.voiceChannelId ? 'verbunden' : '';
@@ -112,6 +112,17 @@ queueList.addEventListener('click', async (e) => {
     toast(`Entfernt: ${r.removed}`, 'success');
     render(r.state);
   } catch (err) { toast(err.message, 'error'); }
+});
+
+/* ---- Join ---- */
+document.getElementById('joinBtn').addEventListener('click', async () => {
+  try {
+    const r = await apiFor('POST', '/music/join', {});
+    toast(`Bot ist jetzt in „${r.channel}".`, 'success');
+    render(r.state);
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 });
 
 /* ---- Play ---- */

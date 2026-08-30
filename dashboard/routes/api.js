@@ -545,6 +545,26 @@ router.get('/guilds/:guildId/music', (req, res) => {
 });
 
 router.post(
+  '/guilds/:guildId/music/join',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      const member = await requireMusicMember(req);
+      const vc = member.voice?.channel;
+      if (!vc) return res.status(400).json({ error: 'Geh zuerst selbst in einen Sprachkanal auf diesem Server.' });
+      const me = req.guild.members.me;
+      if (!vc.permissionsFor(me)?.has(PermissionFlagsBits.Connect) || !vc.permissionsFor(me)?.has(PermissionFlagsBits.Speak)) {
+        return res.status(403).json({ error: 'Der Bot darf diesem Sprachkanal nicht beitreten.' });
+      }
+      await musicService.join(req.guild, vc, req.body.textChannelId || null);
+      res.json({ ok: true, channel: vc.name, state: musicState(req.guild) });
+    } catch (err) {
+      res.status(err.status || 400).json({ error: err.message });
+    }
+  }),
+);
+
+router.post(
   '/guilds/:guildId/music/play',
   actionLimiter,
   asyncHandler(async (req, res) => {

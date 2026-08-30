@@ -385,10 +385,18 @@ async function playStation(guild, voiceChannel, textChannelId, stationQuery, req
   return play_(guild, voiceChannel, textChannelId, station.name, requestedBy);
 }
 
+/** Bot in einen Sprachkanal holen, ohne etwas abzuspielen. */
+async function join(guild, voiceChannel, textChannelId) {
+  const session = getOrCreate(guild);
+  await session.connect(voiceChannel, textChannelId);
+  return session;
+}
+
 module.exports = {
   sessions,
   getSession,
   getOrCreate,
+  join,
   play: play_,
   playStation,
   resolveTracks,
