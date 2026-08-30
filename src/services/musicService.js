@@ -4,7 +4,17 @@ const ytdlp = require('./ytdlp');
 const logger = require('../utils/logger');
 const settingsModel = require('../database/models/settings');
 const stationsModel = require('../database/models/musicStations');
-const BUILTIN_STATIONS = require('../data/radioStations');
+
+let BUILTIN_STATIONS = [];
+try {
+  BUILTIN_STATIONS = require('./radioStations');
+} catch {
+  try {
+    BUILTIN_STATIONS = require('../data/radioStations');
+  } catch {
+    /* Datei fehlt -> nur eigene Sender/URLs */
+  }
+}
 
 /**
  * Musik-Service: eine Session pro Server (im Speicher).

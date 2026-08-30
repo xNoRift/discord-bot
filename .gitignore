@@ -7,7 +7,8 @@ node_modules/
 !.env.example
 
 # Datenbank (auf dem Server persistent, nicht ins Repo)
-data/
+# NUR der Ordner im Projekt-Root – NICHT src/data/ o. ä.
+/data/
 *.sqlite
 *.sqlite3
 *.db
