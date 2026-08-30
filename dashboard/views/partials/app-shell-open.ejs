@@ -75,6 +75,24 @@
         <% if (typeof guild !== 'undefined' && guild) { %>
           <span class="badge badge--on"><%= guild.name %></span>
         <% } %>
+        <div class="theme-wrap">
+          <button class="theme-btn" id="themeBtn" type="button" aria-label="Farbdesign ändern" title="Farbdesign ändern"><%- icon('sparkles') %></button>
+          <div class="theme-pop" id="themePop" hidden>
+            <h4>Akzentfarbe</h4>
+            <div class="swatch-grid" id="swatchGrid"></div>
+            <label class="theme-custom">
+              <input type="color" id="themeCustom" value="#7c5cff" />
+              <span>Eigene Farbe wählen</span>
+            </label>
+            <h4>Hintergrund</h4>
+            <div class="theme-row" id="modeRow">
+              <button class="theme-mode" data-mode="standard" type="button">Standard</button>
+              <button class="theme-mode" data-mode="midnight" type="button">Mitternacht</button>
+              <button class="theme-mode" data-mode="slate" type="button">Schiefer</button>
+            </div>
+            <button class="theme-reset" id="themeReset" type="button">Auf Standard zurücksetzen</button>
+          </div>
+        </div>
       </div>
     </header>
     <main class="content">
