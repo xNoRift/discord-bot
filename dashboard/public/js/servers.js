@@ -3,6 +3,7 @@
 
 const { api, escapeHtml, icon, toast } = Dash;
 const CLIENT_ID = Dash.PAGE_DATA.clientId;
+const INVITE_PERMS = Dash.PAGE_DATA.invitePermissions || '8';
 
 function serverIcon(g) {
   if (g.icon) return `<img class="server-icon" src="https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=128" alt="" />`;
@@ -10,7 +11,7 @@ function serverIcon(g) {
 }
 
 function inviteUrl(id) {
-  return `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&scope=bot+applications.commands&permissions=268569680&guild_id=${id}`;
+  return `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&scope=bot+applications.commands&permissions=${INVITE_PERMS}${id ? `&guild_id=${id}` : ''}`;
 }
 
 async function load(refresh) {

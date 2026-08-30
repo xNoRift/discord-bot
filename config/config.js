@@ -50,6 +50,9 @@ const config = {
     clientId: required('CLIENT_ID'),
     clientSecret: required('CLIENT_SECRET'),
     devGuildId: optional('DEV_GUILD_ID'),
+    // Berechtigungen im Einladungslink. Standard 8 = Administrator.
+    // (Discord-Permission-Bitfeld; z. B. 268569680 für ein enges Set.)
+    invitePermissions: optional('BOT_INVITE_PERMISSIONS', '8'),
     // Privilegierte Gateway-Intents (im Developer Portal aktivieren!).
     // Falls noch nicht aktiviert: hier auf 0 setzen, damit der Bot trotzdem startet.
     intentGuildMembers: bool('INTENT_GUILD_MEMBERS', true), // Auto-Rolle, Willkommen, Verlassen

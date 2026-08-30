@@ -20,7 +20,7 @@
   <div class="grid-cards" id="invitableGuilds"></div>
 </div>
 
-<script type="application/json" id="pageData">{ "clientId": "<%= clientId %>" }</script>
+<script type="application/json" id="pageData">{ "clientId": "<%= clientId %>", "invitePermissions": "<%= invitePermissions %>" }</script>
 <%- include('partials/app-shell-close') %>
 <script src="/static/js/servers.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
 <%- include('partials/foot') %>

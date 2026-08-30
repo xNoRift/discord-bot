@@ -119,7 +119,10 @@ router.get('/login', (req, res) => {
 /* ---------------- Geschützt ---------------- */
 
 router.get('/servers', requireAuth, (req, res) => {
-  res.render('servers', pageLocals(req, 'servers', { clientId: config.discord.clientId }));
+  res.render('servers', pageLocals(req, 'servers', {
+    clientId: config.discord.clientId,
+    invitePermissions: config.discord.invitePermissions,
+  }));
 });
 
 const g = express.Router({ mergeParams: true });
