@@ -14,6 +14,7 @@ const NAV = [
   {
     label: 'Serververwaltung',
     items: [
+      { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
       { key: 'tickets', label: 'Tickets', icon: 'ticket', path: '/tickets' },
       { key: 'giveaways', label: 'Giveaways', icon: 'gift', path: '/giveaways' },
       { key: 'applications', label: 'Bewerbungen', icon: 'clipboard', path: '/applications' },
@@ -40,6 +41,7 @@ const FOOTER_NAV = [
 
 const CRUMB = {
   overview: { crumb: 'Übersicht', crumbIcon: 'home' },
+  messages: { crumb: 'Nachrichten', crumbIcon: 'send' },
   tickets: { crumb: 'Tickets', crumbIcon: 'ticket' },
   giveaways: { crumb: 'Giveaways', crumbIcon: 'gift' },
   applications: { crumb: 'Bewerbungen', crumbIcon: 'clipboard' },
@@ -106,6 +108,7 @@ g.use(requireAuth, loadGuild);
 
 const PAGES = [
   ['/', 'overview'],
+  ['/messages', 'messages'],
   ['/tickets', 'tickets'],
   ['/giveaways', 'giveaways'],
   ['/applications', 'applications'],

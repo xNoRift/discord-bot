@@ -1,8 +1,9 @@
 'use strict';
 
 const express = require('express');
-const { ChannelType } = require('discord.js');
+const { ChannelType, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const client = require('../../src/core/client');
+const config = require('../../config/config');
 
 const { requireAuth, verifyCsrf, loadGuild } = require('../middleware/auth');
 const { apiLimiter, actionLimiter } = require('../middleware/rateLimit');
@@ -241,6 +242,84 @@ router.get(
 
 router.get('/guilds/:guildId/channels', (req, res) => res.json(serializeChannels(req.guild)));
 router.get('/guilds/:guildId/roles', (req, res) => res.json(serializeRoles(req.guild)));
+
+/* ----------------------------------------------------------------
+ *  Über den Bot in einen Kanal schreiben (auch: bestehende Bot-Nachricht bearbeiten)
+ * ---------------------------------------------------------------- */
+
+function parseHexColor(input) {
+  const m = String(input || '').trim().match(/^#?([0-9a-fA-F]{6})$/);
+  return m ? parseInt(m[1], 16) : null;
+}
+
+router.post(
+  '/guilds/:guildId/message',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const b = req.body || {};
+    const channelId = String(b.channelId || '');
+    if (!/^\d{5,25}$/.test(channelId)) return res.status(400).json({ error: 'Bitte einen Kanal wählen.' });
+
+    const channel = req.guild.channels.cache.get(channelId);
+    if (!channel || !channel.isTextBased?.() || channel.type === ChannelType.GuildCategory) {
+      return res.status(400).json({ error: 'Kanal nicht gefunden oder kein Textkanal.' });
+    }
+
+    const content = String(b.content ?? '').replace(/\r\n/g, '\n');
+    const asEmbed = Boolean(b.asEmbed);
+    const embedTitle = String(b.embedTitle ?? '').slice(0, 256);
+    const color = parseHexColor(b.embedColor);
+
+    if (asEmbed) {
+      if (content.length > 4096) return res.status(400).json({ error: 'Embed-Text max. 4096 Zeichen.' });
+    } else if (content.length > 2000) {
+      return res.status(400).json({ error: 'Nachricht max. 2000 Zeichen.' });
+    }
+    if (!content.trim() && !embedTitle.trim()) {
+      return res.status(400).json({ error: 'Die Nachricht ist leer.' });
+    }
+
+    const me = req.guild.members.me ?? (await req.guild.members.fetchMe().catch(() => null));
+    const perms = me && channel.permissionsFor(me);
+    if (!perms?.has(PermissionFlagsBits.ViewChannel) || !perms?.has(PermissionFlagsBits.SendMessages)) {
+      return res.status(403).json({ error: 'Der Bot darf in diesem Kanal nicht schreiben.' });
+    }
+    if (asEmbed && !perms?.has(PermissionFlagsBits.EmbedLinks)) {
+      return res.status(403).json({ error: 'Dem Bot fehlt das Recht „Links einbetten" in diesem Kanal.' });
+    }
+
+    const payload = asEmbed
+      ? {
+          embeds: [
+            (() => {
+              const e = new EmbedBuilder();
+              if (embedTitle.trim()) e.setTitle(embedTitle);
+              if (content.trim()) e.setDescription(content);
+              e.setColor(color ?? config.branding.color);
+              return e;
+            })(),
+          ],
+        }
+      : { content, allowedMentions: { parse: [] } };
+
+    try {
+      const messageId = b.messageId ? String(b.messageId) : '';
+      if (/^\d{5,25}$/.test(messageId)) {
+        const existing = await channel.messages.fetch(messageId).catch(() => null);
+        if (!existing) return res.status(404).json({ error: 'Zu bearbeitende Nachricht nicht gefunden.' });
+        if (existing.author.id !== client.user.id) {
+          return res.status(400).json({ error: 'Es können nur Nachrichten des Bots bearbeitet werden.' });
+        }
+        const edited = await existing.edit(payload);
+        return res.json({ ok: true, edited: true, id: edited.id, url: edited.url });
+      }
+      const sent = await channel.send(payload);
+      res.json({ ok: true, edited: false, id: sent.id, url: sent.url });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
 
 /* Aktive temporäre Giveaway-Gewinnerrollen (für Dashboard-Anzeige). */
 router.get('/guilds/:guildId/temp-roles', (req, res) => {

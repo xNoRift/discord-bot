@@ -1,0 +1,60 @@
+<%- include('partials/head', { title: guild.name + ' – Nachrichten' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('send') %> Nachrichten</h1></div>
+  <p>Schreibe über den Bot direkt in einen Kanal auf <strong><%= guild.name %></strong>.</p>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('chat') %> Nachricht senden</h2></div>
+  <form id="msgForm" class="form">
+    <div class="field">
+      <label>Kanal</label>
+      <select id="msgChannel" data-type="text" name="channelId"></select>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Als Embed senden</b><span>Nachricht in einer farbigen Box mit optionalem Titel</span></div>
+      <label class="toggle"><input type="checkbox" id="msgAsEmbed" /><span class="toggle__track"></span></label>
+    </div>
+
+    <div class="col-2" id="msgEmbedOpts" hidden>
+      <div class="field">
+        <label>Embed-Titel (optional)</label>
+        <input id="msgEmbedTitle" type="text" maxlength="256" placeholder="z. B. Ankündigung" />
+      </div>
+      <div class="field">
+        <label>Embed-Farbe</label>
+        <div class="row-inline">
+          <input type="color" id="msgColor" value="#7c5cff" style="max-width:70px;" />
+          <input id="msgColorText" type="text" placeholder="#7c5cff" maxlength="7" />
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Text</label>
+      <textarea id="msgContent" rows="6" placeholder="Deine Nachricht…"></textarea>
+      <div class="field-hint"><span id="msgCount">0</span> / <span id="msgMax">2000</span> Zeichen · Discord-Markdown wird unterstützt</div>
+    </div>
+
+    <details style="margin-top:4px;">
+      <summary class="text-2" style="cursor:pointer;">Stattdessen eine bestehende Bot-Nachricht bearbeiten</summary>
+      <div class="field" style="margin-top:10px;">
+        <label>Nachrichten-ID</label>
+        <input id="msgEditId" type="text" inputmode="numeric" placeholder="z. B. 1234567890123456789" />
+        <div class="field-hint">Rechtsklick auf die Nachricht in Discord → „ID kopieren" (Entwicklermodus nötig). Die Nachricht muss im oben gewählten Kanal stehen und vom Bot sein.</div>
+      </div>
+    </details>
+
+    <div class="row-inline" style="margin-top:8px;flex-wrap:wrap;">
+      <button class="btn btn--primary btn--sm" type="submit" id="msgSend"><%- icon('send', 'icon--sm') %> Senden</button>
+      <span class="muted" id="msgStatus"></span>
+    </div>
+  </form>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/messages.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>
