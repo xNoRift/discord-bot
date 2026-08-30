@@ -68,6 +68,8 @@ const config = {
     redirectUri: optional('OAUTH_REDIRECT_URI', 'http://localhost:3000/auth/discord/callback'),
     sessionSecret: required('SESSION_SECRET') || 'unsafe-dev-secret-change-me',
     secureCookies: bool('SECURE_COOKIES', false),
+    // Wenn true: NUR Bot-Besitzer (BOT_OWNER_IDS) dürfen sich einloggen.
+    ownerOnly: bool('DASHBOARD_OWNER_ONLY', false),
   },
 
   ownerIds: list('BOT_OWNER_IDS'),
@@ -136,5 +138,36 @@ function validate(mode = 'all') {
 }
 
 config.validate = validate;
+
+/** Ist diese Discord-User-ID ein Bot-Besitzer? */
+function isOwner(userId) {
+  return config.ownerIds.includes(String(userId));
+}
+config.isOwner = isOwner;
+
+/**
+ * Sicherheits-Selbstcheck beim Start. Gibt eine Liste von Warnungen zurück.
+ * @returns {{ level: 'warn'|'error', msg: string }[]}
+ */
+function securityCheck() {
+  const out = [];
+  const secret = process.env.SESSION_SECRET || '';
+  if (!secret || secret === 'unsafe-dev-secret-change-me') {
+    out.push({ level: 'error', msg: 'SESSION_SECRET fehlt oder ist der Standardwert – bitte einen langen Zufallswert setzen.' });
+  } else if (secret.length < 32) {
+    out.push({ level: 'warn', msg: 'SESSION_SECRET ist kürzer als 32 Zeichen – besser 64+ Zeichen verwenden.' });
+  }
+  if (config.isProduction && !config.dashboard.secureCookies && /^https:/i.test(config.dashboard.url)) {
+    out.push({ level: 'warn', msg: 'Dashboard läuft über HTTPS, aber SECURE_COOKIES=false – auf true setzen.' });
+  }
+  if (config.dashboard.ownerOnly && config.ownerIds.length === 0) {
+    out.push({ level: 'error', msg: 'DASHBOARD_OWNER_ONLY=true, aber BOT_OWNER_IDS ist leer – niemand könnte sich einloggen.' });
+  }
+  if (!config.dashboard.ownerOnly && config.ownerIds.length === 0) {
+    out.push({ level: 'warn', msg: 'BOT_OWNER_IDS ist leer – lege deine Discord-ID fest, damit nur du Besitzer-Rechte hast.' });
+  }
+  return out;
+}
+config.securityCheck = securityCheck;
 
 module.exports = config;

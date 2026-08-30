@@ -66,6 +66,7 @@ const CRUMB = {
 function pageLocals(req, active, extra = {}) {
   const locals = {
     user: req.session.user,
+    isOwner: config.isOwner(req.session.user?.id),
     dashboardUrl: config.dashboard.url,
     brandName: config.branding.name,
     nav: NAV,

@@ -4,8 +4,10 @@ const crypto = require('node:crypto');
 const express = require('express');
 const oauth = require('../services/discordOAuth');
 const dashboardUsers = require('../../src/database/models/dashboardUsers');
+const loginAudit = require('../../src/database/models/loginAudit');
 const guildAccess = require('../services/guildAccess');
 const { authLimiter } = require('../middleware/rateLimit');
+const config = require('../../config/config');
 const logger = require('../../src/utils/logger');
 
 const router = express.Router();
@@ -38,6 +40,19 @@ router.get('/discord/callback', authLimiter, async (req, res, next) => {
     const token = await oauth.exchangeCode(code);
     const me = await oauth.fetchCurrentUser(token.access_token);
 
+    const ip = req.ip || req.socket?.remoteAddress || '?';
+    const ua = req.get('user-agent') || '';
+
+    // Owner-Only-Modus: nur Bot-Besitzer dürfen rein.
+    if (config.dashboard.ownerOnly && !config.isOwner(me.id)) {
+      loginAudit.record({ userId: me.id, username: me.username, ip, userAgent: ua, ok: false });
+      logger.warn(`[auth] ABGELEHNT (owner-only): ${me.username} (${me.id}) von ${ip}`);
+      return res.status(403).render('error', {
+        title: 'Kein Zugriff',
+        message: 'Dieses Dashboard ist auf den Bot-Besitzer beschränkt.',
+      });
+    }
+
     dashboardUsers.upsert({
       userId: me.id,
       username: me.username,
@@ -56,6 +71,9 @@ router.get('/discord/callback', authLimiter, async (req, res, next) => {
       logger.warn(`[auth] Guilds beim Login nicht ladbar: ${err.message}`);
     }
 
+    loginAudit.record({ userId: me.id, username: me.username, ip, userAgent: ua, ok: true });
+    logger.info(`[auth] Login: ${me.username} (${me.id}) von ${ip}`);
+
     req.session.regenerate((regenErr) => {
       if (regenErr) return next(regenErr);
       req.session.user = {
@@ -63,6 +81,7 @@ router.get('/discord/callback', authLimiter, async (req, res, next) => {
         username: me.username,
         globalName: me.global_name,
         avatar: me.avatar,
+        isOwner: config.isOwner(me.id),
       };
       const returnTo = req.session.returnTo || '/servers';
       delete req.session.returnTo;

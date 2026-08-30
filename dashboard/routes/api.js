@@ -5,7 +5,8 @@ const { ChannelType, EmbedBuilder, PermissionFlagsBits } = require('discord.js')
 const client = require('../../src/core/client');
 const config = require('../../config/config');
 
-const { requireAuth, verifyCsrf, loadGuild } = require('../middleware/auth');
+const { requireAuth, requireOwner, verifyCsrf, loadGuild } = require('../middleware/auth');
+const loginAudit = require('../../src/database/models/loginAudit');
 const { apiLimiter, actionLimiter } = require('../middleware/rateLimit');
 const guildAccess = require('../services/guildAccess');
 
@@ -98,18 +99,8 @@ function discordErr(err) {
 }
 
 /* ----------------------------------------------------------------
- *  Bot-Status / Aktivität (bot-weit)
+ *  Bot-Status / Aktivität (bot-weit) – NUR Bot-Besitzer
  * ---------------------------------------------------------------- */
-
-async function requireBotManager(req, res, next) {
-  try {
-    const { managed } = await guildAccess.getManageableGuilds(req.session.user.id);
-    if (!managed.length) return res.status(403).json({ error: 'Keine Berechtigung.' });
-    return next();
-  } catch (err) {
-    return next(err);
-  }
-}
 
 const botConfig = require('../../src/database/models/botConfig');
 const presenceService = require('../../src/services/presenceService');
@@ -117,7 +108,7 @@ const presenceService = require('../../src/services/presenceService');
 const STATUS = ['online', 'idle', 'dnd', 'invisible'];
 const ACT_TYPES = ['none', 'playing', 'watching', 'listening', 'competing', 'streaming', 'custom'];
 
-router.get('/bot/presence', requireBotManager, (req, res) => {
+router.get('/bot/presence', requireOwner, (req, res) => {
   const c = botConfig.get();
   res.json({
     status: c.presence_status,
@@ -129,7 +120,7 @@ router.get('/bot/presence', requireBotManager, (req, res) => {
 
 router.post(
   '/bot/presence',
-  requireBotManager,
+  requireOwner,
   actionLimiter,
   asyncHandler(async (req, res) => {
     const patch = {};
@@ -146,6 +137,24 @@ router.post(
     res.json({ ok: true });
   }),
 );
+
+/* ----------------------------------------------------------------
+ *  Sicherheit – Login-Protokoll (NUR Bot-Besitzer)
+ * ---------------------------------------------------------------- */
+
+router.get('/security/logins', requireOwner, (req, res) => {
+  res.json({
+    ownerOnly: config.dashboard.ownerOnly,
+    owners: config.ownerIds,
+    logins: loginAudit.recent(25).map((r) => ({
+      userId: r.user_id,
+      username: r.username,
+      ip: r.ip,
+      ok: !!r.ok,
+      at: r.created_at,
+    })),
+  });
+});
 
 /* ----------------------------------------------------------------
  *  Ab hier: alles pro Guild (mit Zugriffsschutz)

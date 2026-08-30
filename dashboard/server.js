@@ -58,6 +58,8 @@ function createApp() {
         },
       },
       crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: 'same-site' },
+      referrerPolicy: { policy: 'same-origin' },
       hsts: config.dashboard.secureCookies,
     }),
   );
@@ -127,14 +129,7 @@ function createApp() {
   app.use('/api', apiRoutes);
   app.use('/', pageRoutes);
 
-  app.get('/health', (req, res) =>
-    res.json({
-      ok: true,
-      botReady: client.isReady(),
-      botGuilds: client.guilds.cache.size,
-      guildIds: [...client.guilds.cache.keys()],
-    }),
-  );
+  app.get('/health', (req, res) => res.json({ ok: true, botReady: client.isReady() }));
 
   // 404
   app.use((req, res) => {
@@ -166,6 +161,15 @@ function startDashboard() {
   if (missing.length) {
     logger.error(`[dashboard] Fehlende .env-Variablen: ${missing.join(', ')}`);
     throw new Error('Dashboard-Konfiguration unvollständig. Siehe .env.example');
+  }
+
+  // Sicherheits-Selbstcheck
+  for (const w of config.securityCheck()) {
+    if (w.level === 'error') logger.error(`[security] ${w.msg}`);
+    else logger.warn(`[security] ${w.msg}`);
+  }
+  if (config.dashboard.ownerOnly) {
+    logger.success(`[security] Owner-Only-Modus aktiv – nur ${config.ownerIds.length} Besitzer-ID(s) dürfen ins Dashboard.`);
   }
 
   require('../src/database/db'); // Schema sicherstellen

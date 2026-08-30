@@ -333,6 +333,18 @@ CREATE TABLE IF NOT EXISTS dashboard_users (
   last_login       INTEGER
 );
 
+-- ---------- Sicherheit: Login-Protokoll (Dashboard) ----------
+CREATE TABLE IF NOT EXISTS login_audit (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    TEXT,
+  username   TEXT,
+  ip         TEXT,
+  user_agent TEXT,
+  ok         INTEGER DEFAULT 1,   -- 1 = Login ok, 0 = abgelehnt (z.B. kein Besitzer)
+  created_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_login_audit_time ON login_audit(created_at);
+
 -- ---------- Allgemeines Aktivitaets-Log ----------
 CREATE TABLE IF NOT EXISTS activity_log (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,

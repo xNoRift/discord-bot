@@ -32,8 +32,9 @@
   </div>
 </div>
 
+<% if (typeof isOwner !== 'undefined' && isOwner) { %>
 <div class="card">
-  <div class="card__head"><h2><%- icon('bot') %> Bot-Status <span class="muted">(gilt bot-weit)</span></h2></div>
+  <div class="card__head"><h2><%- icon('bot') %> Bot-Status <span class="muted">(gilt bot-weit · nur Besitzer)</span></h2></div>
   <div class="form">
     <div class="field">
       <label>Status</label>
@@ -69,6 +70,16 @@
     <div><button class="btn btn--primary btn--sm" id="psSave" type="button">Status speichern</button> <span class="muted" id="psStatusMsg"></span></div>
   </div>
 </div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('lock') %> Sicherheit <span class="muted">(nur Besitzer)</span></h2></div>
+  <p class="card__sub">Wer sich zuletzt am Dashboard angemeldet hat. Fällt dir hier eine fremde Anmeldung auf, ändere sofort dein <code>SESSION_SECRET</code> in der <code>.env</code> und starte den Bot neu.</p>
+  <div id="secOwnerOnly" class="setting-row">
+    <div class="setting-row__text"><b>Besitzer-Modus</b><span id="secOwnerOnlyState">…</span></div>
+  </div>
+  <ul id="loginList" class="activity"><li>Lädt…</li></ul>
+</div>
+<% } %>
 
 <form id="settingsForm">
   <div class="card">

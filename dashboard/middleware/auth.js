@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const client = require('../../src/core/client');
 const guildAccess = require('../services/guildAccess');
 const settingsModel = require('../../src/database/models/settings');
+const config = require('../../config/config');
 
 /**
  * Auth- und Sicherheits-Middleware fuer das Dashboard.
@@ -15,10 +16,32 @@ function isApiRequest(req) {
 
 /** Nutzer muss eingeloggt sein. */
 function requireAuth(req, res, next) {
-  if (req.session?.user?.id) return next();
-  if (isApiRequest(req)) return res.status(401).json({ error: 'Nicht angemeldet.' });
-  req.session.returnTo = req.originalUrl;
-  return res.redirect('/login');
+  if (!req.session?.user?.id) {
+    if (isApiRequest(req)) return res.status(401).json({ error: 'Nicht angemeldet.' });
+    req.session.returnTo = req.originalUrl;
+    return res.redirect('/login');
+  }
+  // Owner-Only-Modus: bestehende Sessions von Nicht-Besitzern sofort beenden.
+  if (config.dashboard.ownerOnly && !config.isOwner(req.session.user.id)) {
+    return req.session.destroy(() => {
+      if (isApiRequest(req)) return res.status(403).json({ error: 'Kein Zugriff.' });
+      return res.status(403).render('error', {
+        title: 'Kein Zugriff',
+        message: 'Dieses Dashboard ist auf den Bot-Besitzer beschränkt.',
+      });
+    });
+  }
+  return next();
+}
+
+/** Nur Bot-Besitzer (BOT_OWNER_IDS). */
+function requireOwner(req, res, next) {
+  if (req.session?.user?.id && config.isOwner(req.session.user.id)) return next();
+  if (isApiRequest(req)) return res.status(403).json({ error: 'Nur der Bot-Besitzer darf das.' });
+  return res.status(403).render('error', {
+    title: 'Kein Zugriff',
+    message: 'Diese Funktion ist nur für den Bot-Besitzer.',
+  });
 }
 
 /** CSRF-Token pro Session erzeugen und in res.locals bereitstellen. */
@@ -69,4 +92,4 @@ async function loadGuild(req, res, next) {
   }
 }
 
-module.exports = { requireAuth, csrfToken, verifyCsrf, loadGuild };
+module.exports = { requireAuth, requireOwner, csrfToken, verifyCsrf, loadGuild };

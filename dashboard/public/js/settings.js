@@ -1,7 +1,7 @@
 /* global document, Dash */
 'use strict';
 
-const { api, apiFor, fillSelectors, readForm, escapeHtml, fmtDuration, toast } = Dash;
+const { api, apiFor, fillSelectors, readForm, escapeHtml, fmtDuration, fmtRelative, toast } = Dash;
 
 let settings = {};
 
@@ -133,6 +133,40 @@ document.getElementById('psSave').addEventListener('click', async () => {
 });
 
 loadBotPresence();
+
+/* ---------------- Sicherheit: Login-Protokoll (nur Besitzer) ---------------- */
+
+async function loadSecurity() {
+  const list = document.getElementById('loginList');
+  if (!list) return; // Karte nur für Besitzer im DOM
+  try {
+    const d = await api('GET', '/api/security/logins');
+    const st = document.getElementById('secOwnerOnlyState');
+    if (st) {
+      st.textContent = d.ownerOnly
+        ? 'AN – nur der Bot-Besitzer kann sich einloggen.'
+        : 'AUS – jeder Server-Admin kann sich einloggen. (In der .env: DASHBOARD_OWNER_ONLY=true)';
+    }
+    if (!d.logins.length) {
+      list.innerHTML = '<li>Noch keine Anmeldungen protokolliert.</li>';
+      return;
+    }
+    list.innerHTML = d.logins
+      .map((l) => {
+        const ico = l.ok ? '✅' : '⛔';
+        const name = escapeHtml(l.username || l.userId || '?');
+        const ip = escapeHtml(l.ip || '?');
+        return `<li><span class="activity__ico">${ico}</span>
+          <span><b>${name}</b> · ${ip}${l.ok ? '' : ' · <span style="color:var(--red)">abgelehnt</span>'}</span>
+          <time>${fmtRelative ? fmtRelative(l.at) : new Date(l.at).toLocaleString()}</time></li>`;
+      })
+      .join('');
+  } catch (e) {
+    list.innerHTML = `<li style="color:var(--red)">${escapeHtml(e.message)}</li>`;
+  }
+}
+
+loadSecurity();
 
 /* ---------------- Auto-Rolle ---------------- */
 
