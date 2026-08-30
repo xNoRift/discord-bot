@@ -46,6 +46,11 @@ function apply() {
 
   try {
     client.user.setPresence(presence);
+    const act = presence.activities[0];
+    logger.info(
+      `[presence] gesetzt: ${status}` +
+        (act ? ` · ${act.type === ActivityType.Custom ? act.state : (type + ' ' + act.name)}` : ' · keine Aktivität'),
+    );
   } catch (err) {
     logger.warn('[presence] setPresence fehlgeschlagen:', err.message);
   }
