@@ -59,4 +59,13 @@ function resetCount(guildId) {
   return get(guildId);
 }
 
-module.exports = { ensure, get, update, recordCorrect, resetCount };
+/** Info-Panel-Nachricht merken. */
+function setPanel(guildId, channelId, messageId) {
+  ensure(guildId);
+  db.prepare(
+    `UPDATE game_counting SET panel_channel_id = ?, panel_message_id = ?, updated_at = ? WHERE guild_id = ?`,
+  ).run(channelId ?? null, messageId ?? null, Date.now(), guildId);
+  return get(guildId);
+}
+
+module.exports = { ensure, get, update, recordCorrect, resetCount, setPanel };

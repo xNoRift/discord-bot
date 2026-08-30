@@ -42,10 +42,18 @@
 
     <div class="row-inline" style="flex-wrap:wrap;">
       <button class="btn btn--primary btn--sm" type="submit"><%- icon('check') %> Speichern</button>
+      <button class="btn btn--ghost btn--sm" type="button" id="cntPanel"><%- icon('send', 'icon--sm') %> Info-Panel in den Kanal senden</button>
       <button class="btn btn--ghost btn--sm" type="button" id="cntReset"><%- icon('refresh', 'icon--sm') %> Zähler auf 0 zurücksetzen</button>
       <span class="muted" id="cntStatus"></span>
     </div>
   </form>
+
+  <div class="field-hint" style="margin-top:14px;">
+    <b>Es passiert nichts, wenn jemand zählt?</b> Dann fehlt der <b>„Message Content"-Intent</b>:
+    im <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">Discord Developer Portal</a>
+    → deine App → Bot → „Privileged Gateway Intents" → <b>MESSAGE CONTENT INTENT</b> einschalten → Save.
+    Falls in der <code>.env</code> <code>INTENT_MESSAGE_CONTENT=false</code> steht: auf <code>true</code> setzen und neu starten.
+  </div>
 </div>
 
 <%- include('partials/app-shell-close') %>

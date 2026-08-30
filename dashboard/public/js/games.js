@@ -45,6 +45,18 @@ async function saveCounting() {
   }
 }
 
+document.getElementById('cntPanel').addEventListener('click', async () => {
+  try {
+    statusEl.textContent = 'Panel wird gesendet…';
+    const r = await apiFor('POST', '/games/counting/panel', {});
+    toast('Info-Panel in den Kanal gesendet.', 'success');
+    statusEl.innerHTML = r.url ? `Gesendet ✓ <a href="${r.url}" target="_blank" rel="noopener">ansehen</a>` : 'Gesendet ✓';
+  } catch (err) {
+    toast(err.message, 'error');
+    statusEl.textContent = err.message;
+  }
+});
+
 document.getElementById('cntReset').addEventListener('click', async () => {
   if (!(await Dash.confirmModal('Den Zähler wirklich auf 0 zurücksetzen? Der Rekord bleibt erhalten.'))) return;
   try {

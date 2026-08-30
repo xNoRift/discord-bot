@@ -316,6 +316,8 @@ CREATE TABLE IF NOT EXISTS game_counting (
   allow_same_user INTEGER DEFAULT 0,   -- darf man zweimal hintereinander?
   reset_on_fail   INTEGER DEFAULT 1,   -- bei Fehler zurück auf 0?
   react_emoji     TEXT DEFAULT '✅',
+  panel_channel_id TEXT,               -- wo das Info-Panel steht
+  panel_message_id TEXT,
   updated_at      INTEGER
 );
 

@@ -449,6 +449,21 @@ router.post(
   }),
 );
 
+const countingService = require('../../src/services/countingService');
+
+router.post(
+  '/guilds/:guildId/games/counting/panel',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      const msg = await countingService.postPanel(req.guild);
+      res.json({ ok: true, url: msg.url });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  }),
+);
+
 /* ----------------------------------------------------------------
  *  Moderation – Aktionen + Purge
  * ---------------------------------------------------------------- */
