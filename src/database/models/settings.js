@@ -48,6 +48,18 @@ const EDITABLE_FIELDS = [
   'team_role_ids',
   'autorole_ids',
   'autorole_bot_ids',
+  // Willkommens-System
+  'welcome_enabled',
+  'welcome_channel_id',
+  'welcome_message',
+  'welcome_embed',
+  'welcome_color',
+  'welcome_ping',
+  'welcome_dm_enabled',
+  'welcome_dm_message',
+  'leave_enabled',
+  'leave_channel_id',
+  'leave_message',
 ];
 
 const insertStmt = db.prepare(`

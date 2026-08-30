@@ -3,6 +3,7 @@
 const settingsModel = require('../database/models/settings');
 const ticketsModel = require('../database/models/tickets');
 const ticketService = require('../services/ticketService');
+const welcomeService = require('../services/welcomeService');
 const logger = require('../utils/logger');
 
 /**
@@ -12,6 +13,12 @@ const logger = require('../utils/logger');
 module.exports = {
   name: 'guildMemberRemove',
   async execute(member) {
+    try {
+      await welcomeService.sendLeave(member);
+    } catch (err) {
+      logger.error('[guildMemberRemove] Abschied:', err.message);
+    }
+
     try {
       const settings = settingsModel.get(member.guild.id);
       const action = settings.ticket_on_leave || 'nothing';

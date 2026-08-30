@@ -1,0 +1,96 @@
+<%- include('partials/head', { title: guild.name + ' – Willkommen' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('bell') %> Willkommens-System</h1></div>
+  <p>Begrüße neue Mitglieder auf <strong><%= guild.name %></strong> automatisch und vergib ihnen eine Rolle.</p>
+</div>
+
+<form id="welcomeForm">
+  <div class="card">
+    <div class="card__head"><h2><%- icon('chat') %> Willkommensnachricht</h2></div>
+
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Willkommensnachricht aktivieren</b><span>Postet bei jedem Beitritt eine Nachricht in den gewählten Kanal</span></div>
+      <label class="toggle"><input type="checkbox" name="welcome_enabled" /><span class="toggle__track"></span></label>
+    </div>
+
+    <div class="field"><label>Kanal</label><select name="welcome_channel_id" data-type="text"></select></div>
+
+    <div class="field">
+      <label>Text</label>
+      <textarea name="welcome_message" rows="4" placeholder="Willkommen auf {server}, {user}!"></textarea>
+      <div class="field-hint">
+        Platzhalter:
+        <code>{user}</code> (Erwähnung) ·
+        <code>{username}</code> ·
+        <code>{user.tag}</code> ·
+        <code>{server}</code> ·
+        <code>{membercount}</code>
+      </div>
+    </div>
+
+    <div class="col-2">
+      <div class="setting-row">
+        <div class="setting-row__text"><b>Als Embed</b><span>Farbige Box mit Profilbild des Mitglieds</span></div>
+        <label class="toggle"><input type="checkbox" name="welcome_embed" /><span class="toggle__track"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-row__text"><b>Mitglied anpingen</b><span>Löst eine Benachrichtigung beim neuen Mitglied aus</span></div>
+        <label class="toggle"><input type="checkbox" name="welcome_ping" /><span class="toggle__track"></span></label>
+      </div>
+    </div>
+
+    <div class="field" style="max-width:220px;">
+      <label>Embed-Farbe</label>
+      <div class="row-inline">
+        <input type="color" id="wcColor" value="#7c5cff" style="max-width:70px;" />
+        <input name="welcome_color" id="wcColorText" type="text" placeholder="#7c5cff" maxlength="7" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('users') %> Rolle beim Beitritt</h2></div>
+    <p class="card__sub">Neue Mitglieder bekommen diese Rolle(n) automatisch. Der Bot braucht „Rollen verwalten" und muss <b>über</b> der Rolle stehen. (Benötigt den „Server Members"-Intent.)</p>
+    <div class="field">
+      <label>Rollen</label>
+      <div id="joinRoleChecks"><div class="loading">Lädt…</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('send') %> Willkommens-DM (optional)</h2></div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Private Nachricht senden</b><span>Der Bot schreibt dem neuen Mitglied direkt (wenn dessen DMs offen sind)</span></div>
+      <label class="toggle"><input type="checkbox" name="welcome_dm_enabled" /><span class="toggle__track"></span></label>
+    </div>
+    <div class="field">
+      <label>DM-Text</label>
+      <textarea name="welcome_dm_message" rows="3" placeholder="Hey {username}, schön dass du auf {server} bist!"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('logout') %> Abschiedsnachricht (optional)</h2></div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Abschiedsnachricht aktivieren</b><span>Postet eine kurze Nachricht, wenn jemand den Server verlässt</span></div>
+      <label class="toggle"><input type="checkbox" name="leave_enabled" /><span class="toggle__track"></span></label>
+    </div>
+    <div class="field"><label>Kanal</label><select name="leave_channel_id" data-type="text"></select></div>
+    <div class="field">
+      <label>Text</label>
+      <textarea name="leave_message" rows="2" placeholder="{username} hat den Server verlassen."></textarea>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn--primary" type="submit"><%- icon('check') %> Speichern</button>
+    <button class="btn btn--ghost btn--sm" type="button" id="wcTest"><%- icon('send', 'icon--sm') %> Testnachricht senden</button>
+    <span class="muted" id="wcStatus"></span>
+  </div>
+</form>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/welcome.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

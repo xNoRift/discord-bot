@@ -1,6 +1,7 @@
 'use strict';
 
 const autoRoleService = require('../services/autoRoleService');
+const welcomeService = require('../services/welcomeService');
 const logger = require('../utils/logger');
 
 /**
@@ -14,9 +15,10 @@ module.exports = {
     try {
       if (oldMember.pending && !newMember.pending) {
         await autoRoleService.applyOnJoin(newMember);
+        await welcomeService.sendJoin(newMember);
       }
     } catch (err) {
-      logger.error('[guildMemberUpdate] Auto-Rolle:', err.message);
+      logger.error('[guildMemberUpdate] Beitritt:', err.message);
     }
   },
 };

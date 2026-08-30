@@ -321,6 +321,36 @@ router.post(
   }),
 );
 
+/* ----------------------------------------------------------------
+ *  Willkommens-System – Testnachricht
+ * ---------------------------------------------------------------- */
+
+const welcomeService = require('../../src/services/welcomeService');
+
+router.post(
+  '/guilds/:guildId/welcome/test',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const kind = req.body?.kind === 'leave' ? 'leave' : 'join';
+    const s = settingsModel.get(req.guild.id);
+    if (kind === 'join' && (!s.welcome_enabled || !s.welcome_channel_id)) {
+      return res.status(400).json({ error: 'Bitte zuerst „Willkommensnachricht aktivieren" + Kanal wählen und speichern.' });
+    }
+    if (kind === 'leave' && (!s.leave_enabled || !s.leave_channel_id)) {
+      return res.status(400).json({ error: 'Bitte zuerst die Abschiedsnachricht aktivieren + Kanal wählen und speichern.' });
+    }
+    const me = await req.guild.members.fetch(req.session.user.id).catch(() => null);
+    if (!me) return res.status(400).json({ error: 'Du bist selbst nicht auf diesem Server – Test nicht möglich.' });
+    try {
+      if (kind === 'leave') await welcomeService.sendLeave(me);
+      else await welcomeService.sendJoin(me);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
 /* Aktive temporäre Giveaway-Gewinnerrollen (für Dashboard-Anzeige). */
 router.get('/guilds/:guildId/temp-roles', (req, res) => {
   res.json(

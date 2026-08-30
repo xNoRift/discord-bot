@@ -36,6 +36,19 @@ CREATE TABLE IF NOT EXISTS guild_settings (
   autorole_ids     TEXT,
   autorole_bot_ids TEXT,
 
+  -- Willkommens-System
+  welcome_enabled     INTEGER DEFAULT 0,
+  welcome_channel_id  TEXT,
+  welcome_message     TEXT,
+  welcome_embed       INTEGER DEFAULT 1,
+  welcome_color       TEXT,
+  welcome_ping        INTEGER DEFAULT 1,
+  welcome_dm_enabled  INTEGER DEFAULT 0,
+  welcome_dm_message  TEXT,
+  leave_enabled       INTEGER DEFAULT 0,
+  leave_channel_id    TEXT,
+  leave_message       TEXT,
+
   -- Tickets
   tickets_enabled         INTEGER DEFAULT 1,
   ticket_team_ping        INTEGER DEFAULT 1,

@@ -73,6 +73,19 @@ ensureColumn('guild_settings', 'team_role_ids', 'TEXT');
 ensureColumn('guild_settings', 'autorole_ids', 'TEXT');
 ensureColumn('guild_settings', 'autorole_bot_ids', 'TEXT');
 
+// Willkommens-System
+ensureColumn('guild_settings', 'welcome_enabled', 'INTEGER DEFAULT 0');
+ensureColumn('guild_settings', 'welcome_channel_id', 'TEXT');
+ensureColumn('guild_settings', 'welcome_message', 'TEXT');
+ensureColumn('guild_settings', 'welcome_embed', 'INTEGER DEFAULT 1');
+ensureColumn('guild_settings', 'welcome_color', 'TEXT');
+ensureColumn('guild_settings', 'welcome_ping', 'INTEGER DEFAULT 1');
+ensureColumn('guild_settings', 'welcome_dm_enabled', 'INTEGER DEFAULT 0');
+ensureColumn('guild_settings', 'welcome_dm_message', 'TEXT');
+ensureColumn('guild_settings', 'leave_enabled', 'INTEGER DEFAULT 0');
+ensureColumn('guild_settings', 'leave_channel_id', 'TEXT');
+ensureColumn('guild_settings', 'leave_message', 'TEXT');
+
 logger.info(`[db] Datenbank verbunden: ${config.database.path}`);
 
 process.on('exit', () => {
