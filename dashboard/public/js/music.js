@@ -68,7 +68,13 @@ async function refresh() {
   try {
     const state = await apiFor('GET', '/music');
     render(state);
-    document.getElementById('ytBox').hidden = state.youtube !== false;
+    const offBox = document.getElementById('musicOffBox');
+    offBox.hidden = state.enabled !== false;
+    if (state.enabled === false) {
+      document.getElementById('musicOffText').textContent =
+        (state.error || 'Voice-Pakete fehlen.') + ' Radio & YouTube funktionieren erst, wenn das behoben ist.';
+    }
+    document.getElementById('ytBox').hidden = state.enabled === false || state.youtube !== false;
   } catch (e) {
     /* still */
   }

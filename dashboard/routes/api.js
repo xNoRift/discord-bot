@@ -526,6 +526,8 @@ function musicState(guild) {
   const s = musicService.getSession(guild.id);
   const base = s ? s.state() : { connected: false, current: null, queue: [], volume: 100, loop: false, paused: false };
   base.youtube = musicService.youtubeAvailable();
+  base.enabled = musicService.musicEnabled();
+  base.error = musicService.musicError();
   return base;
 }
 

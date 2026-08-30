@@ -6,6 +6,11 @@
   <p>YouTube &amp; Radio auf <strong><%= guild.name %></strong>. <b>Du musst selbst in einem Sprachkanal auf diesem Server sein</b>, damit der Bot beitreten kann.</p>
 </div>
 
+<div id="musicOffBox" class="module-status is-off" hidden>
+  <span class="module-status__dot"></span>
+  <span class="module-status__text"><b>Musik ist gerade deaktiviert</b><span id="musicOffText"></span></span>
+</div>
+
 <div id="ytBox" class="module-status is-off" hidden>
   <span class="module-status__dot"></span>
   <span class="module-status__text"><b>YouTube ist nicht verfügbar</b><span>Auf dem Server fehlt <code>yt-dlp</code>. Radio-Sender und direkte Stream-URLs funktionieren trotzdem. Installieren: <code>curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o /usr/local/bin/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp</code> und Bot neu starten.</span></span>

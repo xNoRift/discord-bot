@@ -1,22 +1,6 @@
 'use strict';
 
-const ffmpegPath = require('ffmpeg-static');
-if (ffmpegPath) process.env.FFMPEG_PATH = ffmpegPath;
-
-const {
-  joinVoiceChannel,
-  createAudioPlayer,
-  createAudioResource,
-  StreamType,
-  AudioPlayerStatus,
-  VoiceConnectionStatus,
-  NoSubscriberBehavior,
-  entersState,
-  getVoiceConnection,
-} = require('@discordjs/voice');
-const prism = require('prism-media');
 const ytdlp = require('./ytdlp');
-
 const logger = require('../utils/logger');
 const settingsModel = require('../database/models/settings');
 const stationsModel = require('../database/models/musicStations');
@@ -25,7 +9,36 @@ const BUILTIN_STATIONS = require('../data/radioStations');
 /**
  * Musik-Service: eine Session pro Server (im Speicher).
  * Quellen: YouTube (Suche/Link, via yt-dlp) und Radio/direkte Stream-URLs (via FFmpeg).
+ *
+ * Die Voice-Pakete (@discordjs/voice, ffmpeg-static, prism-media) werden
+ * defensiv geladen: fehlen sie oder ist Node zu alt (<22), bleibt der Rest
+ * des Bots + Dashboards funktionsfähig – nur die Musik meldet einen Hinweis.
  */
+
+let voice = null;
+let prism = null;
+let MUSIC_ERROR = null;
+
+try {
+  const nodeMajor = Number(process.versions.node.split('.')[0]);
+  if (nodeMajor < 22) {
+    throw new Error(`Node ${process.versions.node} ist zu alt – Musik braucht Node 22+.`);
+  }
+  const ffmpegPath = require('ffmpeg-static');
+  if (ffmpegPath) process.env.FFMPEG_PATH = ffmpegPath;
+  voice = require('@discordjs/voice');
+  prism = require('prism-media');
+} catch (err) {
+  MUSIC_ERROR = err.message;
+  logger.warn(`[music] Musik deaktiviert: ${err.message}`);
+}
+
+const musicEnabled = () => Boolean(voice && prism);
+function assertMusic() {
+  if (!musicEnabled()) {
+    throw new Error(`Musik ist auf diesem Server nicht verfügbar: ${MUSIC_ERROR || 'Voice-Pakete fehlen.'}`);
+  }
+}
 
 const IDLE_DISCONNECT_MS = 3 * 60 * 1000;
 const MAX_QUEUE = 200;
@@ -78,11 +91,11 @@ class Session {
     const s = settingsModel.get(guild.id);
     this.volume = Math.max(0, Math.min(1.5, (Number(s.music_default_volume) || 100) / 100));
     this.connection = null;
-    this.player = createAudioPlayer({ behaviors: { noSubscriber: NoSubscriberBehavior.Pause } });
+    this.player = voice.createAudioPlayer({ behaviors: { noSubscriber: voice.NoSubscriberBehavior.Pause } });
     this.resource = null;
     this.idleTimer = null;
 
-    this.player.on(AudioPlayerStatus.Idle, () => this._onIdle());
+    this.player.on(voice.AudioPlayerStatus.Idle, () => this._onIdle());
     this.player.on('error', (err) => {
       logger.warn(`[music] Player-Fehler (${this.guildId}): ${err.message}`);
       this._announce(`⚠️ Fehler bei **${this.current?.title || 'Titel'}** – überspringe.`);
@@ -94,24 +107,24 @@ class Session {
     this.textChannelId = textChannelId || this.textChannelId;
     if (this.connection && this.voiceChannelId === voiceChannel.id) return;
     this.voiceChannelId = voiceChannel.id;
-    this.connection = joinVoiceChannel({
+    this.connection = voice.joinVoiceChannel({
       channelId: voiceChannel.id,
       guildId: this.guildId,
       adapterCreator: voiceChannel.guild.voiceAdapterCreator,
       selfDeaf: true,
     });
-    this.connection.on(VoiceConnectionStatus.Disconnected, async () => {
+    this.connection.on(voice.VoiceConnectionStatus.Disconnected, async () => {
       try {
         await Promise.race([
-          entersState(this.connection, VoiceConnectionStatus.Signalling, 5000),
-          entersState(this.connection, VoiceConnectionStatus.Connecting, 5000),
+          voice.entersState(this.connection, voice.VoiceConnectionStatus.Signalling, 5000),
+          voice.entersState(this.connection, voice.VoiceConnectionStatus.Connecting, 5000),
         ]);
       } catch {
         this.destroy();
       }
     });
     this.connection.subscribe(this.player);
-    await entersState(this.connection, VoiceConnectionStatus.Ready, 20000).catch(() => {
+    await voice.entersState(this.connection, voice.VoiceConnectionStatus.Ready, 20000).catch(() => {
       throw new Error('Konnte dem Sprachkanal nicht beitreten.');
     });
   }
@@ -169,7 +182,7 @@ class Session {
       });
       src.on('error', () => ff.destroy());
       src.pipe(ff);
-      return createAudioResource(ff, { inputType: StreamType.Raw, inlineVolume: true });
+      return voice.createAudioResource(ff, { inputType: voice.StreamType.Raw, inlineVolume: true });
     }
     // Radio / direkte URL -> FFmpeg mit Reconnect
     const transcoder = new prism.FFmpeg({
@@ -186,7 +199,7 @@ class Session {
         '-ac', '2',
       ],
     });
-    return createAudioResource(transcoder, { inputType: StreamType.Raw, inlineVolume: true });
+    return voice.createAudioResource(transcoder, { inputType: voice.StreamType.Raw, inlineVolume: true });
   }
 
   _announce(text) {
@@ -202,7 +215,7 @@ class Session {
   }
 
   async startIfIdle() {
-    if (!this.current && this.player.state.status !== AudioPlayerStatus.Playing) {
+    if (!this.current && this.player.state.status !== voice.AudioPlayerStatus.Playing) {
       await this._next();
     }
   }
@@ -298,6 +311,7 @@ function getSession(guildId) {
 }
 
 function getOrCreate(guild) {
+  assertMusic();
   let s = sessions.get(guild.id);
   if (!s) {
     s = new Session(guild);
@@ -373,4 +387,6 @@ module.exports = {
   fmtDuration,
   BUILTIN_STATIONS,
   youtubeAvailable: () => ytdlp.available(),
+  musicEnabled,
+  musicError: () => MUSIC_ERROR,
 };
