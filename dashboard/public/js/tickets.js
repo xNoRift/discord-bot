@@ -21,18 +21,46 @@ function optList(list, val, prefix = '') {
   );
 }
 
-function tqRow(q, i) {
-  return `<div class="q-item" data-q="${q.id}">
-    <span class="q-item__num">${i + 1}</span>
-    <input data-qf="label" value="${escapeHtml(q.label)}" maxlength="45" placeholder="Feldname" style="min-width:130px;">
-    <input data-qf="placeholder" value="${escapeHtml(q.placeholder || '')}" maxlength="100" placeholder="Platzhalter" style="min-width:120px;">
-    <select data-qf="style" style="max-width:100px;">
-      <option value="short"${q.style === 'short' ? ' selected' : ''}>Kurz</option>
-      <option value="paragraph"${q.style === 'paragraph' ? ' selected' : ''}>Lang</option>
-    </select>
-    <label class="toggle" title="Pflichtfeld"><input type="checkbox" data-qf="required" ${q.required ? 'checked' : ''}><span class="toggle__track"></span></label>
-    <button class="btn btn--primary btn--sm" data-qa="save">${icon('check', 'icon--sm')}</button>
-    <button class="btn btn--danger btn--sm" data-qa="del">${icon('trash', 'icon--sm')}</button>
+function tqCard(q, i) {
+  const max = q.max_length || 4000;
+  return `<div class="qfield" data-q="${q.id}">
+    <div class="qfield__head">
+      <b>${i + 1}. ${escapeHtml(q.label || 'Neues Feld')}</b>
+      <button class="btn btn--danger btn--icon" data-qa="del" title="Feld löschen">${icon('trash', 'icon--sm')}</button>
+    </div>
+    <div class="fgrid fgrid--2">
+      <div class="field field--counter">
+        <label>Anzeigename des Feldes <span class="req">*</span></label>
+        <div class="field-hint">Name, der beim Feld angezeigt wird</div>
+        <div class="in-wrap"><input data-qf="label" value="${escapeHtml(q.label)}" maxlength="45"><span class="in-count">${(q.label || '').length} / 45</span></div>
+      </div>
+      <div class="field">
+        <label>Typ des Feldes <span class="req">*</span></label>
+        <div class="field-hint">Kurzer oder langer Text</div>
+        <select data-qf="style">
+          <option value="short"${q.style === 'short' ? ' selected' : ''}>Einzeiliger Text</option>
+          <option value="paragraph"${q.style === 'paragraph' ? ' selected' : ''}>Mehrzeiliger Text</option>
+        </select>
+      </div>
+    </div>
+    <div class="field field--counter">
+      <label>Platzhalter</label>
+      <div class="field-hint">Text, der im leeren Feld angezeigt wird</div>
+      <div class="in-wrap"><input data-qf="placeholder" value="${escapeHtml(q.placeholder || '')}" maxlength="100"><span class="in-count">${(q.placeholder || '').length} / 100</span></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Erforderlich</b><span>Muss das Feld ausgefüllt werden?</span></div>
+      <label class="toggle"><input type="checkbox" data-qf="required" ${q.required ? 'checked' : ''}><span class="toggle__track"></span></label>
+    </div>
+    <div class="field">
+      <label>Zeichenlimit</label>
+      <div class="field-hint">Wie viele Zeichen maximal erlaubt sind (1–4000)</div>
+      <div class="row-inline">
+        <input type="range" data-qf="maxLength" min="1" max="4000" step="1" value="${max}" style="flex:1;">
+        <b data-ql style="width:56px;text-align:right;">${max}</b>
+      </div>
+    </div>
+    <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" data-qa="save">${icon('check', 'icon--sm')} Feld speichern</button></div>
   </div>`;
 }
 
@@ -455,16 +483,12 @@ function renderCategoriesTab(body, editCatId) {
     </div>
 
     <div class="card" id="catFormCard">
-      <div class="card__head"><h2>${icon('file')} Öffnen-Formular <span class="muted">(max. 5 Felder)</span></h2>
-        <div class="spacer"></div>
-        <button class="btn btn--primary btn--sm" id="tqAdd">${icon('plus', 'icon--sm')} Feld</button>
-      </div>
-      <p class="card__sub">Hat eine Kategorie Felder, muss der Nutzer sie beim Öffnen ausfüllen (Discord-Modal). Die Antworten erscheinen im Ticket.</p>
-      <div id="tqList">${
-        (c.questions || []).length
-          ? c.questions.map((q, i) => tqRow(q, i)).join('')
-          : `<div class="empty">${icon('file')}<b>Kein Formular</b>Ohne Felder wird das Ticket sofort geöffnet.</div>`
-      }</div>
+      <div class="card__head"><h2>${icon('file')} Ticket-Öffnen Formular <span class="muted">(max. 5 Felder – Discord-Limit)</span></h2></div>
+      <p class="card__sub">Hat eine Kategorie Felder, erscheint beim Öffnen ein Formular (Discord-Modal). Die Antworten landen im Ticket. Ohne Felder wird das Ticket sofort geöffnet.</p>
+      <div id="tqList">${(c.questions || []).map((q, i) => tqCard(q, i)).join('')}</div>
+      <button class="tile tile--add" id="tqAdd" style="width:100%;margin-top:4px;">
+        <span class="tile__name">Feld hinzufügen</span><span class="tile__ico">${icon('plus', 'icon--sm')}</span>
+      </button>
     </div>` : '';
 
   body.innerHTML = `
@@ -534,6 +558,10 @@ function renderCategoriesTab(body, editCatId) {
         renderCategoriesTab(body, c.id);
       } catch (err) { toast(err.message, 'error'); }
     };
+    body.querySelectorAll('#tqList [data-qf="maxLength"]').forEach((slider) => {
+      const out = slider.closest('.field').querySelector('[data-ql]');
+      slider.addEventListener('input', () => { out.textContent = slider.value; });
+    });
     body.querySelector('#tqList').onclick = async (e) => {
       const btn = e.target.closest('button[data-qa]');
       if (!btn) return;
@@ -547,6 +575,8 @@ function renderCategoriesTab(body, editCatId) {
           });
           await apiFor('PATCH', `/ticket-panels/${p.id}/categories/${c.id}/questions/${qid}`, patch);
           toast('Feld gespeichert.', 'success');
+          await refreshPanel();
+          renderCategoriesTab(body, c.id);
         } else if (btn.dataset.qa === 'del') {
           if (!(await confirmModal('Feld löschen?', { danger: true, confirmLabel: 'Löschen' }))) return;
           await apiFor('DELETE', `/ticket-panels/${p.id}/categories/${c.id}/questions/${qid}`);

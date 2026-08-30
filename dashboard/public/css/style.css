@@ -735,6 +735,35 @@ input, select, textarea { font-size: .95rem; }
 .q-item input { flex: 1; }
 .q-item__grip { color: var(--text-3); cursor: grab; }
 
+/* Formularfeld-Karte (Ticket-Öffnen Formular) */
+.qfield {
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.qfield__head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.qfield__head b { flex: 1; font-size: .95rem; }
+
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  height: 6px; border-radius: 999px; padding: 0;
+  background: var(--surface-3);
+  border: none; box-shadow: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #5f7dff);
+  box-shadow: 0 2px 8px -2px var(--glow);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px; border: none; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #5f7dff);
+}
+
 /* Panel-card grid (tickets) */
 .panel-card {
   background: var(--surface);
