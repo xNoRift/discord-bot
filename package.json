@@ -1,0 +1,38 @@
+{
+  "name": "discord-bot-v1",
+  "version": "1.0.0",
+  "description": "Modularer Discord-Bot mit Ticket-, Giveaway- und Bewerbungssystem inklusive Web-Dashboard (Discord OAuth2).",
+  "main": "index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "bot": "node src/bot.js",
+    "dashboard": "node dashboard/server.js",
+    "deploy": "node src/deploy-commands.js",
+    "deploy:global": "node src/deploy-commands.js --global"
+  },
+  "keywords": [
+    "discord",
+    "discord.js",
+    "bot",
+    "dashboard",
+    "tickets",
+    "giveaways",
+    "applications"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "better-sqlite3-session-store": "^0.1.0",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.4.1",
+    "express-session": "^1.18.1",
+    "helmet": "^8.0.0"
+  }
+}

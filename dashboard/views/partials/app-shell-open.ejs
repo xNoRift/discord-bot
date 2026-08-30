@@ -1,0 +1,80 @@
+<div class="shell">
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__top">
+      <span class="sidebar__badge"><%- icon('bot') %></span>
+      <span class="sidebar__title">
+        <b><%= (brand && brand.name) || 'Dashboard' %></b>
+        <span>Control Panel</span>
+      </span>
+      <button class="sidebar__close" id="sidebarClose" aria-label="Menü schließen"><%- icon('x') %></button>
+    </div>
+
+    <nav class="sidebar__scroll">
+      <% if (typeof guild !== 'undefined' && guild) { %>
+        <div class="sidebar__section">
+          <div class="sidebar__guildpick">
+            <a class="nav-item" href="/servers"><%- icon('server') %><span>Server wechseln</span></a>
+          </div>
+        </div>
+
+        <% (nav || []).forEach(function (section) { %>
+          <div class="sidebar__section">
+            <% if (section.label) { %><div class="sidebar__label"><%= section.label %></div><% } %>
+            <% section.items.forEach(function (item) { %>
+              <a class="nav-item <%= active === item.key ? 'is-active' : '' %>" href="/dashboard/<%= guild.id %><%= item.path %>">
+                <%- icon(item.icon) %><span><%= item.label %></span>
+                <% var b = (navBadges || {})[item.key]; if (b) { %><span class="nav-item__badge"><%= b %></span><% } %>
+              </a>
+            <% }); %>
+          </div>
+        <% }); %>
+
+        <div class="sidebar__divider"></div>
+        <div class="sidebar__section">
+          <% (footerNav || []).forEach(function (item) { %>
+            <a class="nav-item <%= active === item.key ? 'is-active' : '' %>" href="/dashboard/<%= guild.id %><%= item.path %>">
+              <%- icon(item.icon) %><span><%= item.label %></span>
+            </a>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <div class="sidebar__section">
+          <a class="nav-item is-active" href="/servers"><%- icon('server') %><span>Server auswählen</span></a>
+        </div>
+      <% } %>
+    </nav>
+
+    <div class="sidebar__user">
+      <% if (typeof user !== 'undefined' && user) { %>
+        <% if (user.avatar) { %>
+          <img class="avatar" src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png?size=64" alt="" />
+        <% } else { %>
+          <span class="avatar avatar--fallback"><%= (user.globalName || user.username || '?').charAt(0).toUpperCase() %></span>
+        <% } %>
+        <span class="sidebar__user-info">
+          <b><%= user.globalName || user.username %></b>
+          <span>Angemeldet</span>
+        </span>
+        <form method="post" action="/auth/logout">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <button class="btn btn--ghost btn--icon" type="submit" title="Abmelden"><%- icon('logout') %></button>
+        </form>
+      <% } %>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="topbar__menu" id="sidebarOpen" aria-label="Menü"><%- icon('menu') %></button>
+      <span class="topbar__crumb">
+        <%- icon(typeof crumbIcon !== 'undefined' ? crumbIcon : 'grid') %>
+        <%= typeof crumb !== 'undefined' ? crumb : (typeof title !== 'undefined' ? title : 'Dashboard') %>
+      </span>
+      <div class="topbar__right">
+        <% if (typeof guild !== 'undefined' && guild) { %>
+          <span class="badge badge--on"><%= guild.name %></span>
+        <% } %>
+      </div>
+    </header>
+    <main class="content">

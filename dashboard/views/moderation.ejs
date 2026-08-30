@@ -1,0 +1,29 @@
+<%- include('partials/head', { title: guild.name + ' – Moderation' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('shield') %> Moderation</h1></div>
+  <p>Moderations-Einstellungen deines Servers.</p>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('file') %> Moderations-Log</h2></div>
+  <form id="modForm" class="form">
+    <div class="field"><label>Moderations-Log-Kanal</label><select name="mod_log_channel_id" data-type="text"></select>
+      <small>Kanal für Moderations-Ereignisse.</small></div>
+    <div><button class="btn btn--primary btn--sm" type="submit">Speichern</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('bot') %> Moderations-Aktionen</h2></div>
+  <div class="empty">
+    <%- icon('shield') %>
+    <b>In Entwicklung</b>
+    Warn/Kick/Ban/Timeout-Funktionen werden im Bot-Backend vorbereitet. Der Log-Kanal oben ist bereits aktiv.
+  </div>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/moderation.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

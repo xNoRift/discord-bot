@@ -1,0 +1,29 @@
+<%- include('partials/head', { title: guild.name + ' – Teamverwaltung' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('users') %> Teamverwaltung</h1></div>
+  <p>Lege fest, welche Rollen zum Team gehören.</p>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('shield') %> Team-Rollen</h2></div>
+  <p class="card__sub">Diese Rollen gelten serverweit als „Team" (z. B. für Statistiken und künftige Funktionen).</p>
+  <div class="field">
+    <label>Team-Rollen auswählen</label>
+    <div id="roleChecks"><div class="loading">Lädt…</div></div>
+  </div>
+  <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" id="saveTeam">Speichern</button></div>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('settings') %> Zuständigkeiten</h2></div>
+  <div class="setting-row"><div class="setting-row__text"><b>Ticket-Support</b><span>Bearbeitet Tickets</span></div><span class="text-2" id="rSupport">…</span></div>
+  <div class="setting-row"><div class="setting-row__text"><b>Bewerbungs-Team</b><span>Nimmt Bewerbungen an/ab</span></div><span class="text-2" id="rApp">…</span></div>
+  <div class="setting-row"><div class="setting-row__text"><b>Giveaway-Gewinnerrolle</b><span>Temporär nach Gewinn</span></div><span class="text-2" id="rGw">…</span></div>
+  <p class="card__sub" style="margin-top:12px;">Diese Rollen stellst du unter <a href="/dashboard/<%= guild.id %>/settings">Einstellungen</a> ein.</p>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/team.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

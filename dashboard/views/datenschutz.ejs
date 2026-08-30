@@ -1,0 +1,22 @@
+<%- include('partials/head', { title: 'Datenschutz' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head"><div class="page-head__row"><h1><%- icon('lock') %> Datenschutz</h1></div></div>
+
+<div class="card">
+  <h3>Welche Daten werden verarbeitet?</h3>
+  <ul class="muted">
+    <li>Beim Login via Discord OAuth2: deine Discord-User-ID, Benutzername, Avatar sowie die Liste deiner Server (Scopes <code>identify</code>, <code>guilds</code>).</li>
+    <li>OAuth-Tokens werden ausschließlich serverseitig gespeichert und niemals an das Frontend übertragen.</li>
+    <li>Pro Server: Konfiguration (Kanäle, Rollen, Texte), Tickets, Giveaways, Bewerbungen und ein Aktivitätsprotokoll.</li>
+  </ul>
+  <h3>Speicherung</h3>
+  <p class="muted">Alle Daten liegen in einer lokalen SQLite-Datenbank auf dem Server, auf dem der Bot läuft. Es findet keine Weitergabe an Dritte statt.</p>
+  <h3>Deine Rechte</h3>
+  <p class="muted">Du kannst die Löschung deiner Dashboard-Daten verlangen. Kontakt siehe <a href="/dashboard/<%= guild.id %>/impressum">Impressum</a>.</p>
+  <h3>Cookies</h3>
+  <p class="muted">Es wird nur ein technisch notwendiges Session-Cookie (<code>dbv1.sid</code>, HttpOnly) zur Anmeldung gesetzt.</p>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<%- include('partials/foot') %>

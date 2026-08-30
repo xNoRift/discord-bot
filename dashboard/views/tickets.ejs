@@ -1,0 +1,49 @@
+<%- include('partials/head', { title: guild.name + ' – Tickets' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div id="ticketsIndex">
+  <div class="page-head">
+    <div class="page-head__row"><h1><%- icon('ticket') %> Tickets</h1></div>
+    <p>Verwalte das Ticket-System deines Servers.</p>
+  </div>
+
+  <div class="module-status" id="moduleStatus">
+    <span class="module-status__dot"></span>
+    <span class="module-status__text"><b id="msTitle">…</b><span id="msText"></span></span>
+    <button class="btn btn--ghost btn--sm" id="msToggle">…</button>
+  </div>
+
+  <div class="card">
+    <div class="card__head">
+      <h2><%- icon('layers') %> Ticket-Panels</h2>
+      <div class="spacer"></div>
+      <button class="btn btn--primary btn--sm" id="newPanelBtn"><%- icon('plus') %> Neues Panel</button>
+    </div>
+    <div class="grid-cards" id="panelGrid"><div class="loading">Lädt…</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card__head">
+      <h2><%- icon('ticket') %> Tickets</h2>
+      <div class="spacer"></div>
+      <div class="tabs" id="ticketTabs">
+        <button class="tab is-active" data-status="">Alle</button>
+        <button class="tab" data-status="open">Offen</button>
+        <button class="tab" data-status="closed">Geschlossen</button>
+        <button class="tab" data-status="deleted">Gelöscht</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="table" id="ticketsTable">
+        <thead><tr><th>#</th><th>Ersteller</th><th>Kategorie</th><th>Status</th><th>Übernommen</th><th>Erstellt</th></tr></thead>
+        <tbody><tr><td colspan="6" class="loading">Lädt…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="ticketsEditor" hidden></div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/tickets.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

@@ -1,0 +1,60 @@
+<%- include('partials/head', { title: guild.name + ' – Bewerbungen' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div id="appIndex">
+  <div class="page-head">
+    <div class="page-head__row"><h1><%- icon('clipboard') %> Bewerbungen</h1></div>
+    <p>Verwalte Bewerbungsarten, Fragen und eingereichte Bewerbungen.</p>
+  </div>
+
+  <div class="module-status" id="moduleStatus">
+    <span class="module-status__dot"></span>
+    <span class="module-status__text"><b id="msTitle">…</b><span id="msText"></span></span>
+    <button class="btn btn--ghost btn--sm" id="msToggle">…</button>
+  </div>
+
+  <div class="col-2">
+    <div class="card">
+      <div class="card__head">
+        <h2><%- icon('layers') %> Bewerbungsarten</h2><div class="spacer"></div>
+        <button class="btn btn--primary btn--sm" id="newTypeBtn"><%- icon('plus') %> Erstellen</button>
+      </div>
+      <div id="typeGrid"><div class="loading">Lädt…</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card__head"><h2><%- icon('settings') %> Panel &amp; Kanäle</h2></div>
+      <form id="appSettings" class="form">
+        <div class="field"><label>Bewerbungs-Kanal</label><select name="application_channel_id" data-type="text"></select><small>Hier landen eingereichte Bewerbungen.</small></div>
+        <div class="field"><label>Team-Rolle</label><select name="application_team_role_id" data-type="role"></select></div>
+        <div class="field"><label>Log-Kanal</label><select name="application_log_channel_id" data-type="text"></select></div>
+        <div class="field"><label>Panel-Titel</label><input name="application_panel_title" type="text" /></div>
+        <div class="field"><label>Panel-Text</label><textarea name="application_panel_message" rows="2"></textarea></div>
+        <div><button class="btn btn--primary btn--sm" type="submit">Speichern</button></div>
+      </form>
+      <hr class="divider" />
+      <div class="field"><label>Panel senden in</label><select id="appPanelCh" data-type="text"></select></div>
+      <button class="btn btn--primary btn--sm" id="appPanelSend" style="margin-top:8px;"><%- icon('send') %> Panel senden</button>
+      <p class="muted" id="appPanelStatus"></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__head">
+      <h2><%- icon('clipboard') %> Eingereichte Bewerbungen</h2><div class="spacer"></div>
+      <div class="tabs" id="appTabs">
+        <button class="tab is-active" data-status="pending">Offen</button>
+        <button class="tab" data-status="accepted">Angenommen</button>
+        <button class="tab" data-status="rejected">Abgelehnt</button>
+        <button class="tab" data-status="">Alle</button>
+      </div>
+    </div>
+    <div id="appList"><div class="loading">Lädt…</div></div>
+  </div>
+</div>
+
+<div id="appEditor" hidden></div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/applications.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

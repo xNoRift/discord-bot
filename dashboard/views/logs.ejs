@@ -1,0 +1,41 @@
+<%- include('partials/head', { title: guild.name + ' – Logs' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row">
+    <h1><%- icon('file') %> Logs</h1>
+    <button class="btn btn--ghost btn--sm" id="reload"><%- icon('refresh') %> Aktualisieren</button>
+  </div>
+  <p>Alle Aktionen des Bots auf diesem Server.</p>
+</div>
+
+<div class="card">
+  <div class="card__head">
+    <h2><%- icon('bell') %> Verlauf</h2>
+    <div class="spacer"></div>
+    <div class="tabs tabs--wrap" id="logTabs">
+      <button class="tab is-active" data-f="">Alle</button>
+      <button class="tab" data-f="ticket">Tickets</button>
+      <button class="tab" data-f="giveaway">Giveaways</button>
+      <button class="tab" data-f="application">Bewerbungen</button>
+    </div>
+  </div>
+  <ul class="activity" id="logList"><li class="loading">Lädt…</li></ul>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('settings') %> Log-Kanäle</h2></div>
+  <form id="logChannels" class="form">
+    <div class="col-2">
+      <div class="field"><label>Allgemeiner Log-Kanal</label><select name="log_channel_id" data-type="text"></select></div>
+      <div class="field"><label>Ticket-Log</label><select name="ticket_log_channel_id" data-type="text"></select></div>
+      <div class="field"><label>Giveaway-Log</label><select name="giveaway_log_channel_id" data-type="text"></select></div>
+      <div class="field"><label>Bewerbungs-Log</label><select name="application_log_channel_id" data-type="text"></select></div>
+    </div>
+    <div><button class="btn btn--primary btn--sm" type="submit">Speichern</button></div>
+  </form>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/logs.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

@@ -1,0 +1,47 @@
+<%- include('partials/head', { title: guild.name + ' – Giveaways' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row">
+    <h1><%- icon('gift') %> Giveaways</h1>
+    <button class="btn btn--primary" id="newGiveawayBtn"><%- icon('plus') %> Giveaway erstellen</button>
+  </div>
+  <p>Erstelle Giveaways, lose neu aus und verwalte die Gewinnerrolle.</p>
+</div>
+
+<div class="col-2">
+  <div class="card">
+    <div class="card__head">
+      <h2><%- icon('gift') %> Giveaways</h2>
+      <div class="spacer"></div>
+      <div class="tabs" id="gwTabs">
+        <button class="tab is-active" data-status="active">Aktiv</button>
+        <button class="tab" data-status="ended">Vergangen</button>
+      </div>
+    </div>
+    <div id="gwList"><div class="loading">Lädt…</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('star') %> Aktive Gewinnerrollen</h2></div>
+    <p class="card__sub">Temporäre Rollen, die nach Ablauf automatisch entfernt werden – bleibt auch nach Bot-Neustart erhalten.</p>
+    <div id="tempRoles"><div class="loading">Lädt…</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('settings') %> Standard-Einstellungen</h2></div>
+  <form id="gwSettings" class="form">
+    <div class="col-2">
+      <div class="field"><label>Standard-Giveaway-Kanal</label><select name="giveaway_channel_id" data-type="text"></select></div>
+      <div class="field"><label>Giveaway-Log-Kanal</label><select name="giveaway_log_channel_id" data-type="text"></select></div>
+      <div class="field"><label>🏆 Giveaway-Gewinnerrolle</label><select name="giveaway_winner_role_id" data-type="role"></select></div>
+      <div class="field"><label>Dauer der Gewinnerrolle</label><input name="giveaway_winner_role_duration_ms" type="text" placeholder="24h" /><small>z. B. <code>24h</code>, <code>7d</code>. Standard: 24 Stunden.</small></div>
+    </div>
+    <div><button class="btn btn--primary btn--sm" type="submit">Speichern</button></div>
+  </form>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/giveaways.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

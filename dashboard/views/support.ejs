@@ -1,0 +1,32 @@
+<%- include('partials/head', { title: 'Support' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head"><div class="page-head__row"><h1><%- icon('chat') %> Support</h1></div>
+  <p>Hilfe rund um das Dashboard und den Bot.</p>
+</div>
+
+<div class="col-2">
+  <div class="card">
+    <div class="card__head"><h2><%- icon('bulb') %> Erste Schritte</h2></div>
+    <ol class="muted">
+      <li>Unter <a href="/dashboard/<%= guild.id %>/settings">Einstellungen</a> Kanäle &amp; Rollen festlegen.</li>
+      <li>Unter <a href="/dashboard/<%= guild.id %>/tickets">Tickets</a> ein Panel mit Kategorien erstellen und senden.</li>
+      <li>Unter <a href="/dashboard/<%= guild.id %>/giveaways">Giveaways</a> das erste Giveaway starten.</li>
+      <li>Unter <a href="/dashboard/<%= guild.id %>/applications">Bewerbungen</a> Bewerbungsarten anlegen.</li>
+    </ol>
+  </div>
+  <div class="card">
+    <div class="card__head"><h2><%- icon('shield') %> Häufige Probleme</h2></div>
+    <p><strong>Rolle wird nicht vergeben?</strong><br /><span class="muted">Die Bot-Rolle muss in den Servereinstellungen über der Zielrolle stehen.</span></p>
+    <p><strong>Ticket-Erstellung schlägt fehl?</strong><br /><span class="muted">Discord-Kategorie setzen und dem Bot „Kanäle verwalten" geben.</span></p>
+    <p><strong>Panel wird nicht gesendet?</strong><br /><span class="muted">Der Bot braucht im Zielkanal „Nachrichten senden" und „Links einbetten".</span></p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('chat') %> Kontakt</h2></div>
+  <p class="muted">Support-Server / Kontakt hier eintragen: <strong>[dein Support-Discord-Link]</strong></p>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<%- include('partials/foot') %>

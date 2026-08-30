@@ -1,0 +1,13 @@
+<%- include('partials/head', { title: (typeof title !== 'undefined' ? title : 'Fehler') }) %>
+
+<div class="auth">
+  <div class="auth__card auth__card--sm">
+    <span class="auth__logo"><%- icon('x') %></span>
+    <h1><%= typeof title !== 'undefined' ? title : 'Fehler' %></h1>
+    <p class="auth__lead"><%= typeof message !== 'undefined' ? message : 'Es ist ein Fehler aufgetreten.' %></p>
+    <a class="btn btn--primary" href="/servers">Zu meinen Servern</a>
+    <p class="auth__hint"><a href="/">Startseite</a></p>
+  </div>
+</div>
+
+<%- include('partials/foot') %>

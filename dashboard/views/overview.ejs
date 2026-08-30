@@ -1,0 +1,56 @@
+<%- include('partials/head', { title: guild.name + ' – Übersicht' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('home') %> Übersicht</h1></div>
+  <p>Status und Aktivität von <strong><%= guild.name %></strong>.</p>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi kpi--green">
+    <div class="kpi__ico"><%- icon('power') %></div>
+    <div class="kpi__label">Bot Status</div>
+    <div class="kpi__value" id="kBot">…</div>
+    <div class="kpi__sub" id="kBotSub"></div>
+  </div>
+  <div class="kpi kpi--blue">
+    <div class="kpi__ico"><%- icon('users') %></div>
+    <div class="kpi__label">Mitglieder</div>
+    <div class="kpi__value" id="kMembers">…</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi__ico"><%- icon('ticket') %></div>
+    <div class="kpi__label">Aktive Tickets</div>
+    <div class="kpi__value" id="kTickets">…</div>
+    <div class="kpi__sub" id="kTicketsSub"></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi__ico"><%- icon('gift') %></div>
+    <div class="kpi__label">Aktive Giveaways</div>
+    <div class="kpi__value" id="kGiveaways">…</div>
+  </div>
+  <div class="kpi kpi--amber">
+    <div class="kpi__ico"><%- icon('clipboard') %></div>
+    <div class="kpi__label">Offene Bewerbungen</div>
+    <div class="kpi__value" id="kApps">…</div>
+    <div class="kpi__sub" id="kAppsSub"></div>
+  </div>
+</div>
+
+<div class="col-2">
+  <div class="card">
+    <div class="card__head"><h2><%- icon('bell') %> Letzte Aktivität</h2></div>
+    <ul class="activity" id="activityList"><li class="loading">Lädt…</li></ul>
+  </div>
+  <div class="card">
+    <div class="card__head"><h2><%- icon('server') %> Server-Info</h2></div>
+    <div class="setting-row"><div class="setting-row__text"><b>Name</b></div><span id="iName" class="text-2">…</span></div>
+    <div class="setting-row"><div class="setting-row__text"><b>Server-ID</b></div><span class="text-2"><%= guild.id %></span></div>
+    <div class="setting-row"><div class="setting-row__text"><b>Inhaber</b></div><span id="iOwner" class="text-2">…</span></div>
+    <div class="setting-row"><div class="setting-row__text"><b>Winner-Rollen aktiv</b><span>Temporäre Giveaway-Rollen</span></div><span id="iTempRoles" class="text-2">…</span></div>
+  </div>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/overview.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

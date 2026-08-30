@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Environment / Secrets  (NIEMALS die echte .env committen!)
+.env
+.env.*
+!.env.example
+
+# Datenbank (auf dem Server persistent, nicht ins Repo)
+data/
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+sessions.sqlite*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# pm2
+.pm2/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

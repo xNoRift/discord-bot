@@ -1,0 +1,32 @@
+<%- include('partials/head', { title: guild.name + ' – Vorschläge' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('bulb') %> Vorschläge</h1></div>
+  <p>Konfiguration des Vorschlagssystems.</p>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('settings') %> Einstellungen</h2></div>
+  <form id="sugForm" class="form">
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Vorschläge aktivieren</b><span>Vorschläge werden in den unten gewählten Kanal gepostet</span></div>
+      <label class="toggle"><input type="checkbox" name="suggestions_enabled" /><span class="toggle__track"></span></label>
+    </div>
+    <div class="field"><label>Vorschläge-Kanal</label><select name="suggestions_channel_id" data-type="text"></select></div>
+    <div><button class="btn btn--primary btn--sm" type="submit">Speichern</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('bot') %> Einreichen</h2></div>
+  <div class="empty">
+    <%- icon('bulb') %>
+    <b>Bot-Befehl in Vorbereitung</b>
+    Die Einstellungen werden gespeichert. Der Einreich-Befehl im Discord wird als Nächstes ergänzt.
+  </div>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/suggestions.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

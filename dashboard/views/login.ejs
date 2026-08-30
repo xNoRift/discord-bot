@@ -1,0 +1,13 @@
+<%- include('partials/head', { title: 'Anmelden – ' + brandName }) %>
+
+<div class="auth">
+  <div class="auth__card auth__card--sm">
+    <span class="auth__logo"><%- icon('lock') %></span>
+    <h1>Anmelden</h1>
+    <p class="auth__lead">Melde dich mit deinem Discord-Konto an, um dein Dashboard zu öffnen.</p>
+    <a class="btn btn--primary btn--lg" href="/auth/discord"><%- icon('bot') %> Weiter mit Discord</a>
+    <p class="auth__hint"><a href="/">Zurück zur Startseite</a></p>
+  </div>
+</div>
+
+<%- include('partials/foot') %>

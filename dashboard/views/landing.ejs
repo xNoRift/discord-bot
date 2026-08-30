@@ -1,0 +1,24 @@
+<%- include('partials/head', { title: brandName }) %>
+
+<div class="auth">
+  <div class="auth__card">
+    <span class="auth__logo"><%- icon('bot') %></span>
+    <h1><%= brandName %></h1>
+    <p class="auth__lead">
+      Steuere Tickets, Giveaways und Bewerbungen deines Discord-Servers –
+      an einem Ort, in Echtzeit, direkt mit dem Bot verbunden.
+    </p>
+
+    <div class="auth__features">
+      <div class="auth__feature"><%- icon('ticket') %><strong>Ticketsystem</strong><span>Panels, Kategorien, Logs</span></div>
+      <div class="auth__feature"><%- icon('gift') %><strong>Giveaways</strong><span>Auto-Auslosung &amp; Gewinnerrolle</span></div>
+      <div class="auth__feature"><%- icon('clipboard') %><strong>Bewerbungen</strong><span>Eigene Fragen &amp; Review</span></div>
+      <div class="auth__feature"><%- icon('shield') %><strong>Sicher</strong><span>OAuth2, CSRF, Rate-Limit</span></div>
+    </div>
+
+    <a class="btn btn--primary btn--lg" href="/auth/discord"><%- icon('bot') %> Mit Discord anmelden</a>
+    <p class="auth__hint">Es werden nur deine Server und dein Profil gelesen.</p>
+  </div>
+</div>
+
+<%- include('partials/foot') %>

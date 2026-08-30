@@ -1,0 +1,26 @@
+<%- include('partials/head', { title: 'Server auswählen – ' + brandName }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row">
+    <h1><%- icon('server') %> Server auswählen</h1>
+    <button class="btn btn--ghost btn--sm" id="refreshGuilds"><%- icon('refresh') %> Aktualisieren</button>
+  </div>
+  <p>Wähle einen Server, den du verwalten möchtest. Angezeigt werden nur Server, auf denen du „Server verwalten" oder „Administrator" bist.</p>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('check') %> Verfügbar</h2></div>
+  <div class="grid-cards" id="managedGuilds"><div class="loading">Server werden geladen…</div></div>
+</div>
+
+<div class="card" id="invitableCard" hidden>
+  <div class="card__head"><h2><%- icon('plus') %> Bot noch nicht eingeladen</h2></div>
+  <p class="card__sub">Hier hast du die Rechte, aber der Bot ist noch nicht auf dem Server.</p>
+  <div class="grid-cards" id="invitableGuilds"></div>
+</div>
+
+<script type="application/json" id="pageData">{ "clientId": "<%= clientId %>" }</script>
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/servers.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

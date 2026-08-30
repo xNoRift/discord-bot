@@ -1,0 +1,25 @@
+<%- include('partials/head', { title: guild.name + ' – Statistiken' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('chart') %> Server Statistiken</h1></div>
+  <p>Kennzahlen zu <strong><%= guild.name %></strong>.</p>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi kpi--blue"><div class="kpi__ico"><%- icon('users') %></div><div class="kpi__label">Mitglieder</div><div class="kpi__value" id="sMembers">…</div></div>
+  <div class="kpi"><div class="kpi__ico"><%- icon('hash') %></div><div class="kpi__label">Kanäle</div><div class="kpi__value" id="sChannels">…</div></div>
+  <div class="kpi"><div class="kpi__ico"><%- icon('shield') %></div><div class="kpi__label">Rollen</div><div class="kpi__value" id="sRoles">…</div></div>
+  <div class="kpi"><div class="kpi__ico"><%- icon('ticket') %></div><div class="kpi__label">Tickets gesamt</div><div class="kpi__value" id="sTickets">…</div><div class="kpi__sub" id="sTicketsSub"></div></div>
+  <div class="kpi"><div class="kpi__ico"><%- icon('gift') %></div><div class="kpi__label">Giveaways gesamt</div><div class="kpi__value" id="sGiveaways">…</div><div class="kpi__sub" id="sGiveawaysSub"></div></div>
+  <div class="kpi kpi--amber"><div class="kpi__ico"><%- icon('clipboard') %></div><div class="kpi__label">Bewerbungen gesamt</div><div class="kpi__value" id="sApps">…</div><div class="kpi__sub" id="sAppsSub"></div></div>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('chart') %> Aktivität (letzte 60 Einträge)</h2></div>
+  <div id="actChart"><div class="loading">Lädt…</div></div>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/statistics.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>
