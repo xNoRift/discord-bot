@@ -263,6 +263,16 @@ CREATE TABLE IF NOT EXISTS applications (
 );
 CREATE INDEX IF NOT EXISTS idx_applications_guild ON applications(guild_id, status);
 
+-- ---------- Globale Bot-Konfiguration (eine Zeile, id = 1) ----------
+CREATE TABLE IF NOT EXISTS bot_config (
+  id              INTEGER PRIMARY KEY CHECK (id = 1),
+  presence_status TEXT DEFAULT 'online',   -- online | idle | dnd | invisible
+  activity_type   TEXT DEFAULT 'watching', -- playing | watching | listening | competing | streaming | custom | none
+  activity_text   TEXT DEFAULT '/help • Dashboard',
+  activity_url    TEXT,                     -- nur für "streaming"
+  updated_at      INTEGER
+);
+
 -- ---------- Dashboard-Nutzer (OAuth2) ----------
 CREATE TABLE IF NOT EXISTS dashboard_users (
   user_id          TEXT PRIMARY KEY,

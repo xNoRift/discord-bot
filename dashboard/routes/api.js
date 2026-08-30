@@ -93,6 +93,56 @@ function discordErr(err) {
 }
 
 /* ----------------------------------------------------------------
+ *  Bot-Status / Aktivität (bot-weit)
+ * ---------------------------------------------------------------- */
+
+async function requireBotManager(req, res, next) {
+  try {
+    const { managed } = await guildAccess.getManageableGuilds(req.session.user.id);
+    if (!managed.length) return res.status(403).json({ error: 'Keine Berechtigung.' });
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+}
+
+const botConfig = require('../../src/database/models/botConfig');
+const presenceService = require('../../src/services/presenceService');
+
+const STATUS = ['online', 'idle', 'dnd', 'invisible'];
+const ACT_TYPES = ['none', 'playing', 'watching', 'listening', 'competing', 'streaming', 'custom'];
+
+router.get('/bot/presence', requireBotManager, (req, res) => {
+  const c = botConfig.get();
+  res.json({
+    status: c.presence_status,
+    activityType: c.activity_type,
+    activityText: c.activity_text,
+    activityUrl: c.activity_url,
+  });
+});
+
+router.post(
+  '/bot/presence',
+  requireBotManager,
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const patch = {};
+    if (STATUS.includes(req.body.status)) patch.presence_status = req.body.status;
+    if (ACT_TYPES.includes(req.body.activityType)) patch.activity_type = req.body.activityType;
+    if (req.body.activityText !== undefined) patch.activity_text = String(req.body.activityText).slice(0, 128);
+    if (req.body.activityUrl !== undefined) patch.activity_url = String(req.body.activityUrl).slice(0, 300);
+    botConfig.update(patch);
+    try {
+      presenceService.apply();
+    } catch {
+      /* ignore */
+    }
+    res.json({ ok: true });
+  }),
+);
+
+/* ----------------------------------------------------------------
  *  Ab hier: alles pro Guild (mit Zugriffsschutz)
  * ---------------------------------------------------------------- */
 

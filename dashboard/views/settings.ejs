@@ -32,6 +32,44 @@
   </div>
 </div>
 
+<div class="card">
+  <div class="card__head"><h2><%- icon('bot') %> Bot-Status <span class="muted">(gilt bot-weit)</span></h2></div>
+  <div class="form">
+    <div class="field">
+      <label>Status</label>
+      <select id="psStatus">
+        <option value="online">🟢 Online</option>
+        <option value="idle">🌙 Abwesend</option>
+        <option value="dnd">⛔ Bitte nicht stören</option>
+        <option value="invisible">⚪ Unsichtbar</option>
+      </select>
+    </div>
+    <div class="col-2">
+      <div class="field">
+        <label>Aktivität</label>
+        <select id="psType">
+          <option value="none">— keine —</option>
+          <option value="playing">Spielt …</option>
+          <option value="watching">Schaut … zu</option>
+          <option value="listening">Hört … zu</option>
+          <option value="competing">Tritt an in …</option>
+          <option value="streaming">Streamt …</option>
+          <option value="custom">Benutzerdefiniert</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Text</label>
+        <input id="psText" type="text" maxlength="128" placeholder="/help • Dashboard" />
+      </div>
+    </div>
+    <div class="field" id="psUrlWrap" hidden>
+      <label>Stream-Link (Twitch / YouTube)</label>
+      <input id="psUrl" type="url" maxlength="300" placeholder="https://twitch.tv/deinname" />
+    </div>
+    <div><button class="btn btn--primary btn--sm" id="psSave" type="button">Status speichern</button> <span class="muted" id="psStatusMsg"></span></div>
+  </div>
+</div>
+
 <form id="settingsForm">
   <div class="card">
     <div class="card__head"><h2><%- icon('settings') %> Allgemein</h2></div>

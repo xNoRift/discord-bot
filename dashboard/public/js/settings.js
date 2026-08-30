@@ -93,6 +93,47 @@ document.getElementById('botAvatarReset').addEventListener('click', async () => 
 
 loadBotMember();
 
+/* ---------------- Bot-Status / Aktivität (bot-weit) ---------------- */
+
+const psMsg = document.getElementById('psStatusMsg');
+
+function psToggleUrl() {
+  document.getElementById('psUrlWrap').hidden = document.getElementById('psType').value !== 'streaming';
+}
+document.getElementById('psType').addEventListener('change', psToggleUrl);
+
+async function loadBotPresence() {
+  try {
+    const p = await api('GET', '/api/bot/presence');
+    document.getElementById('psStatus').value = p.status || 'online';
+    document.getElementById('psType').value = p.activityType || 'none';
+    document.getElementById('psText').value = p.activityText || '';
+    document.getElementById('psUrl').value = p.activityUrl || '';
+    psToggleUrl();
+  } catch (e) {
+    psMsg.textContent = e.message;
+  }
+}
+
+document.getElementById('psSave').addEventListener('click', async () => {
+  const body = {
+    status: document.getElementById('psStatus').value,
+    activityType: document.getElementById('psType').value,
+    activityText: document.getElementById('psText').value.trim(),
+    activityUrl: document.getElementById('psUrl').value.trim(),
+  };
+  try {
+    await api('POST', '/api/bot/presence', body);
+    toast('Bot-Status aktualisiert.', 'success');
+    psMsg.textContent = 'Gespeichert ✓';
+  } catch (e) {
+    toast(e.message, 'error');
+    psMsg.textContent = e.message;
+  }
+});
+
+loadBotPresence();
+
 /* ---------------- Auto-Rolle ---------------- */
 
 const { getRoles } = Dash;
