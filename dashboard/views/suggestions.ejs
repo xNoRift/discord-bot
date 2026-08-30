@@ -19,12 +19,13 @@
 </div>
 
 <div class="card">
-  <div class="card__head"><h2><%- icon('bot') %> Einreichen</h2></div>
-  <div class="empty">
-    <%- icon('bulb') %>
-    <b>Bot-Befehl in Vorbereitung</b>
-    Die Einstellungen werden gespeichert. Der Einreich-Befehl im Discord wird als Nächstes ergänzt.
-  </div>
+  <div class="card__head"><h2><%- icon('bot') %> So funktioniert's</h2></div>
+  <ul class="bullet-list">
+    <li>Mitglieder schreiben ihren Vorschlag <b>einfach in den oben gewählten Kanal</b>.</li>
+    <li>Der Bot wandelt die Nachricht in ein sauberes Embed um und fügt <b>👍 / 👎</b> zum Abstimmen hinzu.</li>
+    <li>Die Originalnachricht wird gelöscht (Bot braucht „Nachrichten verwalten"), und es wird ein Diskussions-Thread eröffnet.</li>
+    <li>Benötigt den <b>„Message Content"-Intent</b> (wie das Zähl-Spiel).</li>
+  </ul>
 </div>
 
 <%- include('partials/app-shell-close') %>

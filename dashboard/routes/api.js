@@ -449,6 +449,47 @@ router.post(
   }),
 );
 
+/* ----------------------------------------------------------------
+ *  Moderation – Aktionen + Purge
+ * ---------------------------------------------------------------- */
+
+const moderationService = require('../../src/services/moderationService');
+
+router.post(
+  '/guilds/:guildId/moderation/action',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      const summary = await moderationService.act(req.guild, {
+        action: req.body.action,
+        userId: req.body.userId,
+        reason: req.body.reason,
+        minutes: req.body.minutes,
+        actorTag: req.session.user.username,
+      });
+      res.json({ ok: true, summary });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  }),
+);
+
+router.post(
+  '/guilds/:guildId/moderation/purge',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    if (!/^\d{5,25}$/.test(String(req.body.channelId || ''))) {
+      return res.status(400).json({ error: 'Bitte einen Kanal wählen.' });
+    }
+    try {
+      const deleted = await moderationService.purge(req.guild, req.body.channelId, req.body.count, req.body.userId);
+      res.json({ ok: true, deleted });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  }),
+);
+
 /* Aktive temporäre Giveaway-Gewinnerrollen (für Dashboard-Anzeige). */
 router.get('/guilds/:guildId/temp-roles', (req, res) => {
   res.json(

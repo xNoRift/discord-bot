@@ -16,12 +16,36 @@
 </div>
 
 <div class="card">
-  <div class="card__head"><h2><%- icon('bot') %> Moderations-Aktionen</h2></div>
-  <div class="empty">
-    <%- icon('shield') %>
-    <b>In Entwicklung</b>
-    Warn/Kick/Ban/Timeout-Funktionen werden im Bot-Backend vorbereitet. Der Log-Kanal oben ist bereits aktiv.
-  </div>
+  <div class="card__head"><h2><%- icon('shield') %> Aktion gegen einen Nutzer</h2></div>
+  <p class="card__sub">Per Discord-User-ID. Rechtsklick auf ein Mitglied → „Benutzer-ID kopieren" (Entwicklermodus). Jede Aktion wird in den Log-Kanal geschrieben.</p>
+  <form id="modActionForm">
+    <div class="col-2">
+      <div class="field"><label>User-ID</label><input name="userId" inputmode="numeric" placeholder="123456789012345678" /></div>
+      <div class="field"><label>Timeout-Dauer (Minuten)</label><input name="minutes" type="number" min="1" max="40320" placeholder="10" /></div>
+    </div>
+    <div class="field"><label>Grund</label><input name="reason" maxlength="400" placeholder="z. B. Spam" /></div>
+    <div class="row-inline" style="flex-wrap:wrap;margin-top:6px;">
+      <button class="btn btn--sm" data-act="timeout" type="submit"><%- icon('clock', 'icon--sm') %> Timeout</button>
+      <button class="btn btn--sm" data-act="untimeout" type="submit">Timeout aufheben</button>
+      <button class="btn btn--sm btn--danger" data-act="kick" type="submit">Kicken</button>
+      <button class="btn btn--sm btn--danger" data-act="ban" type="submit">Bannen</button>
+      <button class="btn btn--sm" data-act="unban" type="submit">Entbannen</button>
+    </div>
+    <p class="muted" id="modActionStatus"></p>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('trash') %> Nachrichten löschen (Purge)</h2></div>
+  <p class="card__sub">Löscht die letzten X Nachrichten in einem Kanal (max. 100, nichts älter als 14 Tage).</p>
+  <form id="modPurgeForm">
+    <div class="col-2">
+      <div class="field"><label>Kanal</label><select name="channelId" data-type="text"></select></div>
+      <div class="field"><label>Anzahl</label><input name="count" type="number" min="1" max="100" placeholder="10" /></div>
+    </div>
+    <div class="field"><label>Nur von User-ID (optional)</label><input name="userId" inputmode="numeric" placeholder="leer = alle" /></div>
+    <div style="margin-top:6px;"><button class="btn btn--danger btn--sm" type="submit"><%- icon('trash', 'icon--sm') %> Löschen</button> <span class="muted" id="modPurgeStatus"></span></div>
+  </form>
 </div>
 
 <%- include('partials/app-shell-close') %>

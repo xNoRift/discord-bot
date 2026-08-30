@@ -23,6 +23,7 @@ const CATEGORY_FIELDS = {
   ticket: 'ticket_log_channel_id',
   giveaway: 'giveaway_log_channel_id',
   application: 'application_log_channel_id',
+  moderation: 'mod_log_channel_id',
   general: 'log_channel_id',
 };
 

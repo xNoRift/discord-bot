@@ -2,11 +2,13 @@
 
 const ticketsModel = require('../database/models/tickets');
 const countingService = require('../services/countingService');
+const suggestionService = require('../services/suggestionService');
 const logger = require('../utils/logger');
 
 /**
  * - Aktualisiert den Aktivitätszeitstempel eines Tickets (Auto-Close).
  * - Verarbeitet das Zähl-Spiel im konfigurierten Kanal.
+ * - Wandelt Nachrichten im Vorschläge-Kanal in Abstimmungs-Embeds um.
  */
 module.exports = {
   name: 'messageCreate',
@@ -26,6 +28,12 @@ module.exports = {
       await countingService.handleMessage(message);
     } catch (err) {
       logger.warn('[messageCreate] Zähl-Spiel:', err.message);
+    }
+
+    try {
+      await suggestionService.handleMessage(message);
+    } catch (err) {
+      logger.warn('[messageCreate] Vorschläge:', err.message);
     }
   },
 };
