@@ -304,6 +304,21 @@ CREATE TABLE IF NOT EXISTS temp_voice_channels (
 );
 CREATE INDEX IF NOT EXISTS idx_temp_voice_guild ON temp_voice_channels(guild_id);
 
+-- ---------- Mini-Spiel: Zählen (Counting) ----------
+CREATE TABLE IF NOT EXISTS game_counting (
+  guild_id        TEXT PRIMARY KEY,
+  enabled         INTEGER DEFAULT 0,
+  channel_id      TEXT,
+  current         INTEGER DEFAULT 0,   -- zuletzt korrekt gezählte Zahl
+  last_user_id    TEXT,                -- wer zuletzt korrekt gezählt hat
+  best            INTEGER DEFAULT 0,   -- Rekord
+  total_counts    INTEGER DEFAULT 0,   -- insgesamt korrekt gezählt
+  allow_same_user INTEGER DEFAULT 0,   -- darf man zweimal hintereinander?
+  reset_on_fail   INTEGER DEFAULT 1,   -- bei Fehler zurück auf 0?
+  react_emoji     TEXT DEFAULT '✅',
+  updated_at      INTEGER
+);
+
 -- ---------- Dashboard-Nutzer (OAuth2) ----------
 CREATE TABLE IF NOT EXISTS dashboard_users (
   user_id          TEXT PRIMARY KEY,

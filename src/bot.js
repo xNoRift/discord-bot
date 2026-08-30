@@ -44,8 +44,9 @@ async function startBot() {
       logger.error(' LOGIN FEHLGESCHLAGEN – privilegierter Intent nicht aktiviert.');
       logger.error(' Aktiviere im Discord Developer Portal:');
       logger.error('   Deine App -> Bot -> "Privileged Gateway Intents"');
-      logger.error('   -> "SERVER MEMBERS INTENT" einschalten -> Save');
-      logger.error(' (wird für Auto-Rolle und "Aktion beim Verlassen" gebraucht)');
+      logger.error('   -> "SERVER MEMBERS INTENT"   (Auto-Rolle, Willkommen, Verlassen)');
+      logger.error('   -> "MESSAGE CONTENT INTENT"  (Zähl-Spiel / Spiele)');
+      logger.error('   beide einschalten -> Save');
       logger.error('===============================================================');
     }
     throw err;

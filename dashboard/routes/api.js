@@ -381,6 +381,65 @@ router.post(
   }),
 );
 
+/* ----------------------------------------------------------------
+ *  Mini-Spiele – Zählen
+ * ---------------------------------------------------------------- */
+
+const countingGame = require('../../src/database/models/countingGame');
+
+function serializeCounting(s) {
+  return {
+    enabled: !!s.enabled,
+    channelId: s.channel_id,
+    current: s.current,
+    best: s.best,
+    totalCounts: s.total_counts,
+    allowSameUser: !!s.allow_same_user,
+    resetOnFail: !!s.reset_on_fail,
+    reactEmoji: s.react_emoji || '✅',
+  };
+}
+
+router.get('/guilds/:guildId/games/counting', (req, res) => {
+  res.json(serializeCounting(countingGame.get(req.guild.id)));
+});
+
+router.post(
+  '/guilds/:guildId/games/counting',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const b = req.body || {};
+    const patch = {};
+    if (b.enabled !== undefined) patch.enabled = b.enabled ? 1 : 0;
+    if (b.channelId !== undefined) {
+      const id = String(b.channelId || '');
+      if (id && !/^\d{5,25}$/.test(id)) return res.status(400).json({ error: 'Ungültiger Kanal.' });
+      if (id && !req.guild.channels.cache.get(id)?.isTextBased?.()) {
+        return res.status(400).json({ error: 'Bitte einen Textkanal wählen.' });
+      }
+      patch.channel_id = id || null;
+    }
+    if (b.allowSameUser !== undefined) patch.allow_same_user = b.allowSameUser ? 1 : 0;
+    if (b.resetOnFail !== undefined) patch.reset_on_fail = b.resetOnFail ? 1 : 0;
+    if (b.reactEmoji !== undefined) {
+      const e = String(b.reactEmoji || '').trim().slice(0, 8);
+      patch.react_emoji = e || '✅';
+    }
+    if (patch.enabled && (patch.channel_id === null || (patch.channel_id === undefined && !countingGame.get(req.guild.id).channel_id))) {
+      return res.status(400).json({ error: 'Bitte zuerst einen Kanal wählen.' });
+    }
+    res.json(serializeCounting(countingGame.update(req.guild.id, patch)));
+  }),
+);
+
+router.post(
+  '/guilds/:guildId/games/counting/reset',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    res.json(serializeCounting(countingGame.resetCount(req.guild.id)));
+  }),
+);
+
 /* Aktive temporäre Giveaway-Gewinnerrollen (für Dashboard-Anzeige). */
 router.get('/guilds/:guildId/temp-roles', (req, res) => {
   res.json(

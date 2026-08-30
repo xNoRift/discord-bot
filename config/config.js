@@ -50,6 +50,10 @@ const config = {
     clientId: required('CLIENT_ID'),
     clientSecret: required('CLIENT_SECRET'),
     devGuildId: optional('DEV_GUILD_ID'),
+    // Privilegierte Gateway-Intents (im Developer Portal aktivieren!).
+    // Falls noch nicht aktiviert: hier auf 0 setzen, damit der Bot trotzdem startet.
+    intentGuildMembers: bool('INTENT_GUILD_MEMBERS', true), // Auto-Rolle, Willkommen, Verlassen
+    intentMessageContent: bool('INTENT_MESSAGE_CONTENT', true), // Zähl-Spiel / Spiele
   },
 
   database: {

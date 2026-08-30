@@ -1,6 +1,7 @@
 'use strict';
 
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
+const config = require('../../config/config');
 
 /**
  * Einzelne, geteilte Discord-Client-Instanz.
@@ -11,13 +12,20 @@ const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js'
  *  - GuildMembers/MessageContent sind nicht aktiviert.
  *  - Mitglieder werden bei Bedarf per REST (guild.members.fetch(id)) geladen.
  */
+const intents = [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages, // Ticket-Aktivität (Auto-Close) – nicht privilegiert
+  GatewayIntentBits.GuildVoiceStates, // Temp-Voice ("Join to Create") – nicht privilegiert
+];
+if (config.discord.intentGuildMembers) {
+  intents.push(GatewayIntentBits.GuildMembers); // Auto-Rolle, Willkommen, Verlassen – PRIVILEGIERT
+}
+if (config.discord.intentMessageContent) {
+  intents.push(GatewayIntentBits.MessageContent); // Zähl-Spiel / Spiele – PRIVILEGIERT
+}
+
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages, // Ticket-Aktivität (Auto-Close) – nicht privilegiert
-    GatewayIntentBits.GuildVoiceStates, // Temp-Voice ("Join to Create") – nicht privilegiert
-    GatewayIntentBits.GuildMembers, // Auto-Rolle & "Aktion beim Verlassen" – PRIVILEGIERT!
-  ],
+  intents,
   partials: [Partials.Channel, Partials.Message, Partials.GuildMember],
   allowedMentions: { parse: ['users', 'roles'], repliedUser: false },
 });

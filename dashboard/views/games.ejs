@@ -1,0 +1,53 @@
+<%- include('partials/head', { title: guild.name + ' – Spiele' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('sparkles') %> Spiele</h1></div>
+  <p>Kleine Community-Spiele für <strong><%= guild.name %></strong>.</p>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2>🔢 Zählen (Counting)</h2></div>
+  <p class="card__sub">In einem festgelegten Kanal zählen alle abwechselnd hoch: 1, 2, 3 … Eine falsche Zahl (oder zweimal hintereinander zählen) setzt die Kette zurück. Der Bot markiert richtige Zahlen mit einem Emoji.</p>
+
+  <div class="kpi-grid" id="cntStats">
+    <div class="kpi"><span class="kpi__label">Aktueller Stand</span><div class="kpi__value" id="cntCurrent">–</div></div>
+    <div class="kpi"><span class="kpi__label">Rekord</span><div class="kpi__value" id="cntBest">–</div></div>
+    <div class="kpi"><span class="kpi__label">Insgesamt gezählt</span><div class="kpi__value" id="cntTotal">–</div></div>
+  </div>
+
+  <form id="cntForm" class="form" style="margin-top:16px;">
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Zähl-Spiel aktivieren</b><span>Benötigt den „Message Content"-Intent</span></div>
+      <label class="toggle"><input type="checkbox" name="enabled" /><span class="toggle__track"></span></label>
+    </div>
+
+    <div class="field"><label>Kanal</label><select name="channelId" data-type="text"></select></div>
+
+    <div class="col-2">
+      <div class="setting-row">
+        <div class="setting-row__text"><b>Zweimal hintereinander erlaubt</b><span>Aus = jede Person muss warten, bis jemand anderes zählt</span></div>
+        <label class="toggle"><input type="checkbox" name="allowSameUser" /><span class="toggle__track"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-row__text"><b>Bei Fehler zurücksetzen</b><span>Aus = die Zahl bleibt stehen, es geht einfach weiter</span></div>
+        <label class="toggle"><input type="checkbox" name="resetOnFail" /><span class="toggle__track"></span></label>
+      </div>
+    </div>
+
+    <div class="field" style="max-width:200px;">
+      <label>Emoji für richtige Zahl</label>
+      <input name="reactEmoji" type="text" maxlength="8" placeholder="✅" />
+    </div>
+
+    <div class="row-inline" style="flex-wrap:wrap;">
+      <button class="btn btn--primary btn--sm" type="submit"><%- icon('check') %> Speichern</button>
+      <button class="btn btn--ghost btn--sm" type="button" id="cntReset"><%- icon('refresh', 'icon--sm') %> Zähler auf 0 zurücksetzen</button>
+      <span class="muted" id="cntStatus"></span>
+    </div>
+  </form>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/games.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

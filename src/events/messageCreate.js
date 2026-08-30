@@ -1,15 +1,18 @@
 'use strict';
 
 const ticketsModel = require('../database/models/tickets');
+const countingService = require('../services/countingService');
+const logger = require('../utils/logger');
 
 /**
- * Aktualisiert den Aktivitätszeitstempel eines Tickets, sobald jemand
- * (kein Bot) darin schreibt. Grundlage für die Auto-Close-Funktion.
+ * - Aktualisiert den Aktivitätszeitstempel eines Tickets (Auto-Close).
+ * - Verarbeitet das Zähl-Spiel im konfigurierten Kanal.
  */
 module.exports = {
   name: 'messageCreate',
   async execute(message) {
     if (message.author?.bot || !message.inGuild()) return;
+
     try {
       const ticket = ticketsModel.getByChannel(message.channelId);
       if (ticket && ticket.status === 'open') {
@@ -17,6 +20,12 @@ module.exports = {
       }
     } catch {
       /* ignore */
+    }
+
+    try {
+      await countingService.handleMessage(message);
+    } catch (err) {
+      logger.warn('[messageCreate] Zähl-Spiel:', err.message);
     }
   },
 };
