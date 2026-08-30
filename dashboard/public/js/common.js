@@ -147,26 +147,45 @@ function fmtDuration(ms) {
 
 /* ---------------- Emoji-Picker ---------------- */
 
-const EMOJI_SET = [
-  '🎫', '❓', '❔', '💬', '📩', '📨', '📝', '📋', '📄', '🗂️',
-  '🐛', '🔧', '🛠️', '⚙️', '🔨', '🧰', '🚨', '⚠️', '📢', '🔔',
-  '💰', '💵', '💎', '🛒', '🏷️', '🎁', '🎉', '🥳', '🍀', '🎰',
-  '🛡️', '🔒', '🔑', '👑', '⭐', '🌟', '✨', '🔥', '⚡', '💡',
-  '✅', '❌', '❗', '➕', '➖', '📌', '📍', '🔗', '🧩', '🎯',
-  '🎮', '🕹️', '🎨', '🎭', '📦', '🚀', '🛰️', '🏆', '🥇', '🤝',
-  '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '💯', '👋',
+const EMOJI_GROUPS = [
+  ['Beliebt', ['🎫', '❓', '💬', '📩', '📝', '📋', '🔔', '⚠️', '🚨', '✅', '❌', '⭐', '🔥', '💡', '🎁', '🎉', '🏆', '🛡️', '🔒', '👑', '💰', '🤝', '❤️', '👋']],
+  ['Smileys', ['😀', '😄', '😁', '😆', '😊', '🙂', '😉', '😍', '🥰', '😎', '🤩', '🥳', '🤔', '🧐', '😴', '😇', '🙃', '😜', '😅', '😂', '🤣', '😭', '😢', '😤', '😠', '😡', '🥺', '😳', '😬', '🤗', '🤝', '🙏', '👀']],
+  ['Hände', ['👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '👏', '🙌', '👐', '🤲', '💪', '✍️', '👆', '👉', '👈', '👇', '☝️', '✋', '🖐️', '🫡', '🫶']],
+  ['Symbole', ['✅', '❌', '❗', '❓', '⁉️', '➕', '➖', '✖️', '➗', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🔺', '🔻', '🔶', '🔷', '💠', '♻️', '✔️', '☑️', '🔘', '🔹', '🔸', '💯', '🆗', '🆕', '🆙', '🔝', '🔞']],
+  ['Objekte', ['📩', '📨', '📬', '📭', '📢', '📣', '🔔', '🔕', '📌', '📍', '🔗', '📎', '🗂️', '📁', '📂', '📄', '📃', '📑', '📊', '📈', '📉', '🗒️', '🗓️', '📅', '📆', '🧾', '💼', '🗃️', '🗄️', '📦', '✏️', '📝', '🖊️', '🖋️', '🔍', '🔎', '🔧', '🔨', '🛠️', '⚙️', '🧰', '🔑', '🗝️', '🔒', '🔓', '🛡️', '⚔️', '🚀', '🛰️', '💻', '🖥️', '⌨️', '🖱️', '💾', '💿', '📀', '🔌', '🔋', '💡', '🔦', '🕯️']],
+  ['Aktivität', ['🎮', '🕹️', '🎲', '🎯', '🎰', '🎳', '♟️', '🧩', '🎨', '🎭', '🎤', '🎧', '🎵', '🎶', '🎬', '📷', '📸', '📹', '🎥', '🏆', '🥇', '🥈', '🥉', '🏅', '🎖️', '⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏓', '🏸', '🥅', '⛳', '🎣', '🥊', '🥋', '🛹', '🛼']],
+  ['Natur', ['🐛', '🐞', '🦋', '🐝', '🐶', '🐱', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐸', '🐢', '🐧', '🦅', '🦉', '🐺', '🐗', '🦄', '🌟', '⭐', '✨', '⚡', '🔥', '💥', '☄️', '🌈', '☀️', '🌙', '⛅', '☁️', '❄️', '💧', '🌊', '🍀', '🌿', '🌱', '🌳', '🌲', '🌵', '🌸', '🌺', '🌻', '🌼', '🌷', '💐']],
+  ['Essen', ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '🌽', '🥕', '🍞', '🧀', '🍗', '🍕', '🍔', '🌭', '🌮', '🌯', '🍜', '🍝', '🍣', '🍩', '🍪', '🎂', '🧁', '🍫', '🍬', '🍭', '☕', '🍵', '🥤', '🧃', '🍺', '🍻', '🥂', '🍷']],
+  ['Herzen', ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💖', '💗', '💓', '💞', '💕', '💘', '💝', '❣️', '💔', '❤️‍🔥', '💟']],
+  ['Flaggen', ['🏁', '🚩', '🎌', '🏴', '🏳️', '🏳️‍🌈', '🇩🇪', '🇦🇹', '🇨🇭', '🇬🇧', '🇺🇸', '🇪🇺', '🇫🇷', '🇪🇸', '🇮🇹', '🇳🇱', '🇵🇱', '🇹🇷']],
 ];
+const EMOJI_ALL = EMOJI_GROUPS.flatMap(([, list]) => list);
 
 function openEmojiPicker(anchorEl, onPick) {
   document.querySelectorAll('.emoji-pop').forEach((p) => p.remove());
+  const groupsHtml = EMOJI_GROUPS.map(
+    ([name, list]) => `<div class="emoji-pop__group" data-group="${name}">
+      <div class="emoji-pop__label">${name}</div>
+      <div class="emoji-pop__grid">${list.map((e) => `<button type="button" class="emoji-pop__b">${e}</button>`).join('')}</div>
+    </div>`,
+  ).join('');
   const pop = h(`<div class="emoji-pop">
-    <div class="emoji-pop__grid">${EMOJI_SET.map((e) => `<button type="button" class="emoji-pop__b">${e}</button>`).join('')}</div>
-    <div class="emoji-pop__foot"><button type="button" class="emoji-pop__clear">Kein Emote</button></div>
+    <div class="emoji-pop__search"><input type="text" placeholder="Emoji suchen…" autocomplete="off" /></div>
+    <div class="emoji-pop__body">${groupsHtml}
+      <div class="emoji-pop__group emoji-pop__results" hidden><div class="emoji-pop__grid"></div></div>
+      <div class="emoji-pop__none" hidden>Nichts gefunden.</div>
+    </div>
+    <div class="emoji-pop__foot"><button type="button" class="emoji-pop__clear">Kein Emoji</button></div>
   </div>`);
   document.body.appendChild(pop);
 
   const r = anchorEl.getBoundingClientRect();
-  pop.style.left = `${Math.min(r.left, window.innerWidth - 280)}px`;
+  const w = pop.getBoundingClientRect().width || 300;
+  const vw = document.documentElement.clientWidth;
+  // Rechtsbündig zum Anker ausrichten, aber im sichtbaren Bereich halten.
+  let left = r.right - w;
+  left = Math.max(8, Math.min(left, vw - w - 8));
+  pop.style.left = `${left + window.scrollX}px`;
   pop.style.top = `${r.bottom + window.scrollY + 6}px`;
 
   const close = () => {
@@ -178,10 +197,106 @@ function openEmojiPicker(anchorEl, onPick) {
   };
   setTimeout(() => document.addEventListener('mousedown', outside, true), 0);
 
-  pop.querySelectorAll('.emoji-pop__b').forEach((b) => {
-    b.onclick = () => { onPick(b.textContent); close(); };
+  const pick = (val) => { onPick(val); close(); };
+  pop.addEventListener('click', (e) => {
+    const b = e.target.closest('.emoji-pop__b');
+    if (b) pick(b.textContent);
   });
-  pop.querySelector('.emoji-pop__clear').onclick = () => { onPick(''); close(); };
+  pop.querySelector('.emoji-pop__clear').onclick = () => pick('');
+
+  // Suche (nach Namen ist ohne Lib nicht möglich -> einfache Teilstring-Suche im Emoji selbst
+  // plus vorbereitete Stichworte).
+  const search = pop.querySelector('.emoji-pop__search input');
+  const results = pop.querySelector('.emoji-pop__results');
+  const resultsGrid = results.querySelector('.emoji-pop__grid');
+  const none = pop.querySelector('.emoji-pop__none');
+  const groups = [...pop.querySelectorAll('.emoji-pop__group:not(.emoji-pop__results)')];
+  search.addEventListener('input', () => {
+    const q = search.value.trim().toLowerCase();
+    if (!q) {
+      groups.forEach((g) => (g.hidden = false));
+      results.hidden = true;
+      none.hidden = true;
+      return;
+    }
+    const hits = EMOJI_ALL.filter((e) => (EMOJI_KEYWORDS[e] || '').includes(q) || e === q);
+    groups.forEach((g) => (g.hidden = true));
+    resultsGrid.innerHTML = [...new Set(hits)].map((e) => `<button type="button" class="emoji-pop__b">${e}</button>`).join('');
+    results.hidden = hits.length === 0;
+    none.hidden = hits.length !== 0;
+  });
+  setTimeout(() => search.focus(), 30);
+}
+
+// Minimal-Stichworte für die Suche (nur häufige).
+const EMOJI_KEYWORDS = {
+  '✅': 'check haken ja ok richtig gruen', '❌': 'kreuz nein falsch rot x', '⭐': 'stern star favorit',
+  '🔥': 'feuer fire hot lit', '🎉': 'party feier confetti tada', '🎁': 'geschenk gift praesent',
+  '🏆': 'pokal trophy gewinner sieg', '🛡️': 'schild shield schutz', '🔒': 'schloss lock sperre',
+  '👑': 'krone crown koenig admin', '💰': 'geld money geldsack', '🤝': 'handschlag deal',
+  '❤️': 'herz love liebe rot', '👍': 'daumen hoch gut like ja', '👎': 'daumen runter schlecht nein',
+  '🎫': 'ticket support', '❓': 'frage question hilfe', '💬': 'sprechblase chat nachricht',
+  '📩': 'mail brief nachricht', '📝': 'notiz stift schreiben', '📋': 'clipboard liste bewerbung',
+  '🔔': 'glocke bell benachrichtigung', '⚠️': 'warnung achtung', '🚨': 'alarm sirene notfall',
+  '💡': 'idee gluehbirne lampe vorschlag', '🎮': 'controller gaming spiel', '🐛': 'bug fehler kaefer',
+  '🔧': 'schraubenschluessel werkzeug fix', '⚙️': 'zahnrad einstellung settings', '🚀': 'rakete launch start',
+  '🎨': 'palette kunst design farbe', '🎵': 'musik note song', '🎧': 'kopfhoerer musik',
+  '😀': 'lachen smile freude', '😎': 'cool sonnenbrille', '🥳': 'party feier',
+  '🤔': 'nachdenken denken hmm', '😴': 'schlafen muede', '🙏': 'danke beten bitte',
+};
+
+/**
+ * Hängt an ein <input> einen Emoji-Auswahl-Button an (😀). Klick öffnet die
+ * Emoji-Übersicht; die Auswahl wird in das Feld geschrieben.
+ * Manuelles Tippen (auch Server-Emojis) bleibt möglich.
+ */
+function attachEmojiPicker(input) {
+  if (!input || input.dataset.emojiReady) return;
+  input.dataset.emojiReady = '1';
+
+  const fire = () => {
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  // data-emoji="one" -> Feld hält genau EIN Emoji (ersetzen).
+  // sonst -> Emoji an der Cursor-Position in den Text einfügen.
+  const replace = input.dataset.emoji === 'one';
+  const floaty = input.tagName === 'TEXTAREA';
+
+  const wrap = h(`<div class="${floaty ? 'emoji-area' : 'emoji-input'}"></div>`);
+  const btn = h(
+    `<button type="button" class="emoji-add${floaty ? ' emoji-add--float' : ''}" title="Emoji ${replace ? 'wählen' : 'einfügen'}" aria-label="Emoji">😀</button>`,
+  );
+  input.parentNode.insertBefore(wrap, input);
+  wrap.appendChild(input);
+  wrap.appendChild(btn);
+
+  btn.addEventListener('click', () => {
+    openEmojiPicker(btn, (val) => {
+      if (replace) {
+        input.value = val;
+      } else {
+        if (!val) return;
+        const s = input.selectionStart ?? input.value.length;
+        const e = input.selectionEnd ?? input.value.length;
+        input.value = input.value.slice(0, s) + val + input.value.slice(e);
+        const pos = s + val.length;
+        input.focus();
+        try { input.setSelectionRange(pos, pos); } catch (err) { /* ignore */ }
+      }
+      fire();
+    });
+  });
+}
+
+/** Alle statischen Felder mit [data-emoji] automatisch ausstatten. */
+function initEmojiInputs(root = document) {
+  root.querySelectorAll('input[data-emoji], textarea[data-emoji]').forEach(attachEmojiPicker);
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => initEmojiInputs());
+} else {
+  initEmojiInputs();
 }
 
 /* ---------------- Modal ---------------- */
@@ -423,6 +538,8 @@ window.Dash = {
   openModal,
   confirmModal,
   openEmojiPicker,
+  attachEmojiPicker,
+  initEmojiInputs,
   getChannels,
   getRoles,
   fillSelectors,

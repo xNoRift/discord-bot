@@ -591,21 +591,48 @@ input, select, textarea { font-size: .95rem; }
 
 .emoji-pop {
   position: absolute; z-index: 300;
-  width: 264px;
+  width: 300px;
   background: var(--surface); border: 1px solid var(--line-2);
   border-radius: var(--r); box-shadow: var(--shadow);
   padding: 10px;
   animation: rise .16s var(--ease) both;
 }
-.emoji-pop__grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; max-height: 220px; overflow-y: auto; }
+.emoji-pop__search { margin-bottom: 8px; }
+.emoji-pop__search input { width: 100%; }
+.emoji-pop__body { max-height: 260px; overflow-y: auto; }
+.emoji-pop__label {
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-2); font-weight: 700; margin: 8px 2px 4px;
+}
+.emoji-pop__group:first-child .emoji-pop__label { margin-top: 0; }
+.emoji-pop__grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
 .emoji-pop__b {
   border: none; background: none; cursor: pointer;
-  font-size: 1.15rem; padding: 4px; border-radius: 7px; line-height: 1;
+  font-size: 1.2rem; padding: 5px 4px; border-radius: 7px; line-height: 1;
 }
 .emoji-pop__b:hover { background: var(--accent-soft); }
+.emoji-pop__none { color: var(--text-2); font-size: .85rem; padding: 12px 2px; }
 .emoji-pop__foot { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
 .emoji-pop__clear { width: 100%; background: var(--surface-3); border: 1px solid var(--line-2); color: var(--text-2); border-radius: 8px; padding: 6px; cursor: pointer; font: inherit; font-size: .82rem; }
 .emoji-pop__clear:hover { color: var(--text); }
+
+/* Input + Emoji-Button nebeneinander */
+.emoji-input { display: flex; gap: 6px; align-items: stretch; }
+.emoji-input > input { flex: 1; min-width: 0; }
+.emoji-add {
+  flex-shrink: 0; width: 40px;
+  border: 1px solid var(--line-2); background: var(--surface-3);
+  border-radius: var(--r-sm); cursor: pointer; font-size: 1.1rem; line-height: 1;
+  transition: border-color .16s, background .16s;
+}
+.emoji-add:hover { border-color: var(--accent); background: var(--surface-2); }
+
+.emoji-area { position: relative; }
+.emoji-area > textarea { width: 100%; padding-right: 44px; }
+.emoji-add--float {
+  position: absolute; top: 6px; right: 6px;
+  width: 32px; height: 32px; padding: 0;
+}
 
 /* Toggle switch */
 .toggle {

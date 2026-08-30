@@ -3,7 +3,7 @@
 
 const {
   apiFor, fillSelectors, readForm, applyToForm, escapeHtml, fmtDate,
-  icon, getRoles, openModal, confirmModal, toast,
+  icon, getRoles, openModal, confirmModal, toast, initEmojiInputs,
 } = Dash;
 
 let settings = {};
@@ -97,10 +97,11 @@ function newType() {
     <h2>Neue Bewerbungsart</h2>
     <form id="ntf" class="form">
       <div class="field"><label>Name</label><input name="name" required placeholder="Support Bewerbung" /></div>
-      <div class="field"><label>Emoji</label><input name="emoji" placeholder="🛡️" maxlength="8" /></div>
+      <div class="field"><label>Emoji</label><input name="emoji" placeholder="🛡️" maxlength="8" data-emoji="one" /></div>
       <div class="field"><label>Beschreibung</label><input name="description" maxlength="200" /></div>
       <div class="modal__actions"><button type="button" class="btn btn--ghost" data-x>Abbrechen</button><button class="btn btn--primary">Erstellen</button></div>
     </form>`);
+  initEmojiInputs(modal);
   modal.querySelector('[data-x]').onclick = close;
   modal.querySelector('#ntf').onsubmit = async (ev) => {
     ev.preventDefault();
@@ -131,7 +132,7 @@ async function openEditor(typeId) {
       <div class="form">
         <div class="col-2">
           <div class="field"><label>Name</label><input id="tn" value="${escapeHtml(t.name)}" /></div>
-          <div class="field"><label>Emoji</label><input id="te" value="${escapeHtml(t.emoji || '')}" maxlength="8" /></div>
+          <div class="field"><label>Emoji</label><input id="te" value="${escapeHtml(t.emoji || '')}" maxlength="8" data-emoji="one" /></div>
         </div>
         <div class="field"><label>Beschreibung</label><input id="td" value="${escapeHtml(t.description || '')}" maxlength="200" /></div>
         <div class="field"><label>Annahme-Rolle (bei „Annehmen" automatisch vergeben)</label><select id="tr"><option value="">— keine —</option>${roleOpts}</select></div>
@@ -143,6 +144,7 @@ async function openEditor(typeId) {
         <button class="btn btn--primary btn--sm" id="qAdd">${icon('plus', 'icon--sm')} Frage</button></div>
       <div id="qList"></div>
     </div>`;
+  initEmojiInputs(ED);
   if (t.accept_role_id) ED.querySelector('#tr').value = t.accept_role_id;
   ED.querySelector('#eBack').onclick = () => { ED.hidden = true; IX.hidden = false; loadTypes(); };
   ED.querySelector('#eDel').onclick = async () => {

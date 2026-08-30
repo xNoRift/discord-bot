@@ -319,12 +319,13 @@ function renderTab(tab) {
       <div class="card">
         <div class="card__head"><h2>${icon('file')} Embed</h2></div>
         <div class="form">
-          <div class="field"><label>Titel</label><input id="e_title" value="${escapeHtml(p.title || '')}" /></div>
-          <div class="field"><label>Text</label><textarea id="e_desc" rows="4">${escapeHtml(p.description || '')}</textarea></div>
+          <div class="field"><label>Titel</label><input id="e_title" value="${escapeHtml(p.title || '')}" data-emoji /></div>
+          <div class="field"><label>Text</label><textarea id="e_desc" rows="4" data-emoji>${escapeHtml(p.description || '')}</textarea></div>
           <div class="field"><label>Farbe</label><div class="row-inline"><input type="color" id="e_color" value="${/^#?[0-9a-f]{6}$/i.test(p.color || '') ? (p.color[0] === '#' ? p.color : '#' + p.color) : '#7c5cff'}" style="max-width:70px;"><input id="e_colortext" value="${escapeHtml(p.color || '')}" placeholder="#7c5cff (leer = Standard)"></div></div>
           <div><button class="btn btn--primary btn--sm" id="e_save">Speichern</button></div>
         </div>
       </div>`;
+    Dash.initEmojiInputs(body);
     body.querySelector('#e_color').oninput = (e) => { body.querySelector('#e_colortext').value = e.target.value; };
     body.querySelector('#e_save').onclick = () => savePanel({
       title: body.querySelector('#e_title').value,
