@@ -102,8 +102,7 @@ const config = {
     ticketPanelMessage:
       'Brauchst du Hilfe?\nErstelle hier ein Ticket und unser Team wird dir helfen.',
     giveawayWinnerRoleDurationMs: 24 * 60 * 60 * 1000,
-    welcomeMessage:
-      'Willkommen auf **{server}**, {user}! 🎉\nDu bist unser **{membercount}.** Mitglied. Viel Spaß!',
+    welcomeMessage: 'Willkommen auf **{server}**, {user}! 🎉\nViel Spaß bei uns!',
     leaveMessage: '{username} hat den Server verlassen. 👋',
     applicationPanelTitle: '📋 Bewerbung',
     applicationPanelMessage:
