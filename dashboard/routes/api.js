@@ -514,6 +514,145 @@ router.post(
   }),
 );
 
+/* ----------------------------------------------------------------
+ *  Musik
+ * ---------------------------------------------------------------- */
+
+const musicService = require('../../src/services/musicService');
+const musicStations = require('../../src/database/models/musicStations');
+const { canControl: musicCanControl } = require('../../src/utils/music');
+
+function musicState(guild) {
+  const s = musicService.getSession(guild.id);
+  const base = s ? s.state() : { connected: false, current: null, queue: [], volume: 100, loop: false, paused: false };
+  base.youtube = musicService.youtubeAvailable();
+  return base;
+}
+
+async function requireMusicMember(req) {
+  const member = await req.guild.members.fetch(req.session.user.id).catch(() => null);
+  if (!member) throw Object.assign(new Error('Du bist nicht auf diesem Server.'), { status: 400 });
+  if (!musicCanControl(member, settingsModel.get(req.guild.id))) {
+    throw Object.assign(new Error('Dir fehlt die DJ-Rolle für die Musiksteuerung.'), { status: 403 });
+  }
+  return member;
+}
+
+router.get('/guilds/:guildId/music', (req, res) => {
+  res.json(musicState(req.guild));
+});
+
+router.post(
+  '/guilds/:guildId/music/play',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      const member = await requireMusicMember(req);
+      const vc = member.voice?.channel;
+      if (!vc) return res.status(400).json({ error: 'Geh zuerst selbst in einen Sprachkanal auf diesem Server.' });
+      const me = req.guild.members.me;
+      if (!vc.permissionsFor(me)?.has(PermissionFlagsBits.Connect) || !vc.permissionsFor(me)?.has(PermissionFlagsBits.Speak)) {
+        return res.status(403).json({ error: 'Der Bot darf diesem Sprachkanal nicht beitreten.' });
+      }
+      const q = String(req.body.query || '').trim().slice(0, 400);
+      if (!q) return res.status(400).json({ error: 'Bitte einen Suchbegriff oder Link eingeben.' });
+      const r = await musicService.play(req.guild, vc, req.body.textChannelId || null, q, {
+        id: member.id,
+        tag: req.session.user.username,
+      });
+      res.json({ ok: true, added: r.added, title: r.first?.title || null, startedNow: r.startedNow, state: musicState(req.guild) });
+    } catch (err) {
+      res.status(err.status || 400).json({ error: err.message });
+    }
+  }),
+);
+
+router.post(
+  '/guilds/:guildId/music/control',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      await requireMusicMember(req);
+      const s = musicService.getSession(req.guild.id);
+      if (!s) return res.status(400).json({ error: 'Es läuft gerade nichts.' });
+      const action = String(req.body.action || '');
+      if (action === 'skip') s.skip();
+      else if (action === 'stop') s.destroy();
+      else if (action === 'pause') s.pause();
+      else if (action === 'resume') s.resume();
+      else if (action === 'shuffle') s.shuffle();
+      else if (action === 'loop') s.toggleLoop();
+      else return res.status(400).json({ error: 'Unbekannte Aktion.' });
+      res.json({ ok: true, state: action === 'stop' ? musicState(req.guild) : s.state() });
+    } catch (err) {
+      res.status(err.status || 400).json({ error: err.message });
+    }
+  }),
+);
+
+router.post(
+  '/guilds/:guildId/music/volume',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      await requireMusicMember(req);
+      const s = musicService.getSession(req.guild.id);
+      if (!s) return res.status(400).json({ error: 'Es läuft gerade nichts.' });
+      const v = Math.max(0, Math.min(150, num(req.body.volume, 100)));
+      s.setVolume(v / 100);
+      res.json({ ok: true, state: s.state() });
+    } catch (err) {
+      res.status(err.status || 400).json({ error: err.message });
+    }
+  }),
+);
+
+router.post(
+  '/guilds/:guildId/music/queue/remove',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      await requireMusicMember(req);
+      const s = musicService.getSession(req.guild.id);
+      if (!s) return res.status(400).json({ error: 'Es läuft gerade nichts.' });
+      const t = s.removeAt(num(req.body.index, -1));
+      if (!t) return res.status(400).json({ error: 'Ungültige Position.' });
+      res.json({ ok: true, removed: t.title, state: s.state() });
+    } catch (err) {
+      res.status(err.status || 400).json({ error: err.message });
+    }
+  }),
+);
+
+router.get('/guilds/:guildId/music/stations', (req, res) => {
+  res.json({
+    builtin: musicService.BUILTIN_STATIONS.map((s) => ({ name: s.name, genre: s.genre })),
+    custom: musicStations.list(req.guild.id).map((r) => ({ id: r.id, name: r.name, url: r.url })),
+  });
+});
+
+router.post(
+  '/guilds/:guildId/music/stations',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const name = String(req.body.name || '').trim().slice(0, 80);
+    const url = String(req.body.url || '').trim().slice(0, 500);
+    if (!name || !/^https?:\/\/.+/i.test(url)) {
+      return res.status(400).json({ error: 'Name und eine gültige http(s)-URL angeben.' });
+    }
+    if (musicStations.count(req.guild.id) >= 30) {
+      return res.status(400).json({ error: 'Maximal 30 eigene Sender.' });
+    }
+    const st = musicStations.add({ guildId: req.guild.id, name, url, addedBy: req.session.user.id });
+    res.json({ ok: true, station: { id: st.id, name: st.name, url: st.url } });
+  }),
+);
+
+router.delete('/guilds/:guildId/music/stations/:id', (req, res) => {
+  musicStations.remove(req.guild.id, num(req.params.id));
+  res.json({ ok: true });
+});
+
 /* Aktive temporäre Giveaway-Gewinnerrollen (für Dashboard-Anzeige). */
 router.get('/guilds/:guildId/temp-roles', (req, res) => {
   res.json(

@@ -66,6 +66,9 @@ const EDITABLE_FIELDS = [
   'tempvoice_category_id',
   'tempvoice_name_format',
   'tempvoice_user_limit',
+  // Musik
+  'music_dj_role_id',
+  'music_default_volume',
 ];
 
 const insertStmt = db.prepare(`

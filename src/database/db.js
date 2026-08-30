@@ -97,6 +97,10 @@ ensureColumn('guild_settings', 'tempvoice_user_limit', 'INTEGER DEFAULT 0');
 ensureColumn('game_counting', 'panel_channel_id', 'TEXT');
 ensureColumn('game_counting', 'panel_message_id', 'TEXT');
 
+// Musik
+ensureColumn('guild_settings', 'music_dj_role_id', 'TEXT');
+ensureColumn('guild_settings', 'music_default_volume', 'INTEGER DEFAULT 100');
+
 logger.info(`[db] Datenbank verbunden: ${config.database.path}`);
 
 process.on('exit', () => {

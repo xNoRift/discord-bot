@@ -12,12 +12,15 @@ module.exports = {
     const embed = embeds
       .brand(
         '🤖 ' + config.branding.name,
-        'Dieser Bot wird komplett über das **Web-Dashboard** verwaltet – es gibt (außer diesem) keine Befehle.',
+        'Tickets, Giveaways, Bewerbungen, Willkommen, Moderation u. v. m. werden über das **Web-Dashboard** verwaltet.',
       )
       .addFields(
-        { name: '🎫 Tickets', value: 'Panel, Kategorie, Support-Rolle, Logs – alles im Dashboard.' },
-        { name: '🎉 Giveaways', value: 'Erstellen, beenden, neu auslosen, Gewinnerrolle – alles im Dashboard.' },
-        { name: '📋 Bewerbungen', value: 'Bewerbungsarten, Fragen, Panel, Annehmen/Ablehnen – alles im Dashboard.' },
+        {
+          name: '🎵 Musik-Befehle',
+          value:
+            '`/play` · `/radio` · `/skip` · `/stop` · `/pause` · `/resume` · `/queue` · `/np` · `/volume` · `/loop` · `/shuffle` · `/leave`',
+        },
+        { name: '🎫 Tickets · 🎉 Giveaways · 📋 Bewerbungen', value: 'Alles im Dashboard.' },
         { name: '🌐 Dashboard öffnen', value: config.dashboard.url },
       )
       .setFooter({ text: 'Anmeldung am Dashboard mit deinem Discord-Konto.' });

@@ -447,7 +447,7 @@ function trackForm(form, saveFn, o) {
       if (!el.name) continue;
       m[el.name] = el.type === 'checkbox' ? el.checked : el.value;
     }
-    return JSON.stringify(m) + (extra ? ' ' + extra() : '');
+    return JSON.stringify(m) + (extra ? '|' + extra() : '');
   };
   let clean = snapshot();
   let open = false;
@@ -610,6 +610,8 @@ const ICON_PATHS = {
   send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
   scale: '<path d="M12 3v18"/><path d="M7 21h10"/><path d="m5 7 14-2"/><path d="M5 7 2 13a3 3 0 0 0 6 0Z"/><path d="m19 5-3 6a3 3 0 0 0 6 0Z"/>',
   lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  sparkles: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><path d="m6 6 2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/>',
 };
 
 function icon(name, cls = '') {

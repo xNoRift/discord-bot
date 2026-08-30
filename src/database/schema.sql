@@ -321,6 +321,17 @@ CREATE TABLE IF NOT EXISTS game_counting (
   updated_at      INTEGER
 );
 
+-- ---------- Musik: eigene Radio-Sender pro Server ----------
+CREATE TABLE IF NOT EXISTS music_stations (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id   TEXT NOT NULL,
+  name       TEXT NOT NULL,
+  url        TEXT NOT NULL,
+  added_by   TEXT,
+  created_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_music_stations_guild ON music_stations(guild_id);
+
 -- ---------- Dashboard-Nutzer (OAuth2) ----------
 CREATE TABLE IF NOT EXISTS dashboard_users (
   user_id          TEXT PRIMARY KEY,

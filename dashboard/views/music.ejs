@@ -1,0 +1,73 @@
+<%- include('partials/head', { title: guild.name + ' – Musik' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('music') %> Musik</h1></div>
+  <p>YouTube &amp; Radio auf <strong><%= guild.name %></strong>. <b>Du musst selbst in einem Sprachkanal auf diesem Server sein</b>, damit der Bot beitreten kann.</p>
+</div>
+
+<div id="ytBox" class="module-status is-off" hidden>
+  <span class="module-status__dot"></span>
+  <span class="module-status__text"><b>YouTube ist nicht verfügbar</b><span>Auf dem Server fehlt <code>yt-dlp</code>. Radio-Sender und direkte Stream-URLs funktionieren trotzdem. Installieren: <code>curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o /usr/local/bin/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp</code> und Bot neu starten.</span></span>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('music') %> Läuft gerade</h2><div class="spacer"></div><span class="muted" id="npVoice"></span></div>
+  <div id="npBox">
+    <div class="empty"><%- icon('music') %><b>Es läuft gerade nichts</b>Unten einen Song suchen oder einen Radio-Sender starten.</div>
+  </div>
+  <div id="npControls" class="row-inline" style="margin-top:14px;flex-wrap:wrap;gap:8px;" hidden>
+    <button class="btn btn--sm" data-mc="pause" type="button" id="mcPause">⏸️ Pause</button>
+    <button class="btn btn--sm" data-mc="skip" type="button">⏭️ Skip</button>
+    <button class="btn btn--sm" data-mc="loop" type="button" id="mcLoop">🔁 Loop</button>
+    <button class="btn btn--sm" data-mc="shuffle" type="button">🔀 Mischen</button>
+    <button class="btn btn--sm btn--danger" data-mc="stop" type="button">⏹️ Stop</button>
+    <label class="row-inline" style="gap:8px;margin-left:8px;">🔊
+      <input type="range" id="mcVol" min="0" max="150" step="5" style="width:140px;">
+      <b id="mcVolVal" style="width:44px;">100%</b>
+    </label>
+    <span class="muted" id="mcStatus"></span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('plus') %> Abspielen</h2></div>
+  <form id="playForm" class="form">
+    <div class="field">
+      <label>YouTube-Suche, YouTube-Link, Sendername oder Stream-URL</label>
+      <div class="row-inline">
+        <input name="query" type="text" maxlength="400" placeholder="z. B. lofi hip hop  /  https://youtu.be/…  /  Synthwave" />
+        <button class="btn btn--primary btn--sm" type="submit"><%- icon('music', 'icon--sm') %> Abspielen</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Oder direkt ein Radio-Sender</label>
+      <div class="row-inline">
+        <select id="stationPick"></select>
+        <button class="btn btn--ghost btn--sm" type="button" id="stationPlay">📻 Sender starten</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('layers') %> Warteschlange <span class="muted" id="queueCount"></span></h2></div>
+  <ul class="activity" id="queueList"><li>—</li></ul>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('bell') %> Eigene Radio-Sender</h2></div>
+  <p class="card__sub">Eigene Stream-URLs (Icecast/Shoutcast/MP3). Tauchen dann in der Sender-Liste oben und bei <code>/radio</code> auf.</p>
+  <form id="stForm" class="form">
+    <div class="col-2">
+      <div class="field"><label>Name</label><input name="name" maxlength="80" placeholder="Mein Sender" /></div>
+      <div class="field"><label>Stream-URL</label><input name="url" type="url" maxlength="500" placeholder="https://…" /></div>
+    </div>
+    <div><button class="btn btn--primary btn--sm" type="submit">Hinzufügen</button></div>
+  </form>
+  <ul class="activity" id="stList" style="margin-top:12px;"><li>—</li></ul>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/music.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

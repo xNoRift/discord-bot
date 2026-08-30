@@ -15,6 +15,7 @@ const NAV = [
     label: 'Community',
     items: [
       { key: 'welcome', label: 'Willkommen', icon: 'bell', path: '/welcome' },
+      { key: 'music', label: 'Musik', icon: 'sparkles', path: '/music' },
       { key: 'tempvoice', label: 'Temp-Voice', icon: 'hash', path: '/tempvoice' },
       { key: 'games', label: 'Spiele', icon: 'sparkles', path: '/games' },
       { key: 'giveaways', label: 'Giveaways', icon: 'gift', path: '/giveaways' },
@@ -56,6 +57,7 @@ const CRUMB = {
   overview: { crumb: 'Übersicht', crumbIcon: 'home' },
   messages: { crumb: 'Nachrichten', crumbIcon: 'send' },
   welcome: { crumb: 'Willkommen', crumbIcon: 'bell' },
+  music: { crumb: 'Musik', crumbIcon: 'music' },
   tempvoice: { crumb: 'Temp-Voice', crumbIcon: 'hash' },
   games: { crumb: 'Spiele', crumbIcon: 'sparkles' },
   tickets: { crumb: 'Tickets', crumbIcon: 'ticket' },
@@ -127,6 +129,7 @@ const PAGES = [
   ['/', 'overview'],
   ['/messages', 'messages'],
   ['/welcome', 'welcome'],
+  ['/music', 'music'],
   ['/tempvoice', 'tempvoice'],
   ['/games', 'games'],
   ['/tickets', 'tickets'],
