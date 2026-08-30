@@ -1,7 +1,7 @@
 'use strict';
 
 const express = require('express');
-const { ChannelType, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { ChannelType, EmbedBuilder, PermissionFlagsBits, GatewayIntentBits } = require('discord.js');
 const client = require('../../src/core/client');
 const config = require('../../config/config');
 
@@ -396,6 +396,14 @@ router.post(
 
 const countingGame = require('../../src/database/models/countingGame');
 
+function messageContentActive() {
+  try {
+    return client.options.intents.has(GatewayIntentBits.MessageContent);
+  } catch {
+    return false;
+  }
+}
+
 function serializeCounting(s) {
   return {
     enabled: !!s.enabled,
@@ -406,6 +414,7 @@ function serializeCounting(s) {
     allowSameUser: !!s.allow_same_user,
     resetOnFail: !!s.reset_on_fail,
     reactEmoji: s.react_emoji || '✅',
+    intentActive: messageContentActive(),
   };
 }
 

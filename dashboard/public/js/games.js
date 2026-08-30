@@ -12,8 +12,21 @@ function paintStats(s) {
   document.getElementById('cntTotal').textContent = s.totalCounts ?? 0;
 }
 
+function paintIntent(active) {
+  const box = document.getElementById('intentBox');
+  box.hidden = false;
+  box.classList.toggle('is-off', !active);
+  document.getElementById('intentTitle').textContent = active
+    ? 'Message-Content-Intent aktiv'
+    : 'Message-Content-Intent FEHLT – das Zähl-Spiel kann nicht funktionieren';
+  document.getElementById('intentText').textContent = active
+    ? 'Der Bot kann Nachrichten lesen. Zahlen werden erkannt.'
+    : 'Aktiviere im Discord Developer Portal → Bot → „MESSAGE CONTENT INTENT" und setze in der .env INTENT_MESSAGE_CONTENT=true (bzw. entferne die Zeile), dann Bot neu starten.';
+}
+
 async function load() {
   const s = await apiFor('GET', '/games/counting');
+  paintIntent(s.intentActive);
   await fillSelectors({ channelId: s.channelId });
   applyToForm(form, {
     enabled: s.enabled,

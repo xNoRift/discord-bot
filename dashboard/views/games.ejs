@@ -10,6 +10,11 @@
   <div class="card__head"><h2>🔢 Zählen (Counting)</h2></div>
   <p class="card__sub">In einem festgelegten Kanal zählen alle abwechselnd hoch: 1, 2, 3 … Eine falsche Zahl (oder zweimal hintereinander zählen) setzt die Kette zurück. Der Bot markiert richtige Zahlen mit einem Emoji.</p>
 
+  <div id="intentBox" class="module-status" hidden>
+    <span class="module-status__dot"></span>
+    <span class="module-status__text"><b id="intentTitle">…</b><span id="intentText"></span></span>
+  </div>
+
   <div class="kpi-grid" id="cntStats">
     <div class="kpi"><span class="kpi__label">Aktueller Stand</span><div class="kpi__value" id="cntCurrent">–</div></div>
     <div class="kpi"><span class="kpi__label">Rekord</span><div class="kpi__value" id="cntBest">–</div></div>
