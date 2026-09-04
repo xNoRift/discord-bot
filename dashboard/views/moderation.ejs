@@ -25,6 +25,7 @@
     </div>
     <div class="field"><label>Grund</label><input name="reason" maxlength="400" placeholder="z. B. Spam" /></div>
     <div class="row-inline" style="flex-wrap:wrap;margin-top:6px;">
+      <button class="btn btn--sm btn--outline" data-act="warn" type="submit"><%- icon('bell', 'icon--sm') %> Verwarnen</button>
       <button class="btn btn--sm" data-act="timeout" type="submit"><%- icon('clock', 'icon--sm') %> Timeout</button>
       <button class="btn btn--sm" data-act="untimeout" type="submit">Timeout aufheben</button>
       <button class="btn btn--sm btn--danger" data-act="kick" type="submit">Kicken</button>
@@ -33,6 +34,24 @@
     </div>
     <p class="muted" id="modActionStatus"></p>
   </form>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('bell') %> Verwarnungshistorie</h2></div>
+  <p class="card__sub">Zeigt alle Verwarnungen (auch zurückgezogene) einer bestimmten Person.</p>
+  <div class="row-inline" style="flex-wrap:wrap;gap:10px;">
+    <input id="warnLookupId" inputmode="numeric" placeholder="User-ID" style="max-width:260px;" />
+    <button class="btn btn--ghost btn--sm" type="button" id="warnLookupBtn"><%- icon('external', 'icon--sm') %> Anzeigen</button>
+  </div>
+  <ul class="activity" id="warnList" style="margin-top:12px;"><li class="muted">Noch keine Suche.</li></ul>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('chart') %> Automatische Eskalation</h2></div>
+  <p class="card__sub">Bei genau N <b>aktiven</b> Verwarnungen automatisch eine Aktion auslösen. Leer lassen = keine Automatik.</p>
+  <div id="escRows"></div>
+  <button class="btn btn--ghost btn--sm" type="button" id="escAdd" style="margin-top:8px;"><%- icon('plus', 'icon--sm') %> Regel hinzufügen</button>
+  <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" type="button" id="escSave">Speichern</button> <span class="muted" id="escStatus"></span></div>
 </div>
 
 <div class="card">

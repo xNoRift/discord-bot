@@ -103,6 +103,9 @@ ensureColumn('game_counting', 'panel_message_id', 'TEXT');
 ensureColumn('guild_settings', 'music_dj_role_id', 'TEXT');
 ensureColumn('guild_settings', 'music_default_volume', 'INTEGER DEFAULT 100');
 
+// Verwarnungs-Eskalation (JSON-Array, z. B. [{"count":3,"action":"kick"}])
+ensureColumn('guild_settings', 'warn_escalation', 'TEXT');
+
 logger.info(`[db] Datenbank verbunden: ${config.database.path}`);
 
 process.on('exit', () => {

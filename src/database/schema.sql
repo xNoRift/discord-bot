@@ -334,6 +334,20 @@ CREATE TABLE IF NOT EXISTS music_stations (
 );
 CREATE INDEX IF NOT EXISTS idx_music_stations_guild ON music_stations(guild_id);
 
+-- ---------- Moderation: Verwarnungen ----------
+CREATE TABLE IF NOT EXISTS moderation_warnings (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id     TEXT NOT NULL,
+  user_id      TEXT NOT NULL,
+  moderator_id TEXT,
+  moderator_tag TEXT,
+  reason       TEXT,
+  active       INTEGER DEFAULT 1,   -- 0 = zurückgezogen (bleibt für Historie erhalten)
+  created_at   INTEGER,
+  removed_at   INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_mod_warnings_guild_user ON moderation_warnings(guild_id, user_id);
+
 -- ---------- Dashboard-Nutzer (OAuth2) ----------
 CREATE TABLE IF NOT EXISTS dashboard_users (
   user_id          TEXT PRIMARY KEY,

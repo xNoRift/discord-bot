@@ -69,6 +69,8 @@ const EDITABLE_FIELDS = [
   // Musik
   'music_dj_role_id',
   'music_default_volume',
+  // Verwarnungs-Eskalation
+  'warn_escalation',
 ];
 
 const insertStmt = db.prepare(`

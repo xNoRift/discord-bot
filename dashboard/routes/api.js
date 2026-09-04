@@ -531,6 +531,7 @@ router.post(
  * ---------------------------------------------------------------- */
 
 const moderationService = require('../../src/services/moderationService');
+const warningsModel = require('../../src/database/models/warnings');
 
 router.post(
   '/guilds/:guildId/moderation/action',
@@ -543,11 +544,30 @@ router.post(
         reason: req.body.reason,
         minutes: req.body.minutes,
         actorTag: req.session.user.username,
+        actorId: req.session.user.id,
       });
       res.json({ ok: true, summary });
     } catch (err) {
       res.status(400).json({ error: err.message });
     }
+  }),
+);
+
+router.get('/guilds/:guildId/moderation/warnings', (req, res) => {
+  const userId = String(req.query.userId || '');
+  if (userId && /^\d{5,25}$/.test(userId)) {
+    return res.json({ warnings: warningsModel.listForUser(req.guild.id, userId) });
+  }
+  res.json({ warnings: warningsModel.listRecent(req.guild.id, 30) });
+});
+
+router.post(
+  '/guilds/:guildId/moderation/warnings/:id/remove',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const row = warningsModel.remove(req.guild.id, num(req.params.id));
+    if (!row) return res.status(404).json({ error: 'Verwarnung nicht gefunden.' });
+    res.json({ ok: true, warning: row });
   }),
 );
 
