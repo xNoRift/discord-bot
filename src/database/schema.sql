@@ -348,6 +348,17 @@ CREATE TABLE IF NOT EXISTS moderation_warnings (
 );
 CREATE INDEX IF NOT EXISTS idx_mod_warnings_guild_user ON moderation_warnings(guild_id, user_id);
 
+-- ---------- Dashboard-RBAC: welche Discord-Rollen dürfen welchen Bereich sehen ----------
+-- scope z. B. 'moderation' | 'tickets' | 'giveaways' | 'applications' | 'settings'.
+-- Zusätzlich zu Administrator/"Server verwalten"/Bot-Besitzer, die immer alles dürfen.
+CREATE TABLE IF NOT EXISTS guild_dashboard_roles (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  scope    TEXT NOT NULL,
+  role_id  TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_guild_dashboard_roles_unique ON guild_dashboard_roles(guild_id, scope, role_id);
+
 -- ---------- Dashboard-Nutzer (OAuth2) ----------
 CREATE TABLE IF NOT EXISTS dashboard_users (
   user_id          TEXT PRIMARY KEY,

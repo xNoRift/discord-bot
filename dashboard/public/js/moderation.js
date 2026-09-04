@@ -1,7 +1,7 @@
 /* global document, Dash */
 'use strict';
 
-const { apiFor, fillSelectors, readForm, toast, escapeHtml, fmtDate } = Dash;
+const { apiFor, fillSelectors, readForm, toast, escapeHtml, fmtDate, getRoles } = Dash;
 
 const modForm = document.getElementById('modForm');
 
@@ -164,6 +164,42 @@ async function loadEscalation() {
   (rules.length ? rules : []).forEach((r) => escRows.appendChild(escRow(r)));
 }
 loadEscalation().catch((e) => toast(e.message, 'error'));
+
+/* ---------------- Zugriff (Dashboard-Rollen für "moderation") ---------------- */
+
+function roleChecklist(roles, selected) {
+  return roles
+    .map(
+      (r) => `<label class="setting-row" style="cursor:pointer;padding:8px 0;">
+        <input type="checkbox" value="${r.id}" ${selected.has(r.id) ? 'checked' : ''} style="width:17px;height:17px;accent-color:var(--accent);">
+        <span class="setting-row__text"><b>${escapeHtml(r.name)}</b></span>
+      </label>`,
+    )
+    .join('');
+}
+
+async function loadModRoles() {
+  const [roles, d] = await Promise.all([getRoles(), apiFor('GET', '/dashboard-roles?scope=moderation')]);
+  const selected = new Set(d.roleIds || []);
+  document.getElementById('modRoleChecks').innerHTML = roles.length
+    ? roleChecklist(roles, selected)
+    : '<p class="muted">Keine Rollen gefunden.</p>';
+}
+
+document.getElementById('modRoleSave').addEventListener('click', async () => {
+  const roleIds = [...document.querySelectorAll('#modRoleChecks input:checked')].map((c) => c.value);
+  const status = document.getElementById('modRoleStatus');
+  try {
+    await apiFor('POST', '/dashboard-roles', { scope: 'moderation', roleIds });
+    toast('Zugriff gespeichert.', 'success');
+    status.textContent = 'Gespeichert ✓';
+  } catch (err) {
+    toast(err.message, 'error');
+    status.textContent = err.message;
+  }
+});
+
+loadModRoles().catch((e) => toast(e.message, 'error'));
 
 /* ---------------- Purge ---------------- */
 

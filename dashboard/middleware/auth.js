@@ -4,6 +4,8 @@ const crypto = require('node:crypto');
 const client = require('../../src/core/client');
 const guildAccess = require('../services/guildAccess');
 const settingsModel = require('../../src/database/models/settings');
+const dashboardRoles = require('../../src/database/models/dashboardRoles');
+const { isManager } = require('../../src/utils/permissions');
 const config = require('../../config/config');
 
 /**
@@ -92,4 +94,29 @@ async function loadGuild(req, res, next) {
   }
 }
 
-module.exports = { requireAuth, requireOwner, csrfToken, verifyCsrf, loadGuild };
+/**
+ * Zusätzlich zu loadGuild: verlangt, dass das Mitglied Administrator/
+ * "Server verwalten"/Bot-Besitzer ist ODER eine für `scope` freigeschaltete
+ * Discord-Rolle hält (guild_dashboard_roles). Muss NACH loadGuild kommen.
+ *
+ * Hinweis: Der grundlegende Zugang zu /guilds/:guildId (loadGuild) verlangt
+ * weiterhin Administrator/"Server verwalten" – dieser Check greift also
+ * aktuell nur zusätzlich innerhalb bereits erlaubter Anfragen. Siehe
+ * dashboardRoles.js für die Begründung.
+ */
+function requireScope(scope) {
+  return async (req, res, next) => {
+    try {
+      const member = req.guild.members.cache.get(req.session.user.id) ?? (await req.guild.members.fetch(req.session.user.id).catch(() => null));
+      if (member && (isManager(member) || dashboardRoles.memberHasScope(member, req.guild.id, scope))) {
+        return next();
+      }
+      if (isApiRequest(req)) return res.status(403).json({ error: `Dir fehlt der Zugriff für „${scope}".` });
+      return res.status(403).render('error', { title: 'Kein Zugriff', message: `Dir fehlt der Zugriff für „${scope}".` });
+    } catch (err) {
+      return next(err);
+    }
+  };
+}
+
+module.exports = { requireAuth, requireOwner, requireScope, csrfToken, verifyCsrf, loadGuild };

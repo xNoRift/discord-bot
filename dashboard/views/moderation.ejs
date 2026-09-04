@@ -55,6 +55,16 @@
 </div>
 
 <div class="card">
+  <div class="card__head"><h2><%- icon('users') %> Zugriff auf Moderation</h2></div>
+  <p class="card__sub">Mitglieder mit einer dieser Rollen dürfen Moderations-Aktionen ausführen, auch ohne „Server verwalten"/Administrator. <b>Hinweis:</b> Sie brauchen aktuell trotzdem noch „Server verwalten" oder Administrator, um sich überhaupt ins Dashboard einzuloggen – das feiner aufzuteilen ist ein eigener, noch offener Schritt.</p>
+  <div id="modRoleChecks"><div class="loading">Lädt…</div></div>
+  <div class="row-inline" style="margin-top:12px;">
+    <button class="btn btn--primary btn--sm" type="button" id="modRoleSave">Speichern</button>
+    <span class="muted" id="modRoleStatus"></span>
+  </div>
+</div>
+
+<div class="card">
   <div class="card__head"><h2><%- icon('trash') %> Nachrichten löschen (Purge)</h2></div>
   <p class="card__sub">Löscht die letzten X Nachrichten in einem Kanal (max. 100, nichts älter als 14 Tage).</p>
   <form id="modPurgeForm">

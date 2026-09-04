@@ -5,7 +5,7 @@ const { ChannelType, EmbedBuilder, PermissionFlagsBits, GatewayIntentBits } = re
 const client = require('../../src/core/client');
 const config = require('../../config/config');
 
-const { requireAuth, requireOwner, verifyCsrf, loadGuild } = require('../middleware/auth');
+const { requireAuth, requireOwner, requireScope, verifyCsrf, loadGuild } = require('../middleware/auth');
 const loginAudit = require('../../src/database/models/loginAudit');
 const { apiLimiter, actionLimiter } = require('../middleware/rateLimit');
 const guildAccess = require('../services/guildAccess');
@@ -566,6 +566,7 @@ const warningsModel = require('../../src/database/models/warnings');
 
 router.post(
   '/guilds/:guildId/moderation/action',
+  requireScope('moderation'),
   actionLimiter,
   asyncHandler(async (req, res) => {
     try {
@@ -584,7 +585,7 @@ router.post(
   }),
 );
 
-router.get('/guilds/:guildId/moderation/warnings', (req, res) => {
+router.get('/guilds/:guildId/moderation/warnings', requireScope('moderation'), (req, res) => {
   const userId = String(req.query.userId || '');
   if (userId && /^\d{5,25}$/.test(userId)) {
     return res.json({ warnings: warningsModel.listForUser(req.guild.id, userId) });
@@ -594,6 +595,7 @@ router.get('/guilds/:guildId/moderation/warnings', (req, res) => {
 
 router.post(
   '/guilds/:guildId/moderation/warnings/:id/remove',
+  requireScope('moderation'),
   actionLimiter,
   asyncHandler(async (req, res) => {
     const row = warningsModel.remove(req.guild.id, num(req.params.id));
@@ -604,6 +606,7 @@ router.post(
 
 router.post(
   '/guilds/:guildId/moderation/purge',
+  requireScope('moderation'),
   actionLimiter,
   asyncHandler(async (req, res) => {
     if (!/^\d{5,25}$/.test(String(req.body.channelId || ''))) {
@@ -615,6 +618,29 @@ router.post(
     } catch (err) {
       res.status(400).json({ error: err.message });
     }
+  }),
+);
+
+/* ----------------------------------------------------------------
+ *  Dashboard-Rollen (welche Discord-Rollen dürfen was zusätzlich sehen)
+ * ---------------------------------------------------------------- */
+
+const dashboardRolesModel = require('../../src/database/models/dashboardRoles');
+
+router.get('/guilds/:guildId/dashboard-roles', (req, res) => {
+  const scope = String(req.query.scope || '');
+  if (!dashboardRolesModel.SCOPES.includes(scope)) return res.status(400).json({ error: 'Unbekannter Bereich.' });
+  res.json({ scope, roleIds: dashboardRolesModel.getRolesForScope(req.guild.id, scope) });
+});
+
+router.post(
+  '/guilds/:guildId/dashboard-roles',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const scope = String(req.body.scope || '');
+    if (!dashboardRolesModel.SCOPES.includes(scope)) return res.status(400).json({ error: 'Unbekannter Bereich.' });
+    const roleIds = dashboardRolesModel.setRolesForScope(req.guild.id, scope, req.body.roleIds);
+    res.json({ ok: true, scope, roleIds });
   }),
 );
 
