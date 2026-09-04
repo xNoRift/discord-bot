@@ -59,6 +59,10 @@ function listQuestions(typeId) {
     .all(typeId);
 }
 
+function getQuestion(id) {
+  return db.prepare('SELECT * FROM application_questions WHERE id = ?').get(id);
+}
+
 function addQuestion({ typeId, label, style = 'short', required = true, minLength = 0, maxLength = 400 }) {
   const maxPos = db
     .prepare('SELECT COALESCE(MAX(position), -1) AS p FROM application_questions WHERE type_id = ?')
@@ -178,6 +182,7 @@ module.exports = {
   deleteType,
   listQuestions,
   addQuestion,
+  getQuestion,
   updateQuestion,
   deleteQuestion,
   countQuestions,

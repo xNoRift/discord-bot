@@ -957,10 +957,17 @@ router.post(
   }),
 );
 
+function ownedQuestion(req) {
+  const cat = ownedCategory(req);
+  if (!cat) return null;
+  const q = ticketPanels.getQuestion(num(req.params.qid));
+  return q && q.category_id === cat.id ? q : null;
+}
+
 router.patch(
   '/guilds/:guildId/ticket-panels/:panelId/categories/:catId/questions/:qid',
   asyncHandler(async (req, res) => {
-    if (!ownedCategory(req)) return res.status(404).json({ error: 'Kategorie nicht gefunden.' });
+    if (!ownedQuestion(req)) return res.status(404).json({ error: 'Formularfeld nicht gefunden.' });
     const patch = {};
     if (req.body.label !== undefined) patch.label = String(req.body.label).slice(0, 45);
     if (req.body.style !== undefined) patch.style = req.body.style === 'paragraph' ? 'paragraph' : 'short';
@@ -976,7 +983,7 @@ router.patch(
 router.delete(
   '/guilds/:guildId/ticket-panels/:panelId/categories/:catId/questions/:qid',
   asyncHandler(async (req, res) => {
-    if (!ownedCategory(req)) return res.status(404).json({ error: 'Kategorie nicht gefunden.' });
+    if (!ownedQuestion(req)) return res.status(404).json({ error: 'Formularfeld nicht gefunden.' });
     ticketPanels.deleteQuestion(num(req.params.qid));
     res.json({ ok: true });
   }),
@@ -1188,11 +1195,17 @@ router.post(
   }),
 );
 
+function ownedAppQuestion(req) {
+  const type = appModel.getType(num(req.params.id));
+  if (!type || type.guild_id !== req.params.guildId) return null;
+  const q = appModel.getQuestion(num(req.params.qid));
+  return q && q.type_id === type.id ? q : null;
+}
+
 router.patch(
   '/guilds/:guildId/application-types/:id/questions/:qid',
   asyncHandler(async (req, res) => {
-    const type = appModel.getType(num(req.params.id));
-    if (!type || type.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    if (!ownedAppQuestion(req)) return res.status(404).json({ error: 'Frage nicht gefunden.' });
     const patch = {};
     if (req.body.label !== undefined) patch.label = String(req.body.label).slice(0, 45);
     if (req.body.style !== undefined) patch.style = req.body.style === 'paragraph' ? 'paragraph' : 'short';
@@ -1207,8 +1220,7 @@ router.patch(
 router.delete(
   '/guilds/:guildId/application-types/:id/questions/:qid',
   asyncHandler(async (req, res) => {
-    const type = appModel.getType(num(req.params.id));
-    if (!type || type.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    if (!ownedAppQuestion(req)) return res.status(404).json({ error: 'Frage nicht gefunden.' });
     appModel.deleteQuestion(num(req.params.qid));
     res.json({ ok: true });
   }),

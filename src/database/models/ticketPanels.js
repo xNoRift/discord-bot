@@ -135,6 +135,10 @@ function listQuestions(categoryId) {
     .all(categoryId);
 }
 
+function getQuestion(id) {
+  return db.prepare('SELECT * FROM ticket_category_questions WHERE id = ?').get(id);
+}
+
 function countQuestions(categoryId) {
   return db
     .prepare('SELECT COUNT(*) AS n FROM ticket_category_questions WHERE category_id = ?')
@@ -208,6 +212,7 @@ module.exports = {
   listQuestions,
   countQuestions,
   addQuestion,
+  getQuestion,
   updateQuestion,
   deleteQuestion,
   categoryWithQuestions,
