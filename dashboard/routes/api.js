@@ -157,6 +157,37 @@ router.get('/security/logins', requireOwner, (req, res) => {
 });
 
 /* ----------------------------------------------------------------
+ *  Backups (NUR Bot-Besitzer) – erstellen/auflisten/herunterladen.
+ *  Bewusst kein Restore-Endpunkt, siehe backupService.js.
+ * ---------------------------------------------------------------- */
+
+const backupService = require('../../src/services/backupService');
+
+router.get('/bot/backups', requireOwner, (req, res) => {
+  res.json({ backups: backupService.list() });
+});
+
+router.post(
+  '/bot/backup',
+  requireOwner,
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      const info = await backupService.create();
+      res.json({ ok: true, backup: info });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }),
+);
+
+router.get('/bot/backups/:name', requireOwner, (req, res) => {
+  const full = backupService.resolvePath(req.params.name);
+  if (!full) return res.status(404).json({ error: 'Sicherung nicht gefunden.' });
+  res.download(full, req.params.name);
+});
+
+/* ----------------------------------------------------------------
  *  Ab hier: alles pro Guild (mit Zugriffsschutz)
  * ---------------------------------------------------------------- */
 

@@ -171,3 +171,51 @@ async function loadSecurity() {
 }
 
 loadSecurity();
+
+/* ---------------- Backups (nur Besitzer) ---------------- */
+
+function fmtBytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+async function loadBackups() {
+  const list = document.getElementById('bkList');
+  if (!list) return; // Karte nur für Besitzer im DOM
+  try {
+    const { backups } = await api('GET', '/api/bot/backups');
+    if (!backups.length) {
+      list.innerHTML = '<li>Noch keine Sicherung vorhanden.</li>';
+      return;
+    }
+    list.innerHTML = backups
+      .map(
+        (b) => `<li>
+          <span class="activity__ico">${Dash.icon('file', 'icon--sm')}</span>
+          <span>${escapeHtml(b.name)} · ${fmtBytes(b.size)}</span>
+          <a href="/api/bot/backups/${encodeURIComponent(b.name)}" style="margin-left:auto;">Herunterladen</a>
+          <time>${fmtRelative ? fmtRelative(b.createdAt) : new Date(b.createdAt).toLocaleString()}</time>
+        </li>`,
+      )
+      .join('');
+  } catch (e) {
+    list.innerHTML = `<li style="color:var(--red)">${escapeHtml(e.message)}</li>`;
+  }
+}
+
+document.getElementById('bkCreate')?.addEventListener('click', async () => {
+  const status = document.getElementById('bkStatus');
+  status.textContent = 'Wird erstellt…';
+  try {
+    const r = await api('POST', '/api/bot/backup', {});
+    toast(`Backup „${r.backup.name}" erstellt.`, 'success');
+    status.textContent = 'Erstellt ✓';
+    await loadBackups();
+  } catch (e) {
+    toast(e.message, 'error');
+    status.textContent = e.message;
+  }
+});
+
+loadBackups();
