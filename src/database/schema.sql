@@ -110,6 +110,8 @@ CREATE TABLE IF NOT EXISTS ticket_panels (
   rating_channel_id TEXT,
   claim_category_id TEXT,               -- übernommene Tickets hierhin verschieben
   autoclose_hours  INTEGER DEFAULT 0,   -- 0 = aus
+  image_url     TEXT,                   -- großes Bild im Embed
+  thumbnail_url TEXT,                   -- kleines Vorschaubild oben rechts
   created_at  INTEGER,
   updated_at  INTEGER
 );

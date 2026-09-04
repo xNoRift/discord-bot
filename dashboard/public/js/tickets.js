@@ -322,15 +322,46 @@ function renderTab(tab) {
           <div class="field"><label>Titel</label><input id="e_title" value="${escapeHtml(p.title || '')}" data-emoji /></div>
           <div class="field"><label>Text</label><textarea id="e_desc" rows="4" data-emoji>${escapeHtml(p.description || '')}</textarea></div>
           <div class="field"><label>Farbe</label><div class="row-inline"><input type="color" id="e_color" value="${/^#?[0-9a-f]{6}$/i.test(p.color || '') ? (p.color[0] === '#' ? p.color : '#' + p.color) : '#7c5cff'}" style="max-width:70px;"><input id="e_colortext" value="${escapeHtml(p.color || '')}" placeholder="#7c5cff (leer = Standard)"></div></div>
+          <div class="col-2">
+            <div class="field">
+              <label>Bild (groß, unten im Embed)</label>
+              <input id="e_image" type="url" value="${escapeHtml(p.image_url || '')}" placeholder="https://…" />
+              <div class="field-hint">Direkter Bild-Link (z. B. von Discord hochgeladen &amp; Link kopiert, oder Imgur).</div>
+              <img id="e_image_prev" class="embed-img-preview" hidden />
+            </div>
+            <div class="field">
+              <label>Vorschaubild (klein, oben rechts)</label>
+              <input id="e_thumb" type="url" value="${escapeHtml(p.thumbnail_url || '')}" placeholder="https://…" />
+              <img id="e_thumb_prev" class="embed-img-preview embed-img-preview--sm" hidden />
+            </div>
+          </div>
           <div><button class="btn btn--primary btn--sm" id="e_save">Speichern</button></div>
         </div>
       </div>`;
     Dash.initEmojiInputs(body);
     body.querySelector('#e_color').oninput = (e) => { body.querySelector('#e_colortext').value = e.target.value; };
+
+    function wirePreview(inputId, imgId) {
+      const input = body.querySelector('#' + inputId);
+      const img = body.querySelector('#' + imgId);
+      const sync = () => {
+        const v = input.value.trim();
+        if (/^https?:\/\//i.test(v)) { img.src = v; img.hidden = false; }
+        else img.hidden = true;
+      };
+      img.onerror = () => { img.hidden = true; };
+      input.addEventListener('input', sync);
+      sync();
+    }
+    wirePreview('e_image', 'e_image_prev');
+    wirePreview('e_thumb', 'e_thumb_prev');
+
     body.querySelector('#e_save').onclick = () => savePanel({
       title: body.querySelector('#e_title').value,
       description: body.querySelector('#e_desc').value,
       color: body.querySelector('#e_colortext').value,
+      image_url: body.querySelector('#e_image').value.trim(),
+      thumbnail_url: body.querySelector('#e_thumb').value.trim(),
     });
   }
 

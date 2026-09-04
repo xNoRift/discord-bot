@@ -827,7 +827,7 @@ router.patch(
     if (!ownedPanel(req)) return res.status(404).json({ error: 'Panel nicht gefunden.' });
     const b = req.body;
     const patch = {};
-    for (const k of ['name', 'title', 'description', 'color']) {
+    for (const k of ['name', 'title', 'description', 'color', 'image_url', 'thumbnail_url']) {
       if (b[k] !== undefined) patch[k] = b[k];
     }
     if (b.buttonLabel !== undefined) patch.button_label = b.buttonLabel || null;

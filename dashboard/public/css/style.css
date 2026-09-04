@@ -910,6 +910,10 @@ input[type="range"]::-moz-range-thumb {
 .msg-row__attach { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 6px; }
 .msg-row__attach a { font-size: .78rem; background: var(--surface-3); padding: 3px 8px; border-radius: 6px; }
 
+/* Embed-Bild-Vorschau (Ticket-Panels) */
+.embed-img-preview { display: block; margin-top: 8px; max-width: 100%; max-height: 160px; border-radius: 8px; border: 1px solid var(--line-2); object-fit: cover; }
+.embed-img-preview--sm { max-width: 80px; max-height: 80px; }
+
 /* ============================================================
    TOASTS + MODAL
    ============================================================ */

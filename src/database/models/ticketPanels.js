@@ -51,6 +51,7 @@ function updatePanel(id, patch) {
     'name', 'title', 'description', 'color', 'use_select', 'button_label',
     'channel_id', 'message_id', 'log_channel_id', 'rating_enabled',
     'rating_channel_id', 'claim_category_id', 'autoclose_hours',
+    'image_url', 'thumbnail_url',
   ];
   const keys = Object.keys(patch).filter((k) => allowed.includes(k));
   if (!keys.length) return getPanel(id);

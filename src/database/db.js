@@ -57,6 +57,8 @@ ensureColumn('ticket_panels', 'rating_enabled', 'INTEGER DEFAULT 0');
 ensureColumn('ticket_panels', 'rating_channel_id', 'TEXT');
 ensureColumn('ticket_panels', 'claim_category_id', 'TEXT');
 ensureColumn('ticket_panels', 'autoclose_hours', 'INTEGER DEFAULT 0');
+ensureColumn('ticket_panels', 'image_url', 'TEXT');
+ensureColumn('ticket_panels', 'thumbnail_url', 'TEXT');
 
 // Dashboard-Erweiterung (Redesign)
 ensureColumn('guild_settings', 'tickets_enabled', 'INTEGER DEFAULT 1');

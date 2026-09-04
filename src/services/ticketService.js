@@ -59,6 +59,9 @@ function buildPanelMessage(panel, categories) {
     .setTitle(panel.title || config.defaults.ticketPanelTitle)
     .setDescription(panel.description || config.defaults.ticketPanelMessage);
 
+  if (/^https?:\/\//i.test(panel.image_url || '')) embed.setImage(panel.image_url);
+  if (/^https?:\/\//i.test(panel.thumbnail_url || '')) embed.setThumbnail(panel.thumbnail_url);
+
   if (categories.length > 1) {
     embed.addFields(
       categories.slice(0, 25).map((c) => ({
