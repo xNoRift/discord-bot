@@ -70,6 +70,7 @@ async function log(opts) {
   try {
     activity.add({
       guildId,
+      category,
       type: type ?? category,
       actorId,
       targetId,

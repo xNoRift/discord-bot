@@ -861,6 +861,18 @@ router.patch(
 );
 
 router.get('/guilds/:guildId/activity', (req, res) => {
+  const q = req.query;
+  if (q.category || q.actorId || q.from || q.to) {
+    return res.json(
+      activity.query(req.params.guildId, {
+        category: q.category || undefined,
+        actorId: q.actorId || undefined,
+        from: q.from ? num(q.from, undefined) : undefined,
+        to: q.to ? num(q.to, undefined) : undefined,
+        limit: num(q.limit, 60),
+      }),
+    );
+  }
   res.json(activity.recent(req.params.guildId, Math.min(100, num(req.query.limit, 40))));
 });
 

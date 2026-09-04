@@ -389,6 +389,7 @@ CREATE INDEX IF NOT EXISTS idx_login_audit_time ON login_audit(created_at);
 CREATE TABLE IF NOT EXISTS activity_log (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   guild_id   TEXT,
+  category   TEXT,   -- ticket | giveaway | application | moderation | general
   type       TEXT,
   actor_id   TEXT,
   target_id  TEXT,

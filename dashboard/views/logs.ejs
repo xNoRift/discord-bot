@@ -18,7 +18,16 @@
       <button class="tab" data-f="ticket">Tickets</button>
       <button class="tab" data-f="giveaway">Giveaways</button>
       <button class="tab" data-f="application">Bewerbungen</button>
+      <button class="tab" data-f="moderation">Moderation</button>
+      <button class="tab" data-f="general">Allgemein</button>
     </div>
+  </div>
+  <div class="row-inline" style="flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+    <input id="logActorId" inputmode="numeric" placeholder="Nur von User-ID (optional)" style="max-width:220px;" />
+    <label class="muted" style="display:flex;align-items:center;gap:6px;">Von <input id="logFrom" type="date" /></label>
+    <label class="muted" style="display:flex;align-items:center;gap:6px;">Bis <input id="logTo" type="date" /></label>
+    <button class="btn btn--ghost btn--sm" type="button" id="logFilterApply">Filtern</button>
+    <button class="btn btn--ghost btn--sm" type="button" id="logFilterClear">Zurücksetzen</button>
   </div>
   <ul class="activity" id="logList"><li class="loading">Lädt…</li></ul>
 </div>

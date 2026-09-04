@@ -106,6 +106,9 @@ ensureColumn('guild_settings', 'music_default_volume', 'INTEGER DEFAULT 100');
 // Verwarnungs-Eskalation (JSON-Array, z. B. [{"count":3,"action":"kick"}])
 ensureColumn('guild_settings', 'warn_escalation', 'TEXT');
 
+// Aktivitäts-Log: Kategorie für Filterung (ticket/giveaway/application/moderation/general)
+ensureColumn('activity_log', 'category', 'TEXT');
+
 logger.info(`[db] Datenbank verbunden: ${config.database.path}`);
 
 process.on('exit', () => {
