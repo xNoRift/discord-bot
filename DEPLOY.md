@@ -26,7 +26,12 @@ nano .env      # Inhalt siehe .env.example, mit echten Werten
 #   -> OAuth2 -> Redirects eingetragen sein.
 
 # 5. Slash-Commands registrieren (einmalig / nach Command-Änderungen)
-npm run deploy
+# WICHTIG: "npm run deploy" registriert nur für EINEN Server, wenn in der
+# .env ein DEV_GUILD_ID gesetzt ist (praktisch beim Entwickeln, aber dann
+# sind die Befehle auf allen ANDEREN Servern unsichtbar!).
+# Für einen Bot, den andere einladen sollen, IMMER global deployen:
+npm run deploy:global
+# (kann bis zu 1 Stunde dauern, bis Discord die Befehle überall anzeigt)
 
 # 6. Dauerhaft laufen lassen
 npm install -g pm2
@@ -41,7 +46,7 @@ pm2 startup      # den ausgegebenen Befehl noch ausführen -> Autostart
 cd /root/DiscordBotV1
 git pull
 npm ci                    # nur nötig, wenn package.json sich geändert hat (schadet aber nie)
-npm run deploy            # nur nötig, wenn Slash-Commands sich geändert haben
+npm run deploy:global     # nur nötig, wenn Slash-Commands sich geändert haben (GLOBAL, für alle Server)
 pm2 restart norift
 pm2 logs norift --lines 20 --nostream
 ```
