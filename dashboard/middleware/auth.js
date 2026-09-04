@@ -65,7 +65,14 @@ function verifyCsrf(req, res, next) {
 
 /**
  * Prueft, ob der eingeloggte Nutzer die Guild aus req.params.guildId verwalten darf.
- * Legt req.guild (discord.js Guild) und req.settings ab.
+ * Legt req.guild (discord.js Guild), req.settings und req.dashboardScopes ab.
+ *
+ * req.dashboardScopes ist entweder '*' (Administrator/"Server verwalten"/Bot-Besitzer
+ * – voller Zugriff wie bisher) oder ein Set<string> mit den ueber
+ * guild_dashboard_roles freigeschalteten Bereichen (z.B. {'moderation'}) fuer ein
+ * Mitglied ohne diese Discord-Rechte. Die nachgelagerte enforceDashboardScope-
+ * Middleware entscheidet anhand dessen, welche Routen ein Nicht-'*'-Nutzer
+ * erreichen darf (default-deny Allowlist).
  */
 async function loadGuild(req, res, next) {
   const guildId = req.params.guildId;
@@ -74,13 +81,31 @@ async function loadGuild(req, res, next) {
   }
 
   try {
-    const allowed = await guildAccess.userCanManageGuild(req.session.user.id, guildId);
-    if (!allowed) {
+    const isFullManager = await guildAccess.userCanManageGuild(req.session.user.id, guildId);
+    const guild = client.guilds.cache.get(guildId);
+    let scopes = null;
+
+    if (isFullManager) {
+      scopes = '*';
+    } else if (guild) {
+      const member =
+        guild.members.cache.get(req.session.user.id) ??
+        (await guild.members.fetch(req.session.user.id).catch(() => null));
+      if (member) {
+        const granted = new Set(
+          dashboardRoles
+            .listForGuild(guildId)
+            .filter((r) => member.roles.cache.has(r.role_id))
+            .map((r) => r.scope),
+        );
+        if (granted.size) scopes = granted;
+      }
+    }
+
+    if (!scopes) {
       if (isApiRequest(req)) return res.status(403).json({ error: 'Kein Zugriff auf diesen Server.' });
       return res.status(403).render('error', { title: 'Kein Zugriff', message: 'Du darfst diesen Server nicht verwalten.' });
     }
-
-    const guild = client.guilds.cache.get(guildId);
     if (!guild) {
       if (isApiRequest(req)) return res.status(404).json({ error: 'Bot ist nicht auf diesem Server.' });
       return res.status(404).render('error', { title: 'Bot fehlt', message: 'Der Bot ist nicht (mehr) auf diesem Server.' });
@@ -88,6 +113,7 @@ async function loadGuild(req, res, next) {
 
     req.guild = guild;
     req.settings = settingsModel.get(guildId);
+    req.dashboardScopes = scopes;
     return next();
   } catch (err) {
     return next(err);
@@ -95,14 +121,44 @@ async function loadGuild(req, res, next) {
 }
 
 /**
+ * Default-Deny-Allowlist fuer Nutzer, die NICHT Administrator/"Server
+ * verwalten"/Bot-Besitzer sind (req.dashboardScopes ist ein Set, nicht '*').
+ * Muss direkt nach loadGuild eingehaengt werden.
+ *
+ * Absichtlich eine kurze, explizite Liste statt jede der ~60 Guild-Routen
+ * einzeln zu pruefen: alles, was hier nicht steht, bleibt fuer reine
+ * Rollen-Inhaber ohne Discord-Adminrechte gesperrt. Kann also nur zu wenig
+ * statt zu viel freigeben.
+ */
+const SCOPED_ALLOWLIST = [
+  { method: 'GET', path: /^\/settings$/ },
+  { method: 'GET', path: /^\/channels$/ },
+  { method: 'GET', path: /^\/roles$/ },
+  { method: 'GET', path: /^\/activity(\/|$)/ },
+  { method: 'GET', path: /^\/dashboard-roles$/ },
+  { method: 'GET', path: /^\/moderation\/warnings$/ },
+  { method: 'POST', path: /^\/moderation\/action$/ },
+  { method: 'POST', path: /^\/moderation\/warnings\/\d+\/remove$/ },
+  { method: 'POST', path: /^\/moderation\/purge$/ },
+  { method: 'PATCH', path: /^\/moderation\/settings$/ },
+];
+
+function enforceDashboardScope(req, res, next) {
+  if (req.dashboardScopes === '*') return next();
+
+  const prefix = `/guilds/${req.params.guildId}`;
+  const sub = req.path.startsWith(prefix) ? req.path.slice(prefix.length) || '/' : req.path;
+  const ok = SCOPED_ALLOWLIST.some((r) => r.method === req.method && r.path.test(sub));
+  if (ok) return next();
+
+  if (isApiRequest(req)) return res.status(403).json({ error: 'Dir fehlt der Zugriff für diesen Bereich.' });
+  return res.status(403).render('error', { title: 'Kein Zugriff', message: 'Dir fehlt der Zugriff für diesen Bereich.' });
+}
+
+/**
  * Zusätzlich zu loadGuild: verlangt, dass das Mitglied Administrator/
  * "Server verwalten"/Bot-Besitzer ist ODER eine für `scope` freigeschaltete
  * Discord-Rolle hält (guild_dashboard_roles). Muss NACH loadGuild kommen.
- *
- * Hinweis: Der grundlegende Zugang zu /guilds/:guildId (loadGuild) verlangt
- * weiterhin Administrator/"Server verwalten" – dieser Check greift also
- * aktuell nur zusätzlich innerhalb bereits erlaubter Anfragen. Siehe
- * dashboardRoles.js für die Begründung.
  */
 function requireScope(scope) {
   return async (req, res, next) => {
@@ -119,4 +175,4 @@ function requireScope(scope) {
   };
 }
 
-module.exports = { requireAuth, requireOwner, requireScope, csrfToken, verifyCsrf, loadGuild };
+module.exports = { requireAuth, requireOwner, requireScope, csrfToken, verifyCsrf, loadGuild, enforceDashboardScope };

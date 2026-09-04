@@ -13,7 +13,7 @@ async function loadModForm() {
 }
 
 async function saveModForm() {
-  try { await apiFor('PATCH', '/settings', readForm(modForm)); toast('Gespeichert.', 'success'); }
+  try { await apiFor('PATCH', '/moderation/settings', readForm(modForm)); toast('Gespeichert.', 'success'); }
   catch (err) { toast(err.message, 'error'); throw err; }
 }
 

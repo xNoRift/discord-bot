@@ -5,7 +5,7 @@ const { ChannelType, EmbedBuilder, PermissionFlagsBits, GatewayIntentBits } = re
 const client = require('../../src/core/client');
 const config = require('../../config/config');
 
-const { requireAuth, requireOwner, requireScope, verifyCsrf, loadGuild } = require('../middleware/auth');
+const { requireAuth, requireOwner, requireScope, verifyCsrf, loadGuild, enforceDashboardScope } = require('../middleware/auth');
 const loginAudit = require('../../src/database/models/loginAudit');
 const { apiLimiter, actionLimiter } = require('../middleware/rateLimit');
 const guildAccess = require('../services/guildAccess');
@@ -192,6 +192,7 @@ router.get('/bot/backups/:name', requireOwner, (req, res) => {
  * ---------------------------------------------------------------- */
 
 router.use('/guilds/:guildId', loadGuild);
+router.use('/guilds/:guildId', enforceDashboardScope);
 
 /* --- Bot-Serverprofil: Nickname + Server-Avatar (nur auf DIESEM Server) --- */
 
@@ -619,6 +620,19 @@ router.post(
       res.status(400).json({ error: err.message });
     }
   }),
+);
+
+// Schmale Variante des generischen /settings-PATCH: nur der Mod-Log-Kanal,
+// erreichbar für reine "moderation"-Rollen-Inhaber (siehe enforceDashboardScope).
+// Der generische /settings-PATCH bleibt für sie gesperrt, da er ~50 fachfremde
+// Felder auf einmal annimmt.
+router.patch(
+  '/guilds/:guildId/moderation/settings',
+  requireScope('moderation'),
+  (req, res) => {
+    const updated = settingsModel.update(req.params.guildId, { mod_log_channel_id: req.body.mod_log_channel_id });
+    res.json({ mod_log_channel_id: updated.mod_log_channel_id });
+  },
 );
 
 /* ----------------------------------------------------------------

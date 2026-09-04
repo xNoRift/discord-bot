@@ -6,14 +6,14 @@ const db = require('../db');
  * Welche Discord-Rollen dürfen (zusätzlich zu Administrator/"Server
  * verwalten"/Bot-Besitzer) welchen Dashboard-Bereich sehen.
  *
- * WICHTIG: Diese Tabelle steuert aktuell nur einen ZUSÄTZLICHEN Check
- * innerhalb der Moderations-Routen (requireScope in middleware/auth.js).
- * Der grundsätzliche Zugriff aufs Dashboard (loadGuild) verlangt weiterhin
- * Administrator/"Server verwalten" – ein reines Rollen-Mitglied ohne diese
- * Discord-Rechte kommt damit noch nicht ins Dashboard rein. Das Auflösen
- * dieser Einschränkung ist ein bewusst separater, eigener Schritt (siehe
- * Plan), damit nicht in einem Rutsch jede Route im Dashboard neu geprüft
- * werden muss.
+ * Ein Mitglied mit einer hier eingetragenen Rolle kommt auch OHNE
+ * Administrator/"Server verwalten" ins Dashboard (siehe loadGuild in
+ * middleware/auth.js), ist dort aber über enforceDashboardScope auf eine
+ * feste Allowlist an Routen für seine Bereiche beschränkt (z.B. bei
+ * `moderation` nur Warn/Timeout/Kick/Ban/Purge + Lesezugriff auf
+ * Einstellungen/Kanäle/Rollen/Logs) – der generische `/settings`-PATCH und
+ * alle anderen Bereiche (Tickets, Giveaways, Bewerbungen, Musik, Backups, …)
+ * bleiben für reine Rollen-Inhaber gesperrt.
  */
 
 const SCOPES = ['moderation', 'tickets', 'giveaways', 'applications', 'settings'];
