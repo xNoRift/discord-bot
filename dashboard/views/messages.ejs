@@ -55,6 +55,33 @@
   </form>
 </div>
 
+<div class="card">
+  <div class="card__head">
+    <h2><%- icon('clock') %> Nachrichten-Verlauf</h2>
+    <div class="spacer"></div>
+    <button class="btn btn--ghost btn--sm" type="button" id="histReload" title="Neu laden"><%- icon('refresh', 'icon--sm') %></button>
+  </div>
+  <p class="card__sub">Zeigt die letzten Nachrichten aus einem Kanal – auch wenn du selbst nicht auf Discord bist.</p>
+
+  <div id="histIntentBox" class="module-status is-off" hidden>
+    <span class="module-status__dot"></span>
+    <span class="module-status__text"><b>Nur eingeschränkt sichtbar</b><span>Ohne „Message Content"-Intent sieht der Bot nur eigene Nachrichten und welche, die ihn erwähnen. Text anderer Nachrichten bleibt leer.</span></span>
+  </div>
+
+  <div class="row-inline" style="flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+    <select id="histChannel" data-type="text" style="min-width:220px;"></select>
+    <select id="histLimit" style="max-width:120px;">
+      <option value="25">25</option>
+      <option value="50" selected>50</option>
+      <option value="100">100</option>
+    </select>
+    <button class="btn btn--primary btn--sm" type="button" id="histLoad"><%- icon('external', 'icon--sm') %> Verlauf laden</button>
+    <span class="muted" id="histStatus"></span>
+  </div>
+
+  <div id="histList" class="msg-history"><p class="muted">Kanal wählen und „Verlauf laden" klicken.</p></div>
+</div>
+
 <%- include('partials/app-shell-close') %>
 <script src="/static/js/messages.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
 <%- include('partials/foot') %>

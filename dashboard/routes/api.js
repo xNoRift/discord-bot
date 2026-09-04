@@ -335,6 +335,59 @@ router.post(
 );
 
 /* ----------------------------------------------------------------
+ *  Nachrichten-Verlauf eines Kanals
+ * ---------------------------------------------------------------- */
+
+router.get(
+  '/guilds/:guildId/messages/history',
+  asyncHandler(async (req, res) => {
+    const channelId = String(req.query.channelId || '');
+    if (!/^\d{5,25}$/.test(channelId)) return res.status(400).json({ error: 'Bitte einen Kanal wählen.' });
+
+    const channel = req.guild.channels.cache.get(channelId);
+    if (!channel || !channel.isTextBased?.() || channel.type === ChannelType.GuildCategory) {
+      return res.status(400).json({ error: 'Kanal nicht gefunden oder kein Textkanal.' });
+    }
+
+    const me = req.guild.members.me ?? (await req.guild.members.fetchMe().catch(() => null));
+    const perms = me && channel.permissionsFor(me);
+    if (!perms?.has(PermissionFlagsBits.ViewChannel) || !perms?.has(PermissionFlagsBits.ReadMessageHistory)) {
+      return res.status(403).json({ error: 'Der Bot darf den Verlauf dieses Kanals nicht lesen.' });
+    }
+
+    const limit = Math.max(1, Math.min(100, num(req.query.limit, 50)));
+    const before = /^\d{5,25}$/.test(String(req.query.before || '')) ? String(req.query.before) : undefined;
+
+    try {
+      const fetched = await channel.messages.fetch({ limit, before });
+      const messages = [...fetched.values()]
+        .sort((a, b) => a.createdTimestamp - b.createdTimestamp)
+        .map((m) => ({
+          id: m.id,
+          authorId: m.author.id,
+          authorTag: m.author.tag,
+          authorAvatar: m.author.displayAvatarURL({ size: 64 }),
+          bot: m.author.bot,
+          content: m.content,
+          embeds: m.embeds.length,
+          attachments: m.attachments.map((a) => ({ name: a.name, url: a.url, contentType: a.contentType })),
+          editedAt: m.editedTimestamp,
+          createdAt: m.createdTimestamp,
+          url: m.url,
+        }));
+      res.json({
+        channelName: channel.name,
+        messages,
+        hasMore: fetched.size === limit,
+        intentActive: messageContentActive(),
+      });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
+/* ----------------------------------------------------------------
  *  Willkommens-System – Testnachricht
  * ---------------------------------------------------------------- */
 

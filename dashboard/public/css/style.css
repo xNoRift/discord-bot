@@ -895,6 +895,21 @@ input[type="range"]::-moz-range-thumb {
 .activity li { color: var(--text); }
 .activity time { margin-left: auto; color: var(--text-2); font-size: .8rem; white-space: nowrap; }
 
+/* Nachrichten-Verlauf */
+.msg-history { max-height: 520px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.msg-row { display: flex; gap: 12px; padding: 8px 6px; border-radius: 8px; }
+.msg-row:hover { background: var(--surface-2); }
+.msg-row__avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; background: var(--surface-3); object-fit: cover; }
+.msg-row__body { flex: 1; min-width: 0; }
+.msg-row__head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.msg-row__name { font-weight: 650; font-size: .9rem; }
+.msg-row__name--bot { color: var(--accent-2); }
+.msg-row__time { font-size: .74rem; color: var(--text-2); }
+.msg-row__text { font-size: .9rem; white-space: pre-wrap; word-break: break-word; color: var(--text); margin-top: 2px; }
+.msg-row__text--empty { color: var(--text-2); font-style: italic; }
+.msg-row__attach { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 6px; }
+.msg-row__attach a { font-size: .78rem; background: var(--surface-3); padding: 3px 8px; border-radius: 6px; }
+
 /* ============================================================
    TOASTS + MODAL
    ============================================================ */

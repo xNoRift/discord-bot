@@ -1,7 +1,7 @@
 /* global document, Dash */
 'use strict';
 
-const { apiFor, fillSelectors, toast } = Dash;
+const { apiFor, fillSelectors, toast, escapeHtml, fmtRelative } = Dash;
 
 const form = document.getElementById('msgForm');
 const asEmbed = document.getElementById('msgAsEmbed');
@@ -76,3 +76,73 @@ form.addEventListener('submit', async (e) => {
     sendBtn.disabled = false;
   }
 });
+
+/* ---------------- Nachrichten-Verlauf ---------------- */
+
+const histChannel = document.getElementById('histChannel');
+const histList = document.getElementById('histList');
+const histStatus = document.getElementById('histStatus');
+const histLoadBtn = document.getElementById('histLoad');
+
+function fmtTime(ts) {
+  const d = new Date(ts);
+  return d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function renderHistory(data) {
+  document.getElementById('histIntentBox').hidden = data.intentActive !== false;
+  if (!data.messages.length) {
+    histList.innerHTML = '<p class="muted">Keine Nachrichten gefunden.</p>';
+    return;
+  }
+  histList.innerHTML = data.messages
+    .map((m) => {
+      const hasText = m.content && m.content.trim();
+      const textHtml = hasText
+        ? escapeHtml(m.content)
+        : m.embeds
+          ? '<span class="msg-row__text--empty">(Embed, kein Text)</span>'
+          : '<span class="msg-row__text--empty">(kein Text sichtbar)</span>';
+      const attach = m.attachments.length
+        ? `<div class="msg-row__attach">${m.attachments
+            .map((a) => `<a href="${escapeHtml(a.url)}" target="_blank" rel="noopener">📎 ${escapeHtml(a.name || 'Datei')}</a>`)
+            .join('')}</div>`
+        : '';
+      return `<div class="msg-row">
+        <img class="msg-row__avatar" src="${escapeHtml(m.authorAvatar)}" alt="" loading="lazy" />
+        <div class="msg-row__body">
+          <div class="msg-row__head">
+            <span class="msg-row__name${m.bot ? ' msg-row__name--bot' : ''}">${escapeHtml(m.authorTag)}${m.bot ? ' 🤖' : ''}</span>
+            <span class="msg-row__time" title="${new Date(m.createdAt).toLocaleString('de-DE')}">${fmtRelative ? fmtRelative(m.createdAt) : fmtTime(m.createdAt)}</span>
+            ${m.editedAt ? '<span class="msg-row__time">(bearbeitet)</span>' : ''}
+          </div>
+          <div class="msg-row__text">${textHtml}</div>
+          ${attach}
+        </div>
+      </div>`;
+    })
+    .join('');
+  histList.scrollTop = histList.scrollHeight;
+}
+
+async function loadHistory() {
+  const channelId = histChannel.value;
+  if (!channelId) return toast('Bitte einen Kanal wählen.', 'error');
+  const limit = document.getElementById('histLimit').value;
+  histStatus.textContent = 'Lädt…';
+  histLoadBtn.disabled = true;
+  try {
+    const data = await apiFor('GET', `/messages/history?channelId=${channelId}&limit=${limit}`);
+    renderHistory(data);
+    histStatus.textContent = `${data.messages.length} Nachricht(en) aus #${data.channelName}`;
+  } catch (err) {
+    toast(err.message, 'error');
+    histStatus.textContent = err.message;
+  } finally {
+    histLoadBtn.disabled = false;
+  }
+}
+
+histLoadBtn.addEventListener('click', loadHistory);
+document.getElementById('histReload').addEventListener('click', () => histChannel.value && loadHistory());
+histChannel.addEventListener('change', () => { if (histChannel.value) loadHistory(); });
