@@ -661,6 +661,37 @@ router.patch(
 );
 
 /* ----------------------------------------------------------------
+ *  AutoMod – sechs eingebaute Filtertypen, an/aus + konfigurierbar
+ * ---------------------------------------------------------------- */
+
+const automodModel = require('../../src/database/models/automodRules');
+
+router.get('/guilds/:guildId/automod', requireScope('moderation'), (req, res) => {
+  res.json({ rules: automodModel.listAllForGuild(req.guild.id), types: automodModel.TYPES, actions: automodModel.ACTIONS });
+});
+
+router.patch(
+  '/guilds/:guildId/automod/:type',
+  requireScope('moderation'),
+  actionLimiter,
+  (req, res) => {
+    if (!automodModel.TYPES.includes(req.params.type)) {
+      return res.status(400).json({ error: 'Unbekannter AutoMod-Typ.' });
+    }
+    const patch = {};
+    for (const key of ['enabled', 'config', 'action', 'timeoutMinutes', 'exceptRoleIds', 'exceptChannelIds']) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) patch[key] = req.body[key];
+    }
+    try {
+      const rule = automodModel.upsertRule(req.guild.id, req.params.type, patch);
+      res.json({ ok: true, rule });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  },
+);
+
+/* ----------------------------------------------------------------
  *  Dashboard-Rollen (welche Discord-Rollen dürfen was zusätzlich sehen)
  * ---------------------------------------------------------------- */
 

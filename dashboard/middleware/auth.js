@@ -141,6 +141,8 @@ const SCOPED_ALLOWLIST = [
   { method: 'POST', path: /^\/moderation\/warnings\/\d+\/remove$/ },
   { method: 'POST', path: /^\/moderation\/purge$/ },
   { method: 'PATCH', path: /^\/moderation\/settings$/ },
+  { method: 'GET', path: /^\/automod$/ },
+  { method: 'PATCH', path: /^\/automod\/[a-z_]+$/ },
 ];
 
 function enforceDashboardScope(req, res, next) {

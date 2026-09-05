@@ -4,6 +4,7 @@ const giveawayService = require('./giveawayService');
 const temporaryRoleService = require('./temporaryRoleService');
 const ticketService = require('./ticketService');
 const backupService = require('./backupService');
+const automodService = require('./automodService');
 const logger = require('../utils/logger');
 
 /**
@@ -25,6 +26,11 @@ async function start() {
     temporaryRoleService.sweep().catch((err) => logger.error('[scheduler] tempRole sweep:', err.message));
     ticketService.autoCloseSweep().catch((err) => logger.error('[scheduler] ticket autoclose:', err.message));
     backupService.dailySweep().catch((err) => logger.error('[scheduler] backup:', err.message));
+    try {
+      automodService.pruneMemory();
+    } catch (err) {
+      logger.error('[scheduler] automod prune:', err.message);
+    }
   }, 60_000);
 
   logger.success('[scheduler] gestartet (Sweep alle 60s)');

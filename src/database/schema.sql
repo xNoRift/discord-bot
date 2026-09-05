@@ -359,6 +359,24 @@ CREATE TABLE IF NOT EXISTS guild_dashboard_roles (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_guild_dashboard_roles_unique ON guild_dashboard_roles(guild_id, scope, role_id);
 
+-- ---------- AutoMod: eine Zeile pro (Server, Filtertyp) ----------
+-- type: spam | caps | links | invites | mention_spam | wordlist
+-- action: none | warn | timeout | kick | ban (zusätzlich zum Löschen der Nachricht, das immer passiert)
+CREATE TABLE IF NOT EXISTS automod_rules (
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id           TEXT NOT NULL,
+  type               TEXT NOT NULL,
+  enabled            INTEGER DEFAULT 0,
+  config_json        TEXT,              -- typspezifisch, z. B. {"maxMessages":5,"windowSeconds":5}
+  action             TEXT DEFAULT 'none',
+  timeout_minutes    INTEGER DEFAULT 10,
+  except_role_ids    TEXT,              -- JSON-Array
+  except_channel_ids TEXT,              -- JSON-Array
+  created_at         INTEGER,
+  updated_at         INTEGER
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_automod_rules_guild_type ON automod_rules(guild_id, type);
+
 -- ---------- Dashboard-Nutzer (OAuth2) ----------
 CREATE TABLE IF NOT EXISTS dashboard_users (
   user_id          TEXT PRIMARY KEY,

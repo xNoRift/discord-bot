@@ -56,7 +56,7 @@
 
 <div class="card">
   <div class="card__head"><h2><%- icon('users') %> Zugriff auf Moderation</h2></div>
-  <p class="card__sub">Mitglieder mit einer dieser Rollen dürfen Moderations-Aktionen ausführen, auch ohne „Server verwalten"/Administrator. <b>Hinweis:</b> Sie brauchen aktuell trotzdem noch „Server verwalten" oder Administrator, um sich überhaupt ins Dashboard einzuloggen – das feiner aufzuteilen ist ein eigener, noch offener Schritt.</p>
+  <p class="card__sub">Mitglieder mit einer dieser Rollen dürfen ins Dashboard und Moderations-Aktionen ausführen (inkl. AutoMod-Einstellungen), auch ohne „Server verwalten"/Administrator. Alle anderen Bereiche (Tickets, Giveaways, Bewerbungen, Einstellungen, …) bleiben für sie trotzdem gesperrt.</p>
   <div id="modRoleChecks"><div class="loading">Lädt…</div></div>
   <div class="row-inline" style="margin-top:12px;">
     <button class="btn btn--primary btn--sm" type="button" id="modRoleSave">Speichern</button>
@@ -75,6 +75,16 @@
     <div class="field"><label>Nur von User-ID (optional)</label><input name="userId" inputmode="numeric" placeholder="leer = alle" /></div>
     <div style="margin-top:6px;"><button class="btn btn--danger btn--sm" type="submit"><%- icon('trash', 'icon--sm') %> Löschen</button> <span class="muted" id="modPurgeStatus"></span></div>
   </form>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('shield') %> AutoMod</h2></div>
+  <p class="card__sub">Löscht automatisch Nachrichten, die einen aktivierten Filter treffen, und protokolliert das im Moderations-Log. Optional zusätzlich eine Aktion gegen den Nutzer (Verwarnen/Timeout/Kick/Bann). Administratoren, Server-Manager und Personen mit Zugriff auf „Moderation" (siehe oben) sind immer ausgenommen.</p>
+  <div id="automodRows"><div class="loading">Lädt…</div></div>
+  <div class="row-inline" style="margin-top:12px;">
+    <button class="btn btn--primary btn--sm" type="button" id="automodSave">Speichern</button>
+    <span class="muted" id="automodStatus"></span>
+  </div>
 </div>
 
 <%- include('partials/app-shell-close') %>

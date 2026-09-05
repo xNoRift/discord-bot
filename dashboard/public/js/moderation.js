@@ -222,3 +222,158 @@ purgeForm.addEventListener('submit', async (e) => {
     purgeStatus.textContent = err.message;
   }
 });
+
+/* ---------------- AutoMod ---------------- */
+
+const TYPE_INFO = {
+  spam: ['Spam / Flooding', 'Zu viele Nachrichten in kurzer Zeit vom selben Nutzer.'],
+  caps: ['Übermäßige Großschreibung', 'Nachrichten, die größtenteils aus Großbuchstaben bestehen.'],
+  links: ['Links', 'Blockiert Links, optional mit einer Ausnahmeliste an Domains.'],
+  invites: ['Discord-Einladungen', 'Blockiert Einladungslinks zu anderen Servern.'],
+  mention_spam: ['Erwähnungs-Spam', 'Zu viele @Erwähnungen in einer Nachricht.'],
+  wordlist: ['Wortfilter', 'Blockiert Nachrichten mit bestimmten Wörtern.'],
+};
+const ACTION_LABELS = { none: 'Nur löschen', warn: '+ Verwarnen', timeout: '+ Timeout', kick: '+ Kick', ban: '+ Bann' };
+
+let automodState = {}; // type -> { enabled, action, timeoutMinutes, config, exceptRoleIds, exceptChannelIds }
+
+function configFieldsHtml(type, cfg) {
+  if (type === 'spam') {
+    return `<div class="col-2">
+      <div class="field"><label>Max. Nachrichten</label><input type="number" min="2" max="30" data-cfg="maxMessages" value="${cfg.maxMessages ?? 5}" /></div>
+      <div class="field"><label>Zeitfenster (Sekunden)</label><input type="number" min="1" max="60" data-cfg="windowSeconds" value="${cfg.windowSeconds ?? 5}" /></div>
+    </div>`;
+  }
+  if (type === 'caps') {
+    return `<div class="col-2">
+      <div class="field"><label>Mindestlänge (Zeichen)</label><input type="number" min="1" max="200" data-cfg="minLength" value="${cfg.minLength ?? 10}" /></div>
+      <div class="field"><label>Anteil Großbuchstaben (%)</label><input type="number" min="10" max="100" data-cfg="maxPercent" value="${cfg.maxPercent ?? 70}" /></div>
+    </div>`;
+  }
+  if (type === 'links') {
+    return `<div class="field"><label>Erlaubte Domains (eine pro Zeile, leer = alle Links blockieren)</label>
+      <textarea data-cfg="allowlist" rows="3" placeholder="tenor.com\nyoutube.com">${(cfg.allowlist || []).join('\n')}</textarea></div>`;
+  }
+  if (type === 'mention_spam') {
+    return `<div class="field"><label>Max. Erwähnungen pro Nachricht</label><input type="number" min="1" max="50" data-cfg="maxMentions" value="${cfg.maxMentions ?? 5}" /></div>`;
+  }
+  if (type === 'wordlist') {
+    return `<div class="field"><label>Verbotene Wörter (eines pro Zeile)</label>
+      <textarea data-cfg="words" rows="4" placeholder="wort1\nwort2">${(cfg.words || []).join('\n')}</textarea></div>`;
+  }
+  return '<p class="muted">Für diesen Filter gibt es keine weiteren Einstellungen.</p>';
+}
+
+function readConfigFields(modal, type) {
+  const cfg = {};
+  modal.querySelectorAll('[data-cfg]').forEach((el) => {
+    const key = el.dataset.cfg;
+    if (el.tagName === 'TEXTAREA') {
+      cfg[key] = el.value.split('\n').map((s) => s.trim()).filter(Boolean);
+    } else {
+      cfg[key] = Number(el.value) || 0;
+    }
+  });
+  return cfg;
+}
+
+async function openAutomodConfig(type) {
+  const [roles, channels] = await Promise.all([getRoles(), Dash.getChannels()]);
+  const st = automodState[type];
+  const { modal, close } = Dash.openModal(`
+    <h2>${escapeHtml(TYPE_INFO[type][0])}</h2>
+    <p class="muted">${escapeHtml(TYPE_INFO[type][1])}</p>
+    ${configFieldsHtml(type, st.config || {})}
+    <div class="field" style="margin-top:10px;"><label>Ausnahme-Rollen (nie gefiltert)</label>
+      <div data-am-roles style="max-height:160px;overflow:auto;">${roleChecklist(roles, new Set(st.exceptRoleIds || []))}</div>
+    </div>
+    <div class="field" style="margin-top:10px;"><label>Ausnahme-Kanäle (dort nie gefiltert)</label>
+      <div data-am-channels style="max-height:160px;overflow:auto;">${roleChecklist(channels.text || [], new Set(st.exceptChannelIds || []))}</div>
+    </div>
+    <div class="modal__actions">
+      <button class="btn btn--ghost" data-act="cancel">Abbrechen</button>
+      <button class="btn btn--primary" data-act="ok">Übernehmen</button>
+    </div>
+  `);
+  modal.querySelector('[data-act="cancel"]').onclick = close;
+  modal.querySelector('[data-act="ok"]').onclick = () => {
+    st.config = readConfigFields(modal, type);
+    st.exceptRoleIds = [...modal.querySelectorAll('[data-am-roles] input:checked')].map((c) => c.value);
+    st.exceptChannelIds = [...modal.querySelectorAll('[data-am-channels] input:checked')].map((c) => c.value);
+    close();
+  };
+}
+
+function automodRow(type) {
+  const st = automodState[type];
+  const row = document.createElement('div');
+  row.className = 'setting-row';
+  row.dataset.type = type;
+  row.innerHTML = `
+    <span class="setting-row__text"><b>${escapeHtml(TYPE_INFO[type][0])}</b><span class="muted">${escapeHtml(TYPE_INFO[type][1])}</span></span>
+    <label style="display:flex;align-items:center;gap:6px;white-space:nowrap;">
+      <input type="checkbox" data-f="enabled" ${st.enabled ? 'checked' : ''} style="width:17px;height:17px;accent-color:var(--accent);"> Aktiv
+    </label>
+    <select data-f="action" style="max-width:150px;">
+      ${Object.entries(ACTION_LABELS).map(([v, l]) => `<option value="${v}" ${st.action === v ? 'selected' : ''}>${l}</option>`).join('')}
+    </select>
+    <input type="number" min="1" max="40320" data-f="timeoutMinutes" value="${st.timeoutMinutes || 10}" placeholder="Minuten" style="max-width:100px;" data-role="minutes" />
+    <button class="btn btn--ghost btn--sm" type="button" data-configure>Einstellungen</button>
+  `;
+  const sel = row.querySelector('[data-f="action"]');
+  const minInput = row.querySelector('[data-role="minutes"]');
+  const syncMinutes = () => { minInput.hidden = sel.value !== 'timeout'; };
+  sel.addEventListener('change', () => { st.action = sel.value; syncMinutes(); });
+  minInput.addEventListener('change', () => { st.timeoutMinutes = parseInt(minInput.value, 10) || 10; });
+  row.querySelector('[data-f="enabled"]').addEventListener('change', (e) => { st.enabled = e.target.checked; });
+  row.querySelector('[data-configure]').addEventListener('click', () => openAutomodConfig(type));
+  syncMinutes();
+  return row;
+}
+
+async function loadAutomod() {
+  const wrap = document.getElementById('automodRows');
+  try {
+    const { rules } = await apiFor('GET', '/automod');
+    automodState = {};
+    for (const r of rules) {
+      automodState[r.type] = {
+        enabled: Boolean(r.enabled),
+        action: r.action || 'none',
+        timeoutMinutes: r.timeout_minutes || 10,
+        config: JSON.parse(r.config_json || '{}'),
+        exceptRoleIds: JSON.parse(r.except_role_ids || '[]'),
+        exceptChannelIds: JSON.parse(r.except_channel_ids || '[]'),
+      };
+    }
+    wrap.innerHTML = '';
+    Object.keys(TYPE_INFO).forEach((type) => wrap.appendChild(automodRow(type)));
+  } catch (e) {
+    wrap.innerHTML = `<p style="color:var(--red)">${escapeHtml(e.message)}</p>`;
+  }
+}
+
+document.getElementById('automodSave').addEventListener('click', async () => {
+  const status = document.getElementById('automodStatus');
+  status.textContent = 'Speichert…';
+  try {
+    for (const type of Object.keys(TYPE_INFO)) {
+      const st = automodState[type];
+      await apiFor('PATCH', `/automod/${type}`, {
+        enabled: st.enabled,
+        action: st.action,
+        timeoutMinutes: st.timeoutMinutes,
+        config: st.config,
+        exceptRoleIds: st.exceptRoleIds,
+        exceptChannelIds: st.exceptChannelIds,
+      });
+    }
+    toast('AutoMod-Einstellungen gespeichert.', 'success');
+    status.textContent = 'Gespeichert ✓';
+  } catch (err) {
+    toast(err.message, 'error');
+    status.textContent = err.message;
+  }
+});
+
+loadAutomod().catch((e) => toast(e.message, 'error'));
