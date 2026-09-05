@@ -30,11 +30,9 @@
   <form id="cntForm" class="form" style="margin-top:16px;">
     <div class="field"><label>Kanal</label><select name="channelId" data-type="text"></select></div>
 
+    <p class="card__sub" style="margin-top:4px;">Zweimal hintereinander zählen (auch dieselbe Zahl doppelt) gilt immer als Fehler.</p>
+
     <div class="col-2">
-      <div class="setting-row">
-        <div class="setting-row__text"><b>Zweimal hintereinander erlaubt</b><span>Aus = jede Person muss warten, bis jemand anderes zählt</span></div>
-        <label class="toggle"><input type="checkbox" name="allowSameUser" /><span class="toggle__track"></span></label>
-      </div>
       <div class="setting-row">
         <div class="setting-row__text"><b>Bei Fehler zurücksetzen</b><span>Aus = die Zahl bleibt stehen, es geht einfach weiter</span></div>
         <label class="toggle"><input type="checkbox" name="resetOnFail" /><span class="toggle__track"></span></label>

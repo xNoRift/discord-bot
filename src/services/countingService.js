@@ -28,9 +28,7 @@ function buildPanelEmbed(state) {
         '',
         'Regeln:',
         `• Immer nur **+1** – richtige Zahlen bekommen ${state.react_emoji || '✅'}`,
-        state.allow_same_user
-          ? '• Zweimal hintereinander zählen ist erlaubt'
-          : '• **Nicht** zweimal hintereinander zählen',
+        '• **Nicht** zweimal hintereinander zählen (auch nicht dieselbe Zahl doppelt)',
         state.reset_on_fail
           ? '• Ein Fehler setzt die Kette zurück auf **1**'
           : '• Bei einem Fehler geht es einfach weiter',
@@ -108,8 +106,8 @@ async function handleMessage(message) {
   const sameUser = state.last_user_id && state.last_user_id === message.author.id;
 
   let failReason = null;
-  if (sameUser && !state.allow_same_user) {
-    failReason = 'Du darfst nicht zweimal hintereinander zählen.';
+  if (sameUser) {
+    failReason = 'Du darfst nicht zweimal hintereinander zählen – warte, bis jemand anderes weiterzählt.';
   } else if (number !== expected) {
     failReason = `Falsche Zahl – als Nächstes kam **${expected}**.`;
   }

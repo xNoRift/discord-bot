@@ -34,7 +34,6 @@ async function load() {
   await fillSelectors({ channelId: s.channelId });
   applyToForm(form, {
     channelId: s.channelId || '',
-    allowSameUser: s.allowSameUser,
     resetOnFail: s.resetOnFail,
     reactEmoji: s.reactEmoji,
   });
@@ -48,7 +47,6 @@ async function postCounting(overrides) {
   return apiFor('POST', '/games/counting', {
     enabled: cntEnabled,
     channelId: a.channelId || '',
-    allowSameUser: !!a.allowSameUser,
     resetOnFail: !!a.resetOnFail,
     reactEmoji: a.reactEmoji || '✅',
     ...overrides,
