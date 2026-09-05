@@ -30,8 +30,6 @@ CREATE TABLE IF NOT EXISTS guild_settings (
   timezone       TEXT DEFAULT 'Europe/Berlin',
   bot_language   TEXT DEFAULT 'de',
   mod_log_channel_id TEXT,
-  security_log_channel_id TEXT,
-  automod_enabled    INTEGER DEFAULT 0,
   suggestions_enabled     INTEGER DEFAULT 0,
   suggestions_channel_id  TEXT,
   team_role_ids  TEXT,
@@ -336,83 +334,6 @@ CREATE TABLE IF NOT EXISTS music_stations (
 );
 CREATE INDEX IF NOT EXISTS idx_music_stations_guild ON music_stations(guild_id);
 
--- ---------- Moderation: Verwarnungen ----------
-CREATE TABLE IF NOT EXISTS moderation_warnings (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  guild_id     TEXT NOT NULL,
-  user_id      TEXT NOT NULL,
-  moderator_id TEXT,
-  moderator_tag TEXT,
-  reason       TEXT,
-  active       INTEGER DEFAULT 1,   -- 0 = zurückgezogen (bleibt für Historie erhalten)
-  created_at   INTEGER,
-  removed_at   INTEGER
-);
-CREATE INDEX IF NOT EXISTS idx_mod_warnings_guild_user ON moderation_warnings(guild_id, user_id);
-
--- ---------- Dashboard-RBAC: welche Discord-Rollen dürfen welchen Bereich sehen ----------
--- scope z. B. 'moderation' | 'tickets' | 'giveaways' | 'applications' | 'settings'.
--- Zusätzlich zu Administrator/"Server verwalten"/Bot-Besitzer, die immer alles dürfen.
-CREATE TABLE IF NOT EXISTS guild_dashboard_roles (
-  id       INTEGER PRIMARY KEY AUTOINCREMENT,
-  guild_id TEXT NOT NULL,
-  scope    TEXT NOT NULL,
-  role_id  TEXT NOT NULL
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_guild_dashboard_roles_unique ON guild_dashboard_roles(guild_id, scope, role_id);
-
--- ---------- AutoMod: eine Zeile pro (Server, Filtertyp) ----------
--- type: spam | caps | links | invites | mention_spam | wordlist
--- action: none | warn | timeout | kick | ban (zusätzlich zum Löschen der Nachricht, das immer passiert)
-CREATE TABLE IF NOT EXISTS automod_rules (
-  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-  guild_id           TEXT NOT NULL,
-  type               TEXT NOT NULL,
-  enabled            INTEGER DEFAULT 0,
-  config_json        TEXT,              -- typspezifisch, z. B. {"maxMessages":5,"windowSeconds":5}
-  action             TEXT DEFAULT 'none',
-  timeout_minutes    INTEGER DEFAULT 10,
-  except_role_ids    TEXT,              -- JSON-Array
-  except_channel_ids TEXT,              -- JSON-Array
-  created_at         INTEGER,
-  updated_at         INTEGER
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_automod_rules_guild_type ON automod_rules(guild_id, type);
-
--- ---------- Anti-Raid: eine Zeile pro Server ----------
--- action: log | kick | ban (was bei einem erkannten Join-Spike zusätzlich zu Alarm+Log passiert)
-CREATE TABLE IF NOT EXISTS anti_raid_settings (
-  guild_id              TEXT PRIMARY KEY,
-  enabled               INTEGER DEFAULT 0,
-  window_seconds        INTEGER DEFAULT 10,
-  max_joins             INTEGER DEFAULT 10,
-  min_account_age_hours INTEGER DEFAULT 0,   -- 0 = keine Mindestalter-Prüfung
-  action                TEXT DEFAULT 'log',
-  lockdown              INTEGER DEFAULT 0,   -- Verifizierungsstufe temporär anheben bei Alarm
-  lockdown_minutes       INTEGER DEFAULT 10,
-  notify_owner          INTEGER DEFAULT 1,
-  exempt_role_ids       TEXT DEFAULT '[]',
-  exempt_user_ids       TEXT DEFAULT '[]',
-  created_at            INTEGER,
-  updated_at            INTEGER
-);
-
--- ---------- Anti-Nuke: eine Zeile pro Server ----------
--- action (Bestrafung des Täters): strip_roles | kick | ban
--- limits_json: {"channel_delete":{"max":3,"windowSeconds":10}, ...} - fehlende Typen nutzen eingebaute Standardwerte
-CREATE TABLE IF NOT EXISTS anti_nuke_settings (
-  guild_id         TEXT PRIMARY KEY,
-  enabled          INTEGER DEFAULT 0,
-  limits_json      TEXT DEFAULT '{}',
-  action           TEXT DEFAULT 'strip_roles',
-  revert           INTEGER DEFAULT 1,
-  notify_owner     INTEGER DEFAULT 1,
-  exempt_role_ids  TEXT DEFAULT '[]',
-  exempt_user_ids  TEXT DEFAULT '[]',
-  created_at       INTEGER,
-  updated_at       INTEGER
-);
-
 -- ---------- Dashboard-Nutzer (OAuth2) ----------
 CREATE TABLE IF NOT EXISTS dashboard_users (
   user_id          TEXT PRIMARY KEY,
@@ -443,87 +364,11 @@ CREATE INDEX IF NOT EXISTS idx_login_audit_time ON login_audit(created_at);
 CREATE TABLE IF NOT EXISTS activity_log (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   guild_id   TEXT,
-  category   TEXT,   -- ticket | giveaway | application | moderation | automod | security | settings | general
   type       TEXT,
   actor_id   TEXT,
   target_id  TEXT,
   message    TEXT,
   meta_json  TEXT,
-  old_value  TEXT,   -- Stand vor einer Änderung (falls zutreffend), oft JSON
-  new_value  TEXT,   -- Stand nach einer Änderung (falls zutreffend), oft JSON
   created_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_activity_guild ON activity_log(guild_id, created_at);
-
--- ---------- Rollen-Panels (Button-/Select-Rollen), mehrere pro Server ----------
-CREATE TABLE IF NOT EXISTS role_panels (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  guild_id      TEXT NOT NULL,
-  name          TEXT NOT NULL,   -- interner Name im Dashboard
-  title         TEXT,
-  description   TEXT,
-  color         TEXT,
-  image_url     TEXT,
-  thumbnail_url TEXT,
-  style         TEXT NOT NULL DEFAULT 'buttons', -- 'buttons' | 'select'
-  mode          TEXT NOT NULL DEFAULT 'multi',   -- 'multi' | 'single' (nur eine Rolle aus diesem Panel gleichzeitig)
-  channel_id    TEXT,
-  message_id    TEXT,
-  created_at    INTEGER,
-  updated_at    INTEGER
-);
-CREATE INDEX IF NOT EXISTS idx_role_panels_guild ON role_panels(guild_id);
-
-CREATE TABLE IF NOT EXISTS role_panel_roles (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  panel_id     INTEGER NOT NULL,
-  role_id      TEXT NOT NULL,
-  label        TEXT,             -- Anzeigename (Default: Rollenname zur Laufzeit)
-  emoji        TEXT,
-  button_style TEXT DEFAULT 'secondary', -- primary | secondary | success | danger (nur style='buttons')
-  position     INTEGER DEFAULT 0
-);
-CREATE INDEX IF NOT EXISTS idx_role_panel_roles_panel ON role_panel_roles(panel_id);
-
--- ---------- Custom Commands (eigene Text-/Embed-Befehle pro Server) ----------
-CREATE TABLE IF NOT EXISTS custom_commands (
-  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-  guild_id            TEXT NOT NULL,
-  name                TEXT NOT NULL,       -- ohne Prefix, klein, z. B. "socials"
-  enabled             INTEGER DEFAULT 1,
-  response_type       TEXT DEFAULT 'text', -- 'text' | 'embed'
-  content             TEXT,               -- Text-Antwort ODER Embed-Beschreibung
-  embed_title         TEXT,
-  embed_color         TEXT,
-  embed_image_url     TEXT,
-  embed_thumbnail_url TEXT,
-  buttons_json        TEXT DEFAULT '[]',  -- [{label,url,emoji}] - reine Link-Buttons
-  delete_invocation   INTEGER DEFAULT 0,  -- auslösende Nachricht löschen
-  created_at          INTEGER,
-  updated_at          INTEGER
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_custom_commands_guild_name ON custom_commands(guild_id, name);
-
--- ---------- Benachrichtigungs-Konfiguration (pro Server, pro Ereignistyp) ----------
--- event_key: ticket_new | application_new | giveaway_ended | security_alert |
---            automod | antiraid | antinuke | backup
-CREATE TABLE IF NOT EXISTS guild_notifications (
-  guild_id     TEXT NOT NULL,
-  event_key    TEXT NOT NULL,
-  to_channel   INTEGER DEFAULT 0,
-  channel_id   TEXT,              -- NULL + to_channel=1 -> Kategorie-Standardkanal
-  to_dashboard INTEGER DEFAULT 0,
-  PRIMARY KEY (guild_id, event_key)
-);
-
--- ---------- Dashboard-Postfach ----------
-CREATE TABLE IF NOT EXISTS notifications (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  guild_id   TEXT NOT NULL,
-  event_key  TEXT,
-  title      TEXT,
-  body       TEXT,
-  read       INTEGER DEFAULT 0,
-  created_at INTEGER
-);
-CREATE INDEX IF NOT EXISTS idx_notifications_guild ON notifications(guild_id, read, id);

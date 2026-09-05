@@ -5,13 +5,12 @@ const { ChannelType, EmbedBuilder, PermissionFlagsBits, GatewayIntentBits } = re
 const client = require('../../src/core/client');
 const config = require('../../config/config');
 
-const { requireAuth, requireOwner, requireScope, verifyCsrf, loadGuild, enforceDashboardScope } = require('../middleware/auth');
+const { requireAuth, requireOwner, verifyCsrf, loadGuild } = require('../middleware/auth');
 const loginAudit = require('../../src/database/models/loginAudit');
 const { apiLimiter, actionLimiter } = require('../middleware/rateLimit');
 const guildAccess = require('../services/guildAccess');
 
 const settingsModel = require('../../src/database/models/settings');
-const logService = require('../../src/services/logService');
 const ticketsModel = require('../../src/database/models/tickets');
 const ticketPanels = require('../../src/database/models/ticketPanels');
 const giveawaysModel = require('../../src/database/models/giveaways');
@@ -73,37 +72,6 @@ function serializeRoles(guild) {
 function num(value, fallback = null) {
   const n = Number.parseInt(value, 10);
   return Number.isFinite(n) ? n : fallback;
-}
-
-/**
- * Protokolliert eine Einstellungsänderung fürs zentrale Audit-Log (nur wenn
- * sich tatsächlich etwas geändert hat). `keys` sind die Felder, die im
- * PATCH-Body vorkamen (nicht alle EDITABLE_FIELDS).
- */
-async function logSettingsChange(req, before, after, keys) {
-  const changedOld = {};
-  const changedNew = {};
-  for (const key of keys) {
-    if (before[key] !== after[key]) {
-      changedOld[key] = before[key] ?? null;
-      changedNew[key] = after[key] ?? null;
-    }
-  }
-  const changedKeys = Object.keys(changedNew);
-  if (!changedKeys.length) return;
-
-  await logService
-    .log({
-      guildId: req.params.guildId,
-      category: 'settings',
-      type: 'settings_update',
-      title: `⚙️ Einstellungen geändert (${req.session.user.username})`,
-      description: changedKeys.map((k) => `**${k}**: ${changedOld[k] ?? '–'} → ${changedNew[k] ?? '–'}`).join('\n').slice(0, 1000),
-      actorId: req.session.user.id,
-      oldValue: changedOld,
-      newValue: changedNew,
-    })
-    .catch(() => null);
 }
 
 /* ----------------------------------------------------------------
@@ -189,74 +157,10 @@ router.get('/security/logins', requireOwner, (req, res) => {
 });
 
 /* ----------------------------------------------------------------
- *  Backups (NUR Bot-Besitzer) – erstellen/auflisten/herunterladen/wiederherstellen.
- * ---------------------------------------------------------------- */
-
-const backupService = require('../../src/services/backupService');
-
-router.get('/bot/backups', requireOwner, (req, res) => {
-  res.json({ backups: backupService.list() });
-});
-
-router.post(
-  '/bot/backup',
-  requireOwner,
-  actionLimiter,
-  asyncHandler(async (req, res) => {
-    try {
-      const info = await backupService.create();
-      require('../../src/services/notificationService')
-        .notifyOwners('💾 Backup erstellt', `\`${info.name}\` (${Math.round(info.size / 1024)} KB) von ${req.session.user.username}`)
-        .catch(() => null);
-      res.json({ ok: true, backup: info });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  }),
-);
-
-router.get('/bot/backups/:name', requireOwner, (req, res) => {
-  const full = backupService.resolvePath(req.params.name);
-  if (!full) return res.status(404).json({ error: 'Sicherung nicht gefunden.' });
-  res.download(full, req.params.name);
-});
-
-// Schritt 1: Bestätigungs-Token anfordern (überschreibt noch nichts).
-router.post('/bot/backup/restore-request', requireOwner, actionLimiter, (req, res) => {
-  try {
-    const token = backupService.requestRestore(String(req.body.filename || ''));
-    res.json({ ok: true, token });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-// Schritt 2: tauscht die Live-DB aus und beendet den Prozess (pm2 startet neu).
-router.post(
-  '/bot/backup/restore',
-  requireOwner,
-  actionLimiter,
-  asyncHandler(async (req, res) => {
-    const filename = String(req.body.filename || '');
-    try {
-      await backupService.restore(filename, String(req.body.token || ''));
-    } catch (err) {
-      return res.status(400).json({ error: err.message });
-    }
-    await require('../../src/services/notificationService')
-      .notifyOwners('♻️ Backup wiederhergestellt', `\`${filename}\` von ${req.session.user.username}. Der Bot startet jetzt neu.`, { color: config.branding.warning })
-      .catch(() => null);
-    res.json({ ok: true, restarting: true });
-    setTimeout(() => process.exit(0), 500);
-  }),
-);
-
-/* ----------------------------------------------------------------
  *  Ab hier: alles pro Guild (mit Zugriffsschutz)
  * ---------------------------------------------------------------- */
 
 router.use('/guilds/:guildId', loadGuild);
-router.use('/guilds/:guildId', enforceDashboardScope);
 
 /* --- Bot-Serverprofil: Nickname + Server-Avatar (nur auf DIESEM Server) --- */
 
@@ -351,451 +255,6 @@ router.get(
 
 router.get('/guilds/:guildId/channels', (req, res) => res.json(serializeChannels(req.guild)));
 router.get('/guilds/:guildId/roles', (req, res) => res.json(serializeRoles(req.guild)));
-
-/* ----------------------------------------------------------------
- *  Rollenverwaltung – erstellen/löschen/umbenennen/Farbe, vergeben/entfernen
- *  (inkl. befristet). Prüft immer die Bot-Rollenhierarchie (botCanManageRole).
- * ---------------------------------------------------------------- */
-
-const { botCanManageRole } = require('../../src/utils/permissions');
-const temporaryRoleService = require('../../src/services/temporaryRoleService');
-
-function validHexColor(v) {
-  return typeof v === 'string' && /^#?[0-9a-fA-F]{6}$/.test(v);
-}
-
-router.post(
-  '/guilds/:guildId/roles',
-  requireScope('settings'),
-  actionLimiter,
-  asyncHandler(async (req, res) => {
-    const name = String(req.body.name || '').trim().slice(0, 100);
-    if (!name) return res.status(400).json({ error: 'Bitte einen Namen angeben.' });
-    const me = req.guild.members.me ?? (await req.guild.members.fetchMe());
-    if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
-      return res.status(403).json({ error: 'Dem Bot fehlt „Rollen verwalten".' });
-    }
-    try {
-      const role = await req.guild.roles.create({
-        name,
-        color: validHexColor(req.body.color) ? req.body.color : undefined,
-        hoist: Boolean(req.body.hoist),
-        mentionable: Boolean(req.body.mentionable),
-        reason: `Erstellt über Dashboard von ${req.session.user.username}`,
-      });
-      await logService
-        .log({
-          guildId: req.guild.id,
-          category: 'roles',
-          type: 'role_create',
-          title: `➕ Rolle erstellt (${req.session.user.username})`,
-          description: `**${role.name}**`,
-          actorId: req.session.user.id,
-          targetId: role.id,
-        })
-        .catch(() => null);
-      res.json({ ok: true, role: { id: role.id, name: role.name, color: role.hexColor, position: role.position } });
-    } catch (err) {
-      res.status(400).json({ error: discordErr(err) });
-    }
-  }),
-);
-
-router.patch(
-  '/guilds/:guildId/roles/:roleId',
-  requireScope('settings'),
-  actionLimiter,
-  asyncHandler(async (req, res) => {
-    const role = req.guild.roles.cache.get(req.params.roleId) ?? (await req.guild.roles.fetch(req.params.roleId).catch(() => null));
-    if (!role) return res.status(404).json({ error: 'Rolle nicht gefunden.' });
-    const can = botCanManageRole(req.guild, role);
-    if (!can.ok) return res.status(403).json({ error: can.reason });
-
-    const patch = {};
-    if (typeof req.body.name === 'string' && req.body.name.trim()) patch.name = req.body.name.trim().slice(0, 100);
-    if (validHexColor(req.body.color)) patch.color = req.body.color;
-    if ('hoist' in req.body) patch.hoist = Boolean(req.body.hoist);
-    if ('mentionable' in req.body) patch.mentionable = Boolean(req.body.mentionable);
-    if (!Object.keys(patch).length) return res.status(400).json({ error: 'Nichts zu ändern.' });
-
-    const before = { name: role.name, color: role.hexColor };
-    try {
-      const updated = await role.edit({ ...patch, reason: `Geändert über Dashboard von ${req.session.user.username}` });
-      await logService
-        .log({
-          guildId: req.guild.id,
-          category: 'roles',
-          type: 'role_update',
-          title: `✏️ Rolle geändert (${req.session.user.username})`,
-          description: `**${before.name}** (${before.color}) → **${updated.name}** (${updated.hexColor})`,
-          actorId: req.session.user.id,
-          targetId: updated.id,
-          oldValue: before,
-          newValue: { name: updated.name, color: updated.hexColor },
-        })
-        .catch(() => null);
-      res.json({ ok: true, role: { id: updated.id, name: updated.name, color: updated.hexColor, position: updated.position } });
-    } catch (err) {
-      res.status(400).json({ error: discordErr(err) });
-    }
-  }),
-);
-
-router.delete(
-  '/guilds/:guildId/roles/:roleId',
-  requireScope('settings'),
-  actionLimiter,
-  asyncHandler(async (req, res) => {
-    const role = req.guild.roles.cache.get(req.params.roleId) ?? (await req.guild.roles.fetch(req.params.roleId).catch(() => null));
-    if (!role) return res.status(404).json({ error: 'Rolle nicht gefunden.' });
-    const can = botCanManageRole(req.guild, role);
-    if (!can.ok) return res.status(403).json({ error: can.reason });
-
-    const label = role.name;
-    try {
-      await role.delete(`Gelöscht über Dashboard von ${req.session.user.username}`);
-      await logService
-        .log({
-          guildId: req.guild.id,
-          category: 'roles',
-          type: 'role_delete',
-          title: `🗑️ Rolle gelöscht (${req.session.user.username})`,
-          description: `**${label}**`,
-          actorId: req.session.user.id,
-        })
-        .catch(() => null);
-      res.json({ ok: true });
-    } catch (err) {
-      res.status(400).json({ error: discordErr(err) });
-    }
-  }),
-);
-
-router.post(
-  '/guilds/:guildId/roles/:roleId/members/:userId',
-  requireScope('settings'),
-  actionLimiter,
-  asyncHandler(async (req, res) => {
-    if (!/^\d{5,25}$/.test(req.params.userId)) return res.status(400).json({ error: 'Ungültige User-ID.' });
-    const role = req.guild.roles.cache.get(req.params.roleId) ?? (await req.guild.roles.fetch(req.params.roleId).catch(() => null));
-    if (!role) return res.status(404).json({ error: 'Rolle nicht gefunden.' });
-    const can = botCanManageRole(req.guild, role);
-    if (!can.ok) return res.status(403).json({ error: can.reason });
-
-    const member = await req.guild.members.fetch(req.params.userId).catch(() => null);
-    if (!member) return res.status(404).json({ error: 'Mitglied nicht auf dem Server gefunden.' });
-
-    const rawDuration = String(req.body.duration || '').trim();
-    const durationMs = rawDuration ? (/^\d+$/.test(rawDuration) ? num(rawDuration, null) : parseDuration(rawDuration)) : null;
-    if (rawDuration && !durationMs) return res.status(400).json({ error: 'Ungültige Dauer (z. B. „2h", „30m", „1d").' });
-    try {
-      if (durationMs && durationMs > 0) {
-        const result = await temporaryRoleService.grantTemporaryRole(req.guild, req.params.userId, role.id, durationMs, {
-          actorTag: req.session.user.username,
-        });
-        if (!result.ok) return res.status(400).json({ error: result.reason });
-        return res.json({ ok: true, temporary: true, expiresAt: result.expiresAt });
-      }
-      await member.roles.add(role, `Vergeben über Dashboard von ${req.session.user.username}`);
-      await logService
-        .log({
-          guildId: req.guild.id,
-          category: 'roles',
-          type: 'role_assigned',
-          title: `👤 Rolle vergeben (${req.session.user.username})`,
-          description: `**${role.name}** an <@${member.id}>`,
-          actorId: req.session.user.id,
-          targetId: member.id,
-        })
-        .catch(() => null);
-      res.json({ ok: true, temporary: false });
-    } catch (err) {
-      res.status(400).json({ error: discordErr(err) });
-    }
-  }),
-);
-
-router.delete(
-  '/guilds/:guildId/roles/:roleId/members/:userId',
-  requireScope('settings'),
-  actionLimiter,
-  asyncHandler(async (req, res) => {
-    if (!/^\d{5,25}$/.test(req.params.userId)) return res.status(400).json({ error: 'Ungültige User-ID.' });
-    const role = req.guild.roles.cache.get(req.params.roleId) ?? (await req.guild.roles.fetch(req.params.roleId).catch(() => null));
-    if (!role) return res.status(404).json({ error: 'Rolle nicht gefunden.' });
-    const can = botCanManageRole(req.guild, role);
-    if (!can.ok) return res.status(403).json({ error: can.reason });
-
-    const member = await req.guild.members.fetch(req.params.userId).catch(() => null);
-    if (!member) return res.status(404).json({ error: 'Mitglied nicht auf dem Server gefunden.' });
-
-    try {
-      await member.roles.remove(role, `Entfernt über Dashboard von ${req.session.user.username}`);
-      await logService
-        .log({
-          guildId: req.guild.id,
-          category: 'roles',
-          type: 'role_removed',
-          title: `👤 Rolle entfernt (${req.session.user.username})`,
-          description: `**${role.name}** von <@${member.id}>`,
-          actorId: req.session.user.id,
-          targetId: member.id,
-        })
-        .catch(() => null);
-      res.json({ ok: true });
-    } catch (err) {
-      res.status(400).json({ error: discordErr(err) });
-    }
-  }),
-);
-
-/* ----------------------------------------------------------------
- *  Rollen-Panels (Button-/Select-Rollen) – mehrere pro Server
- * ---------------------------------------------------------------- */
-
-const rolePanelsModel = require('../../src/database/models/rolePanels');
-const rolePanelService = require('../../src/services/rolePanelService');
-
-function ownedRolePanel(req) {
-  const p = rolePanelsModel.getPanel(num(req.params.panelId));
-  return p && p.guild_id === req.params.guildId ? p : null;
-}
-
-router.get('/guilds/:guildId/role-panels', requireScope('settings'), (req, res) => {
-  const panels = rolePanelsModel.listPanels(req.guild.id).map((p) => ({
-    ...p,
-    roles: rolePanelsModel.listRoles(p.id),
-  }));
-  res.json(panels);
-});
-
-router.post(
-  '/guilds/:guildId/role-panels',
-  requireScope('settings'),
-  actionLimiter,
-  (req, res) => {
-    const name = String(req.body.name || '').trim().slice(0, 80);
-    if (!name) return res.status(400).json({ error: 'Name erforderlich.' });
-    const panel = rolePanelsModel.createPanel({
-      guildId: req.guild.id,
-      name,
-      title: req.body.title ? String(req.body.title).slice(0, 240) : '🎭 Rollen',
-      description: req.body.description ? String(req.body.description).slice(0, 2000) : 'Wähle eine Rolle:',
-      color: req.body.color || null,
-      style: req.body.style === 'select' ? 'select' : 'buttons',
-      mode: req.body.mode === 'single' ? 'single' : 'multi',
-    });
-    res.json({ ...panel, roles: [] });
-  },
-);
-
-router.patch(
-  '/guilds/:guildId/role-panels/:panelId',
-  requireScope('settings'),
-  actionLimiter,
-  (req, res) => {
-    if (!ownedRolePanel(req)) return res.status(404).json({ error: 'Panel nicht gefunden.' });
-    const b = req.body;
-    const patch = {};
-    for (const k of ['name', 'title', 'description', 'color', 'image_url', 'thumbnail_url']) {
-      if (b[k] !== undefined) patch[k] = b[k];
-    }
-    if (b.style !== undefined) patch.style = b.style === 'select' ? 'select' : 'buttons';
-    if (b.mode !== undefined) patch.mode = b.mode === 'single' ? 'single' : 'multi';
-    const updated = rolePanelsModel.updatePanel(num(req.params.panelId), patch);
-    res.json({ ...updated, roles: rolePanelsModel.listRoles(updated.id) });
-  },
-);
-
-router.delete(
-  '/guilds/:guildId/role-panels/:panelId',
-  requireScope('settings'),
-  actionLimiter,
-  (req, res) => {
-    if (!ownedRolePanel(req)) return res.status(404).json({ error: 'Panel nicht gefunden.' });
-    rolePanelsModel.deletePanel(num(req.params.panelId));
-    res.json({ ok: true });
-  },
-);
-
-router.put(
-  '/guilds/:guildId/role-panels/:panelId/roles',
-  requireScope('settings'),
-  actionLimiter,
-  (req, res) => {
-    if (!ownedRolePanel(req)) return res.status(404).json({ error: 'Panel nicht gefunden.' });
-    if (!Array.isArray(req.body.roles)) return res.status(400).json({ error: 'roles muss ein Array sein.' });
-    const roles = rolePanelsModel.setRoles(num(req.params.panelId), req.body.roles);
-    res.json({ ok: true, roles });
-  },
-);
-
-router.post(
-  '/guilds/:guildId/role-panels/:panelId/publish',
-  requireScope('settings'),
-  actionLimiter,
-  asyncHandler(async (req, res) => {
-    if (!ownedRolePanel(req)) return res.status(404).json({ error: 'Panel nicht gefunden.' });
-    const channelId = req.body.channelId ? String(req.body.channelId) : undefined;
-    if (channelId && !/^\d{5,25}$/.test(channelId)) return res.status(400).json({ error: 'Ungültiger Kanal.' });
-    try {
-      const msg = await rolePanelService.postOrUpdatePanel(req.guild, num(req.params.panelId), channelId);
-      res.json({ ok: true, messageId: msg.id, url: msg.url });
-    } catch (err) {
-      res.status(400).json({ error: discordErr(err) });
-    }
-  }),
-);
-
-/* ----------------------------------------------------------------
- *  Custom Commands (eigene Prefix-Befehle pro Server)
- * ---------------------------------------------------------------- */
-
-const customCommandsModel = require('../../src/database/models/customCommands');
-
-function ownedCommand(req) {
-  const c = customCommandsModel.get(num(req.params.cmdId));
-  return c && c.guild_id === req.params.guildId ? c : null;
-}
-
-router.get('/guilds/:guildId/custom-commands', requireScope('settings'), (req, res) => {
-  res.json(customCommandsModel.listForGuild(req.guild.id));
-});
-
-router.post(
-  '/guilds/:guildId/custom-commands',
-  requireScope('settings'),
-  actionLimiter,
-  (req, res) => {
-    try {
-      const cmd = customCommandsModel.create({
-        guildId: req.guild.id,
-        name: req.body.name,
-        responseType: req.body.response_type,
-        content: req.body.content ? String(req.body.content).slice(0, 4000) : null,
-      });
-      logService
-        .log({
-          guildId: req.guild.id,
-          category: 'settings',
-          type: 'custom_command_create',
-          title: `⚙️ Custom Command erstellt (${req.session.user.username})`,
-          description: `\`${cmd.name}\``,
-          actorId: req.session.user.id,
-        })
-        .catch(() => null);
-      res.json(cmd);
-    } catch (err) {
-      res.status(400).json({ error: err.message });
-    }
-  },
-);
-
-router.patch(
-  '/guilds/:guildId/custom-commands/:cmdId',
-  requireScope('settings'),
-  actionLimiter,
-  (req, res) => {
-    if (!ownedCommand(req)) return res.status(404).json({ error: 'Command nicht gefunden.' });
-    const b = req.body;
-    const patch = {};
-    for (const k of [
-      'name', 'content', 'embed_title', 'embed_color', 'embed_image_url', 'embed_thumbnail_url',
-    ]) {
-      if (b[k] !== undefined) patch[k] = b[k];
-    }
-    if (b.response_type !== undefined) patch.response_type = b.response_type;
-    if (b.enabled !== undefined) patch.enabled = b.enabled ? 1 : 0;
-    if (b.delete_invocation !== undefined) patch.delete_invocation = b.delete_invocation ? 1 : 0;
-    if (b.buttons !== undefined) {
-      const clean = (Array.isArray(b.buttons) ? b.buttons : [])
-        .filter((x) => /^https?:\/\//i.test(x.url || ''))
-        .slice(0, 5)
-        .map((x) => ({ label: String(x.label || 'Link').slice(0, 80), url: String(x.url), emoji: x.emoji || undefined }));
-      patch.buttons_json = JSON.stringify(clean);
-    }
-    try {
-      const cmd = customCommandsModel.update(num(req.params.cmdId), patch);
-      res.json(cmd);
-    } catch (err) {
-      res.status(400).json({ error: err.message });
-    }
-  },
-);
-
-router.delete(
-  '/guilds/:guildId/custom-commands/:cmdId',
-  requireScope('settings'),
-  actionLimiter,
-  (req, res) => {
-    const cmd = ownedCommand(req);
-    if (!cmd) return res.status(404).json({ error: 'Command nicht gefunden.' });
-    customCommandsModel.remove(cmd.id);
-    logService
-      .log({
-        guildId: req.guild.id,
-        category: 'settings',
-        type: 'custom_command_delete',
-        title: `⚙️ Custom Command gelöscht (${req.session.user.username})`,
-        description: `\`${cmd.name}\``,
-        actorId: req.session.user.id,
-      })
-      .catch(() => null);
-    res.json({ ok: true });
-  },
-);
-
-/* ----------------------------------------------------------------
- *  Benachrichtigungen: Konfiguration + Dashboard-Postfach
- * ---------------------------------------------------------------- */
-
-const notificationsModel = require('../../src/database/models/notifications');
-
-router.get('/guilds/:guildId/notifications/config', requireScope('settings'), (req, res) => {
-  res.json(notificationsModel.listConfig(req.guild.id));
-});
-
-router.put(
-  '/guilds/:guildId/notifications/config/:eventKey',
-  requireScope('settings'),
-  actionLimiter,
-  (req, res) => {
-    if (!notificationsModel.EVENT_KEYS.includes(req.params.eventKey)) {
-      return res.status(400).json({ error: 'Unbekannter Ereignistyp.' });
-    }
-    try {
-      const cfg = notificationsModel.setConfig(req.guild.id, req.params.eventKey, {
-        toChannel: req.body.toChannel,
-        channelId: req.body.channelId,
-        toDashboard: req.body.toDashboard,
-      });
-      res.json({ ok: true, config: cfg });
-    } catch (err) {
-      res.status(400).json({ error: err.message });
-    }
-  },
-);
-
-router.get('/guilds/:guildId/notifications/inbox', requireScope('settings'), (req, res) => {
-  res.json({
-    items: notificationsModel.listInbox(req.guild.id, num(req.query.limit, 50)),
-    unread: notificationsModel.unreadCount(req.guild.id),
-  });
-});
-
-router.get('/guilds/:guildId/notifications/unread-count', requireScope('settings'), (req, res) => {
-  res.json({ unread: notificationsModel.unreadCount(req.guild.id) });
-});
-
-router.post('/guilds/:guildId/notifications/inbox/read-all', requireScope('settings'), (req, res) => {
-  notificationsModel.markAllRead(req.guild.id);
-  res.json({ ok: true });
-});
-
-router.post('/guilds/:guildId/notifications/inbox/:id/read', requireScope('settings'), (req, res) => {
-  notificationsModel.markRead(req.guild.id, num(req.params.id));
-  res.json({ ok: true });
-});
 
 /* ----------------------------------------------------------------
  *  Über den Bot in einen Kanal schreiben (auch: bestehende Bot-Nachricht bearbeiten)
@@ -1072,11 +531,9 @@ router.post(
  * ---------------------------------------------------------------- */
 
 const moderationService = require('../../src/services/moderationService');
-const warningsModel = require('../../src/database/models/warnings');
 
 router.post(
   '/guilds/:guildId/moderation/action',
-  requireScope('moderation'),
   actionLimiter,
   asyncHandler(async (req, res) => {
     try {
@@ -1086,7 +543,6 @@ router.post(
         reason: req.body.reason,
         minutes: req.body.minutes,
         actorTag: req.session.user.username,
-        actorId: req.session.user.id,
       });
       res.json({ ok: true, summary });
     } catch (err) {
@@ -1095,204 +551,19 @@ router.post(
   }),
 );
 
-router.get('/guilds/:guildId/moderation/warnings', requireScope('moderation'), (req, res) => {
-  const userId = String(req.query.userId || '');
-  if (userId && /^\d{5,25}$/.test(userId)) {
-    return res.json({ warnings: warningsModel.listForUser(req.guild.id, userId) });
-  }
-  res.json({ warnings: warningsModel.listRecent(req.guild.id, num(req.query.limit, 50)) });
-});
-
-router.post(
-  '/guilds/:guildId/moderation/warnings/:id/remove',
-  requireScope('moderation'),
-  actionLimiter,
-  asyncHandler(async (req, res) => {
-    const row = warningsModel.remove(req.guild.id, num(req.params.id));
-    if (!row) return res.status(404).json({ error: 'Verwarnung nicht gefunden.' });
-    res.json({ ok: true, warning: row });
-  }),
-);
-
 router.post(
   '/guilds/:guildId/moderation/purge',
-  requireScope('moderation'),
   actionLimiter,
   asyncHandler(async (req, res) => {
     if (!/^\d{5,25}$/.test(String(req.body.channelId || ''))) {
       return res.status(400).json({ error: 'Bitte einen Kanal wählen.' });
     }
     try {
-      const deleted = await moderationService.purge(req.guild, req.body.channelId, req.body.count, req.body.userId, req.session.user.id);
+      const deleted = await moderationService.purge(req.guild, req.body.channelId, req.body.count, req.body.userId);
       res.json({ ok: true, deleted });
     } catch (err) {
       res.status(400).json({ error: err.message });
     }
-  }),
-);
-
-// Schmale Variante des generischen /settings-PATCH: nur der Mod-Log-Kanal,
-// erreichbar für reine "moderation"-Rollen-Inhaber (siehe enforceDashboardScope).
-// Der generische /settings-PATCH bleibt für sie gesperrt, da er ~50 fachfremde
-// Felder auf einmal annimmt.
-router.patch(
-  '/guilds/:guildId/moderation/settings',
-  requireScope('moderation'),
-  asyncHandler(async (req, res) => {
-    const before = req.settings;
-    const patch = {
-      mod_log_channel_id: req.body.mod_log_channel_id,
-      security_log_channel_id: req.body.security_log_channel_id,
-    };
-    if (req.body.automod_enabled !== undefined) patch.automod_enabled = req.body.automod_enabled ? 1 : 0;
-    const updated = settingsModel.update(req.params.guildId, patch);
-    await logSettingsChange(req, before, updated, Object.keys(patch));
-    res.json({
-      mod_log_channel_id: updated.mod_log_channel_id,
-      security_log_channel_id: updated.security_log_channel_id,
-      automod_enabled: updated.automod_enabled,
-    });
-  }),
-);
-
-/* ----------------------------------------------------------------
- *  AutoMod – sechs eingebaute Filtertypen, an/aus + konfigurierbar
- * ---------------------------------------------------------------- */
-
-const automodModel = require('../../src/database/models/automodRules');
-
-router.get('/guilds/:guildId/automod', requireScope('moderation'), (req, res) => {
-  res.json({ rules: automodModel.listAllForGuild(req.guild.id), types: automodModel.TYPES, actions: automodModel.ACTIONS });
-});
-
-router.patch(
-  '/guilds/:guildId/automod/:type',
-  requireScope('moderation'),
-  actionLimiter,
-  (req, res) => {
-    if (!automodModel.TYPES.includes(req.params.type)) {
-      return res.status(400).json({ error: 'Unbekannter AutoMod-Typ.' });
-    }
-    const patch = {};
-    for (const key of ['enabled', 'config', 'action', 'timeoutMinutes', 'exceptRoleIds', 'exceptChannelIds']) {
-      if (Object.prototype.hasOwnProperty.call(req.body, key)) patch[key] = req.body[key];
-    }
-    try {
-      const rule = automodModel.upsertRule(req.guild.id, req.params.type, patch);
-      res.json({ ok: true, rule });
-    } catch (err) {
-      res.status(400).json({ error: err.message });
-    }
-  },
-);
-
-/* ----------------------------------------------------------------
- *  Anti-Raid – Join-Spike-Erkennung + Lockdown
- * ---------------------------------------------------------------- */
-
-const antiRaidModel = require('../../src/database/models/antiRaidSettings');
-const antiRaidService = require('../../src/services/antiRaidService');
-
-router.get('/guilds/:guildId/antiraid', requireScope('moderation'), (req, res) => {
-  res.json({
-    settings: antiRaidModel.get(req.guild.id),
-    status: antiRaidService.status(req.guild.id),
-    actions: antiRaidModel.ACTIONS,
-  });
-});
-
-router.patch(
-  '/guilds/:guildId/antiraid',
-  requireScope('moderation'),
-  actionLimiter,
-  (req, res) => {
-    const patch = {};
-    for (const key of [
-      'enabled',
-      'windowSeconds',
-      'maxJoins',
-      'minAccountAgeHours',
-      'action',
-      'lockdown',
-      'lockdownMinutes',
-      'notifyOwner',
-      'exemptRoleIds',
-      'exemptUserIds',
-    ]) {
-      if (Object.prototype.hasOwnProperty.call(req.body, key)) patch[key] = req.body[key];
-    }
-    try {
-      const settings = antiRaidModel.update(req.guild.id, patch);
-      res.json({ ok: true, settings });
-    } catch (err) {
-      res.status(400).json({ error: err.message });
-    }
-  },
-);
-
-router.post(
-  '/guilds/:guildId/antiraid/lockdown/lift',
-  requireScope('moderation'),
-  actionLimiter,
-  asyncHandler(async (req, res) => {
-    const lifted = await antiRaidService.liftLockdown(req.guild.id);
-    res.json({ ok: true, lifted });
-  }),
-);
-
-/* ----------------------------------------------------------------
- *  Anti-Nuke – überwacht gefährliche Server-Aktionen, bestraft den Täter
- * ---------------------------------------------------------------- */
-
-const antiNukeModel = require('../../src/database/models/antiNukeSettings');
-
-router.get('/guilds/:guildId/antinuke', requireScope('moderation'), (req, res) => {
-  res.json({
-    settings: antiNukeModel.get(req.guild.id),
-    types: antiNukeModel.TYPES,
-    defaultLimits: antiNukeModel.DEFAULT_LIMITS,
-    actions: antiNukeModel.ACTIONS,
-  });
-});
-
-router.patch(
-  '/guilds/:guildId/antinuke',
-  requireScope('moderation'),
-  actionLimiter,
-  (req, res) => {
-    const patch = {};
-    for (const key of ['enabled', 'limits', 'action', 'revert', 'notifyOwner', 'exemptRoleIds', 'exemptUserIds']) {
-      if (Object.prototype.hasOwnProperty.call(req.body, key)) patch[key] = req.body[key];
-    }
-    try {
-      const settings = antiNukeModel.update(req.guild.id, patch);
-      res.json({ ok: true, settings });
-    } catch (err) {
-      res.status(400).json({ error: err.message });
-    }
-  },
-);
-
-/* ----------------------------------------------------------------
- *  Dashboard-Rollen (welche Discord-Rollen dürfen was zusätzlich sehen)
- * ---------------------------------------------------------------- */
-
-const dashboardRolesModel = require('../../src/database/models/dashboardRoles');
-
-router.get('/guilds/:guildId/dashboard-roles', (req, res) => {
-  const scope = String(req.query.scope || '');
-  if (!dashboardRolesModel.SCOPES.includes(scope)) return res.status(400).json({ error: 'Unbekannter Bereich.' });
-  res.json({ scope, roleIds: dashboardRolesModel.getRolesForScope(req.guild.id, scope) });
-});
-
-router.post(
-  '/guilds/:guildId/dashboard-roles',
-  actionLimiter,
-  asyncHandler(async (req, res) => {
-    const scope = String(req.body.scope || '');
-    if (!dashboardRolesModel.SCOPES.includes(scope)) return res.status(400).json({ error: 'Unbekannter Bereich.' });
-    const roleIds = dashboardRolesModel.setRolesForScope(req.guild.id, scope, req.body.roleIds);
-    res.json({ ok: true, scope, roleIds });
   }),
 );
 
@@ -1507,28 +778,12 @@ router.patch(
     if ('application_enabled' in patch) {
       patch.application_enabled = patch.application_enabled ? 1 : 0;
     }
-    const before = req.settings;
     const updated = settingsModel.update(req.params.guildId, patch);
-    await logSettingsChange(req, before, updated, Object.keys(patch));
     res.json(updated);
   }),
 );
 
 router.get('/guilds/:guildId/activity', (req, res) => {
-  const q = req.query;
-  if (q.category || q.categories || q.actorId || q.targetId || q.from || q.to) {
-    return res.json(
-      activity.query(req.params.guildId, {
-        category: q.category || undefined,
-        categories: q.categories ? String(q.categories).split(',').filter(Boolean) : undefined,
-        actorId: q.actorId || undefined,
-        targetId: q.targetId || undefined,
-        from: q.from ? num(q.from, undefined) : undefined,
-        to: q.to ? num(q.to, undefined) : undefined,
-        limit: num(q.limit, 60),
-      }),
-    );
-  }
   res.json(activity.recent(req.params.guildId, Math.min(100, num(req.query.limit, 40))));
 });
 

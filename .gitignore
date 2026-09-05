@@ -9,7 +9,6 @@ node_modules/
 # Datenbank (auf dem Server persistent, nicht ins Repo)
 # NUR der Ordner im Projekt-Root – NICHT src/data/ o. ä.
 /data/
-/backups/
 *.sqlite
 *.sqlite3
 *.db

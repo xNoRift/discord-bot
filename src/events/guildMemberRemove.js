@@ -4,25 +4,15 @@ const settingsModel = require('../database/models/settings');
 const ticketsModel = require('../database/models/tickets');
 const ticketService = require('../services/ticketService');
 const welcomeService = require('../services/welcomeService');
-const antiNukeService = require('../services/antiNukeService');
 const logger = require('../utils/logger');
 
 /**
- * - Anti-Nuke: prüft per Audit-Log, ob es sich um einen Kick handelte
- *   (guildMemberRemove feuert sowohl bei freiwilligem Verlassen als auch
- *   bei einem Kick).
- * - "Aktion beim Verlassen" für Tickets: schließt oder löscht offene
- *   Tickets, wenn der Ersteller den Server verlässt.
+ * "Aktion beim Verlassen" für Tickets: schließt oder löscht offene Tickets,
+ * wenn der Ersteller den Server verlässt.
  */
 module.exports = {
   name: 'guildMemberRemove',
   async execute(member) {
-    try {
-      await antiNukeService.onMemberRemove(member);
-    } catch (err) {
-      logger.error('[guildMemberRemove] Anti-Nuke:', err.message);
-    }
-
     try {
       await welcomeService.sendLeave(member);
     } catch (err) {

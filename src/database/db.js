@@ -103,22 +103,6 @@ ensureColumn('game_counting', 'panel_message_id', 'TEXT');
 ensureColumn('guild_settings', 'music_dj_role_id', 'TEXT');
 ensureColumn('guild_settings', 'music_default_volume', 'INTEGER DEFAULT 100');
 
-// Verwarnungs-Eskalation (JSON-Array, z. B. [{"count":3,"action":"kick"}])
-ensureColumn('guild_settings', 'warn_escalation', 'TEXT');
-
-// Aktivitäts-Log: Kategorie für Filterung (ticket/giveaway/application/moderation/general)
-ensureColumn('activity_log', 'category', 'TEXT');
-
-// Sicherheits-Log-Kanal (Anti-Raid/Anti-Nuke-Alarme)
-ensureColumn('guild_settings', 'security_log_channel_id', 'TEXT');
-
-// Zentrales Audit-Log: alter/neuer Wert einer Änderung (z. B. Einstellungen)
-ensureColumn('activity_log', 'old_value', 'TEXT');
-ensureColumn('activity_log', 'new_value', 'TEXT');
-
-// AutoMod-Hauptschalter (gilt zusätzlich zu den einzelnen Filter-Schaltern)
-ensureColumn('guild_settings', 'automod_enabled', 'INTEGER DEFAULT 0');
-
 logger.info(`[db] Datenbank verbunden: ${config.database.path}`);
 
 process.on('exit', () => {

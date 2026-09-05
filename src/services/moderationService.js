@@ -3,18 +3,15 @@
 const { PermissionFlagsBits } = require('discord.js');
 const logService = require('./logService');
 const config = require('../../config/config');
-const settingsModel = require('../database/models/settings');
-const warningsModel = require('../database/models/warnings');
 
 /**
- * Einfache Moderations-Aktionen fürs Dashboard: Timeout, Kick, Ban, Verwarnen
+ * Einfache Moderations-Aktionen fürs Dashboard: Timeout, Kick, Ban
  * (jeweils per Discord-User-ID) und Nachrichten löschen (Purge).
  * Alles wird in den Moderations-Log-Kanal geschrieben.
  */
 
-const ACTIONS = ['timeout', 'untimeout', 'kick', 'ban', 'unban', 'warn'];
+const ACTIONS = ['timeout', 'untimeout', 'kick', 'ban', 'unban'];
 const MAX_TIMEOUT_MIN = 40320; // 28 Tage (Discord-Limit)
-const ESCALATABLE = ['notice', 'timeout', 'kick', 'ban']; // welche Aktionen eine Eskalationsregel auslösen darf
 
 function assertBotCan(me, flag, label) {
   if (!me?.permissions.has(flag)) {
@@ -30,7 +27,7 @@ function assertHierarchy(me, member) {
   }
 }
 
-async function act(guild, { action, userId, reason, minutes, actorTag, actorId }) {
+async function act(guild, { action, userId, reason, minutes, actorTag }) {
   if (!ACTIONS.includes(action)) throw new Error('Unbekannte Aktion.');
   if (!/^\d{5,25}$/.test(String(userId || ''))) throw new Error('Bitte eine gültige Discord-User-ID angeben.');
   const why = String(reason || '').trim().slice(0, 400) || 'Kein Grund angegeben';
@@ -38,7 +35,6 @@ async function act(guild, { action, userId, reason, minutes, actorTag, actorId }
 
   const me = guild.members.me ?? (await guild.members.fetchMe());
   let summary;
-  let warnCount = null;
 
   if (action === 'timeout' || action === 'untimeout') {
     assertBotCan(me, PermissionFlagsBits.ModerateMembers, 'Mitglieder timeouten');
@@ -76,12 +72,6 @@ async function act(guild, { action, userId, reason, minutes, actorTag, actorId }
       throw new Error('Dieser Nutzer ist nicht gebannt.');
     });
     summary = `Bann für ${userId} aufgehoben`;
-  } else if (action === 'warn') {
-    const member = await guild.members.fetch(userId).catch(() => null);
-    warningsModel.add({ guildId: guild.id, userId, moderatorId: actorId, moderatorTag: actorTag, reason: why });
-    warnCount = warningsModel.countActive(guild.id, userId);
-    summary = `${member?.user.tag || userId} verwarnt (${warnCount}. aktive Verwarnung)`;
-    await member?.send(`Du wurdest auf **${guild.name}** verwarnt.\nGrund: ${why}\nAktive Verwarnungen: ${warnCount}`).catch(() => null);
   }
 
   await logService
@@ -97,59 +87,18 @@ async function act(guild, { action, userId, reason, minutes, actorTag, actorId }
         { name: 'Grund', value: why, inline: true },
         ...(actorTag ? [{ name: 'Von', value: actorTag, inline: true }] : []),
       ],
-      actorId,
       targetId: userId,
     })
     .catch(() => null);
 
-  if (action === 'warn' && warnCount != null) {
-    const escalated = await maybeEscalate(guild, userId, warnCount);
-    if (escalated) summary += ` → automatisch eskaliert: ${escalated}`;
-  }
-
   return summary;
-}
-
-/**
- * Prüft die konfigurierten Eskalationsregeln (guild_settings.warn_escalation)
- * und löst bei Treffer automatisch die hinterlegte Aktion aus.
- * Regeln: [{ count: 3, action: 'kick', minutes?: 60 }, ...]
- */
-async function maybeEscalate(guild, userId, warnCount) {
-  const settings = settingsModel.get(guild.id);
-  let rules;
-  try {
-    rules = JSON.parse(settings.warn_escalation || '[]');
-  } catch {
-    rules = [];
-  }
-  if (!Array.isArray(rules) || !rules.length) return null;
-
-  const rule = rules.find((r) => Number(r.count) === warnCount && ESCALATABLE.includes(r.action));
-  if (!rule) return null;
-
-  // "Hinweis": keine zusätzliche Discord-Aktion, die Verwarnung selbst hat
-  // den Nutzer bereits per DM informiert – nur zur Konfiguration erwähnt.
-  if (rule.action === 'notice') return 'Hinweis (keine weitere Aktion)';
-
-  try {
-    return await act(guild, {
-      action: rule.action,
-      userId,
-      reason: `Automatische Eskalation nach ${warnCount} Verwarnungen`,
-      minutes: rule.minutes,
-      actorTag: 'Auto-Eskalation',
-    });
-  } catch (err) {
-    return `Eskalation fehlgeschlagen (${err.message})`;
-  }
 }
 
 /**
  * Löscht die letzten `count` Nachrichten in einem Kanal (max. 100, < 14 Tage).
  * @returns {Promise<number>} Anzahl gelöschter Nachrichten
  */
-async function purge(guild, channelId, count, filterUserId, actorId) {
+async function purge(guild, channelId, count, filterUserId) {
   const me = guild.members.me ?? (await guild.members.fetchMe());
   const channel = guild.channels.cache.get(String(channelId || ''));
   if (!channel || !channel.isTextBased()) throw new Error('Kanal nicht gefunden.');
@@ -174,8 +123,6 @@ async function purge(guild, channelId, count, filterUserId, actorId) {
         { name: 'Kanal', value: `<#${channel.id}>`, inline: true },
         { name: 'Anzahl', value: String(deleted.size), inline: true },
       ],
-      actorId,
-      targetId: /^\d{5,25}$/.test(String(filterUserId || '')) ? String(filterUserId) : undefined,
     })
     .catch(() => null);
   return deleted.size;

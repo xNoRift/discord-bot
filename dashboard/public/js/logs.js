@@ -9,38 +9,17 @@ const ICО = {
   giveaway_create: 'gift', giveaway_end: 'gift', giveaway_winners: 'star', giveaway_reroll: 'refresh',
   giveaway_cancel: 'x', giveaway_role_granted: 'star', giveaway_role_removed: 'clock',
   application_create: 'clipboard', application_accept: 'check', application_reject: 'x',
-  mod_warn: 'bell', mod_timeout: 'clock', mod_kick: 'x', mod_ban: 'x', mod_purge: 'trash',
-  automod_spam: 'shield', automod_caps: 'shield', automod_links: 'shield', automod_invites: 'shield',
-  automod_mention_spam: 'shield', automod_wordlist: 'shield',
-  antiraid_spike: 'shield', antiraid_young_account: 'shield',
-  antinuke_channel_delete: 'shield', antinuke_channel_create: 'shield', antinuke_role_delete: 'shield',
-  antinuke_role_create: 'shield', antinuke_role_dangerous_permission: 'shield', antinuke_ban: 'shield',
-  antinuke_kick: 'shield', antinuke_webhook_create: 'shield', antinuke_webhook_delete: 'shield', antinuke_bot_add: 'shield',
-  settings_update: 'settings',
 };
-
-function buildQuery() {
-  const params = new URLSearchParams({ limit: '100' });
-  if (filter) params.set('category', filter);
-  const actorId = document.getElementById('logActorId').value.trim();
-  if (actorId) params.set('actorId', actorId);
-  const from = document.getElementById('logFrom').value;
-  if (from) params.set('from', String(new Date(from + 'T00:00:00').getTime()));
-  const to = document.getElementById('logTo').value;
-  if (to) params.set('to', String(new Date(to + 'T23:59:59').getTime()));
-  return params.toString();
-}
 
 async function loadLogs() {
   const w = document.getElementById('logList');
   w.innerHTML = '<li class="loading">Lädt…</li>';
   try {
-    const rows = await apiFor('GET', `/activity?${buildQuery()}`);
-    w.innerHTML = rows.length
-      ? rows.map((r) => `<li>
+    const rows = await apiFor('GET', '/activity?limit=100');
+    const filtered = filter ? rows.filter((r) => (r.type || '').startsWith(filter)) : rows;
+    w.innerHTML = filtered.length ? filtered.map((r) => `<li>
       <span class="activity__ico">${icon(ICО[r.type] || 'bell', 'icon--sm')}</span>
-      <span>${escapeHtml(r.message || r.type)}${r.actor_id ? ` <span class="muted">· von ${escapeHtml(r.actor_id)}</span>` : ''}
-      ${r.old_value || r.new_value ? `<br><span class="muted">${escapeHtml(r.old_value || '–')} → ${escapeHtml(r.new_value || '–')}</span>` : ''}</span>
+      <span>${escapeHtml(r.message || r.type)}</span>
       <time>${escapeHtml(fmtRelative(r.created_at))}</time></li>`).join('')
       : '<li class="muted">Keine Einträge.</li>';
   } catch (e) { w.innerHTML = `<li class="muted">${escapeHtml(e.message)}</li>`; }
@@ -52,13 +31,6 @@ document.getElementById('logTabs').addEventListener('click', (e) => {
   b.classList.add('is-active'); filter = b.dataset.f; loadLogs();
 });
 document.getElementById('reload').addEventListener('click', loadLogs);
-document.getElementById('logFilterApply').addEventListener('click', loadLogs);
-document.getElementById('logFilterClear').addEventListener('click', () => {
-  document.getElementById('logActorId').value = '';
-  document.getElementById('logFrom').value = '';
-  document.getElementById('logTo').value = '';
-  loadLogs();
-});
 
 document.getElementById('logChannels').addEventListener('submit', async (e) => {
   e.preventDefault();

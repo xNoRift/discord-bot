@@ -9,12 +9,8 @@
 <div class="card">
   <div class="card__head"><h2><%- icon('file') %> Moderations-Log</h2></div>
   <form id="modForm" class="form">
-    <div class="col-2">
-      <div class="field"><label>Moderations-Log-Kanal</label><select name="mod_log_channel_id" data-type="text"></select>
-        <small>Kanal für Moderations-Ereignisse.</small></div>
-      <div class="field"><label>Sicherheits-Log-Kanal</label><select name="security_log_channel_id" data-type="text"></select>
-        <small>Kanal für Anti-Raid-/Anti-Nuke-Alarme.</small></div>
-    </div>
+    <div class="field"><label>Moderations-Log-Kanal</label><select name="mod_log_channel_id" data-type="text"></select>
+      <small>Kanal für Moderations-Ereignisse.</small></div>
     <div><button class="btn btn--primary btn--sm" type="submit">Speichern</button></div>
   </form>
 </div>
@@ -29,7 +25,6 @@
     </div>
     <div class="field"><label>Grund</label><input name="reason" maxlength="400" placeholder="z. B. Spam" /></div>
     <div class="row-inline" style="flex-wrap:wrap;margin-top:6px;">
-      <button class="btn btn--sm btn--outline" data-act="warn" type="submit"><%- icon('bell', 'icon--sm') %> Verwarnen</button>
       <button class="btn btn--sm" data-act="timeout" type="submit"><%- icon('clock', 'icon--sm') %> Timeout</button>
       <button class="btn btn--sm" data-act="untimeout" type="submit">Timeout aufheben</button>
       <button class="btn btn--sm btn--danger" data-act="kick" type="submit">Kicken</button>
@@ -38,43 +33,6 @@
     </div>
     <p class="muted" id="modActionStatus"></p>
   </form>
-</div>
-
-<div class="card">
-  <div class="card__head"><h2><%- icon('bell') %> Verwarnungshistorie & Moderationshistorie</h2></div>
-  <p class="card__sub">Zeigt Verwarnungen (auch zurückgezogene) sowie alle Moderations-Maßnahmen (Timeout/Kick/Bann/AutoMod/…) einer bestimmten Person.</p>
-  <div class="row-inline" style="flex-wrap:wrap;gap:10px;">
-    <input id="warnLookupId" inputmode="numeric" placeholder="User-ID" style="max-width:260px;" />
-    <button class="btn btn--ghost btn--sm" type="button" id="warnLookupBtn"><%- icon('external', 'icon--sm') %> Anzeigen</button>
-  </div>
-  <p class="muted" style="margin-top:14px;margin-bottom:4px;">Verwarnungen</p>
-  <ul class="activity" id="warnList"><li class="muted">Noch keine Suche.</li></ul>
-  <p class="muted" style="margin-top:14px;margin-bottom:4px;">Komplette Moderationshistorie</p>
-  <ul class="activity" id="modHistoryList"><li class="muted">Noch keine Suche.</li></ul>
-</div>
-
-<div class="card">
-  <div class="card__head"><h2><%- icon('file') %> Alle Verwarnungen</h2></div>
-  <p class="card__sub">Die letzten Verwarnungen auf diesem Server, serverweit.</p>
-  <ul class="activity" id="allWarnList"><li class="loading">Lädt…</li></ul>
-</div>
-
-<div class="card">
-  <div class="card__head"><h2><%- icon('chart') %> Automatische Eskalation</h2></div>
-  <p class="card__sub">Bei genau N <b>aktiven</b> Verwarnungen automatisch eine Aktion auslösen. Leer lassen = keine Automatik.</p>
-  <div id="escRows"></div>
-  <button class="btn btn--ghost btn--sm" type="button" id="escAdd" style="margin-top:8px;"><%- icon('plus', 'icon--sm') %> Regel hinzufügen</button>
-  <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" type="button" id="escSave">Speichern</button> <span class="muted" id="escStatus"></span></div>
-</div>
-
-<div class="card">
-  <div class="card__head"><h2><%- icon('users') %> Zugriff auf Moderation</h2></div>
-  <p class="card__sub">Mitglieder mit einer dieser Rollen dürfen ins Dashboard und Moderations-Aktionen ausführen (inkl. AutoMod-Einstellungen), auch ohne „Server verwalten"/Administrator. Alle anderen Bereiche (Tickets, Giveaways, Bewerbungen, Einstellungen, …) bleiben für sie trotzdem gesperrt.</p>
-  <div id="modRoleChecks"><div class="loading">Lädt…</div></div>
-  <div class="row-inline" style="margin-top:12px;">
-    <button class="btn btn--primary btn--sm" type="button" id="modRoleSave">Speichern</button>
-    <span class="muted" id="modRoleStatus"></span>
-  </div>
 </div>
 
 <div class="card">
@@ -88,110 +46,6 @@
     <div class="field"><label>Nur von User-ID (optional)</label><input name="userId" inputmode="numeric" placeholder="leer = alle" /></div>
     <div style="margin-top:6px;"><button class="btn btn--danger btn--sm" type="submit"><%- icon('trash', 'icon--sm') %> Löschen</button> <span class="muted" id="modPurgeStatus"></span></div>
   </form>
-</div>
-
-<div class="card">
-  <div class="card__head"><h2><%- icon('shield') %> Anti-Nuke</h2></div>
-  <p class="card__sub">Überwacht gefährliche Server-Aktionen (Kanäle/Rollen löschen/erstellen, gefährliche Rechteänderungen, Massenban/-kick, Webhooks, Bot-Additions). Reagiert erst, wenn ein Limit pro Person überschritten wird – nicht bei jeder einzelnen Aktion. Serverbesitzer und der Bot selbst sind immer geschützt.</p>
-  <form id="antiNukeForm" class="form">
-    <div class="setting-row">
-      <div class="setting-row__text"><b>Anti-Nuke aktivieren</b><span>Schaltet die gesamte Anti-Nuke-Überwachung an/aus.</span></div>
-      <label class="toggle"><input type="checkbox" name="enabled"><span class="toggle__track"></span></label>
-    </div>
-    <div class="col-2">
-      <div class="field"><label>Aktion gegen den Täter</label>
-        <select name="action">
-          <option value="strip_roles">Alle Rollen entfernen</option>
-          <option value="kick">Kicken</option>
-          <option value="ban">Bannen</option>
-        </select>
-      </div>
-      <div class="field"><label>&nbsp;</label>
-        <label class="setting-row" style="cursor:pointer;padding:4px 0;">
-          <input type="checkbox" name="revert" style="width:17px;height:17px;accent-color:var(--accent);">
-          <span class="setting-row__text">Änderung wiederherstellen, wenn technisch möglich</span>
-        </label>
-      </div>
-    </div>
-    <label class="setting-row" style="cursor:pointer;padding:8px 0;">
-      <input type="checkbox" name="notifyOwner" style="width:17px;height:17px;accent-color:var(--accent);">
-      <span class="setting-row__text"><b>Serverbesitzer per DM benachrichtigen</b></span>
-    </label>
-
-    <p class="muted" style="margin-top:14px;margin-bottom:4px;">Limits pro Aktionstyp (Anzahl innerhalb von X Sekunden pro Person)</p>
-    <div id="antiNukeLimits"></div>
-
-    <div class="field" style="margin-top:10px;"><label>Ausnahme-Rollen (nie betroffen)</label>
-      <div id="antiNukeRoles" style="max-height:160px;overflow:auto;"><div class="loading">Lädt…</div></div>
-    </div>
-    <div class="field"><label>Ausnahme-User-IDs (eine pro Zeile)</label>
-      <textarea name="exemptUserIds" rows="3" placeholder="123456789012345678"></textarea>
-    </div>
-    <div class="row-inline" style="margin-top:6px;">
-      <button class="btn btn--primary btn--sm" type="submit">Speichern</button>
-      <span class="muted" id="antiNukeStatus"></span>
-    </div>
-  </form>
-</div>
-
-<div class="card">
-  <div class="card__head"><h2><%- icon('shield') %> Anti-Raid</h2></div>
-  <p class="card__sub">Erkennt ungewöhnlich viele Beitritte in kurzer Zeit und optional zu junge Accounts. Reagiert immer mit Alarm + Log, optional zusätzlich mit Kick/Bann und einem temporären Lockdown (angehobene Verifizierungsstufe).</p>
-  <p class="muted" id="antiRaidStatus">Lädt…</p>
-  <form id="antiRaidForm" class="form">
-    <div class="setting-row">
-      <div class="setting-row__text"><b>Anti-Raid aktivieren</b><span>Schaltet die Join-Spike-Erkennung an/aus.</span></div>
-      <label class="toggle"><input type="checkbox" name="enabled"><span class="toggle__track"></span></label>
-    </div>
-    <div class="col-2">
-      <div class="field"><label>Zeitfenster (Sekunden)</label><input name="windowSeconds" type="number" min="2" max="600" placeholder="10" /></div>
-      <div class="field"><label>Max. Beitritte im Zeitfenster</label><input name="maxJoins" type="number" min="2" max="1000" placeholder="10" /></div>
-    </div>
-    <div class="col-2">
-      <div class="field"><label>Mindest-Accountalter (Stunden, 0 = aus)</label><input name="minAccountAgeHours" type="number" min="0" max="8760" placeholder="0" /></div>
-      <div class="field"><label>Aktion bei Alarm</label>
-        <select name="action">
-          <option value="log">Nur Alarm + Log</option>
-          <option value="kick">+ Kick</option>
-          <option value="ban">+ Bann</option>
-        </select>
-      </div>
-    </div>
-    <label class="setting-row" style="cursor:pointer;padding:8px 0;">
-      <input type="checkbox" name="notifyOwner" style="width:17px;height:17px;accent-color:var(--accent);">
-      <span class="setting-row__text"><b>Serverbesitzer per DM benachrichtigen</b><span class="muted">Höchstens alle 5 Minuten erneut, um Spam zu vermeiden.</span></span>
-    </label>
-    <label class="setting-row" style="cursor:pointer;padding:8px 0;">
-      <input type="checkbox" name="lockdown" style="width:17px;height:17px;accent-color:var(--accent);">
-      <span class="setting-row__text"><b>Lockdown bei Alarm</b><span class="muted">Verifizierungsstufe temporär auf „Sehr hoch" anheben.</span></span>
-    </label>
-    <div class="field"><label>Lockdown-Dauer (Minuten)</label><input name="lockdownMinutes" type="number" min="1" max="1440" placeholder="10" style="max-width:160px;" /></div>
-    <div class="field"><label>Ausnahme-Rollen (nie betroffen)</label>
-      <div id="antiRaidRoles" style="max-height:160px;overflow:auto;"><div class="loading">Lädt…</div></div>
-    </div>
-    <div class="field"><label>Ausnahme-User-IDs (eine pro Zeile, z. B. bekannte Bots)</label>
-      <textarea name="exemptUserIds" rows="3" placeholder="123456789012345678"></textarea>
-    </div>
-    <div class="row-inline" style="margin-top:6px;">
-      <button class="btn btn--primary btn--sm" type="submit">Speichern</button>
-      <button class="btn btn--ghost btn--sm" type="button" id="antiRaidLiftLockdown" hidden>Lockdown jetzt aufheben</button>
-      <span class="muted" id="antiRaidFormStatus"></span>
-    </div>
-  </form>
-</div>
-
-<div class="card">
-  <div class="card__head"><h2><%- icon('shield') %> AutoMod</h2></div>
-  <p class="card__sub">Löscht automatisch Nachrichten, die einen aktivierten Filter treffen, und protokolliert das im Moderations-Log. Optional zusätzlich eine Aktion gegen den Nutzer (Verwarnen/Timeout/Kick/Bann). Administratoren, Server-Manager und Personen mit Zugriff auf „Moderation" (siehe oben) sind immer ausgenommen.</p>
-  <div class="setting-row">
-    <div class="setting-row__text"><b>AutoMod aktivieren</b><span>Hauptschalter. Ist er aus, greift kein Filter – egal wie die einzelnen Filter unten stehen.</span></div>
-    <label class="toggle"><input type="checkbox" id="automodEnabled"><span class="toggle__track"></span></label>
-  </div>
-  <div id="automodRows"><div class="loading">Lädt…</div></div>
-  <div class="row-inline" style="margin-top:12px;">
-    <button class="btn btn--primary btn--sm" type="button" id="automodSave">Speichern</button>
-    <span class="muted" id="automodStatus"></span>
-  </div>
 </div>
 
 <%- include('partials/app-shell-close') %>
