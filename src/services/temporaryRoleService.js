@@ -196,12 +196,15 @@ async function removeExpired(id) {
     }
   }
 
+  const isGiveaway = row.reason === 'giveaway';
+  const title = isGiveaway ? '⏰ Giveaway Gewinnerrolle entfernt' : '⏰ Temporäre Rolle entfernt';
+
   if (member) {
     await member
       .send({
         embeds: [
           embeds.info(
-            '⏰ Giveaway Gewinnerrolle entfernt',
+            title,
             `Deine temporäre Rolle **${role ? role.name : row.role_id}** auf **${guild.name}** ist abgelaufen und wurde entfernt.`,
           ),
         ],
@@ -211,9 +214,9 @@ async function removeExpired(id) {
 
   await logService.log({
     guildId: row.guild_id,
-    category: 'giveaway',
-    type: 'giveaway_role_removed',
-    title: '⏰ Gewinnerrolle entfernt',
+    category: isGiveaway ? 'giveaway' : 'roles',
+    type: isGiveaway ? 'giveaway_role_removed' : 'role_temp_removed',
+    title,
     color: require('../../config/config').branding.warning,
     fields: [
       { name: 'Nutzer', value: `<@${row.user_id}>`, inline: true },
@@ -255,4 +258,80 @@ async function sweep() {
   }
 }
 
-module.exports = { grantGiveawayRole, removeExpired, restoreAll, sweep, schedule };
+/**
+ * Vergibt eine beliebige Rolle befristet (z. B. aus der Rollenverwaltung im
+ * Dashboard) - nutzt dieselbe Persistenz/Timer-Infrastruktur wie die
+ * Giveaway-Gewinnerrolle, aber ohne deren spezifische Nachrichten/Logging.
+ * @param {import('discord.js').Guild} guild
+ * @param {string} userId
+ * @param {string} roleId
+ * @param {number} durationMs
+ * @param {{actorTag?: string}} [options]
+ * @returns {Promise<{ok: boolean, reason?: string, expiresAt?: number, extended?: boolean}>}
+ */
+async function grantTemporaryRole(guild, userId, roleId, durationMs, options = {}) {
+  const role = guild.roles.cache.get(roleId) ?? (await guild.roles.fetch(roleId).catch(() => null));
+  if (!role) return { ok: false, reason: 'Rolle nicht gefunden.' };
+
+  const can = botCanManageRole(guild, role);
+  if (!can.ok) return { ok: false, reason: can.reason };
+
+  const member = await guild.members.fetch(userId).catch(() => null);
+  if (!member) return { ok: false, reason: 'Mitglied nicht auf dem Server gefunden.' };
+
+  await member.roles.add(role, `Befristet vergeben über Dashboard von ${options.actorTag || 'unbekannt'}`).catch((err) => {
+    throw new Error(`roles.add: ${err.message}`);
+  });
+
+  const now = Date.now();
+  const newExpiry = now + durationMs;
+  const existing = tempRoles.findActive(guild.id, userId, roleId);
+  let rowId;
+  let extended = false;
+  let expiresAt = newExpiry;
+
+  if (existing) {
+    expiresAt = Math.max(existing.expires_at, newExpiry);
+    tempRoles.extend(existing.id, expiresAt);
+    rowId = existing.id;
+    extended = true;
+  } else {
+    const row = tempRoles.create({ userId, guildId: guild.id, roleId, durationMs, reason: 'manual' });
+    rowId = row.id;
+    expiresAt = row.expires_at;
+  }
+
+  schedule(tempRoles.get(rowId));
+
+  await member
+    .send({
+      embeds: [
+        embeds.success(
+          '⏳ Temporäre Rolle erhalten',
+          `Du hast auf **${guild.name}** die Rolle **${role.name}** erhalten.\n` +
+            `Sie wird automatisch entfernt: ${discordTimestamp(expiresAt, 'F')} (${discordTimestamp(expiresAt, 'R')}).`,
+        ),
+      ],
+    })
+    .catch(() => null);
+
+  await logService.log({
+    guildId: guild.id,
+    category: 'roles',
+    type: 'role_temp_assigned',
+    title: `⏳ Temporäre Rolle vergeben (${options.actorTag || 'unbekannt'})`,
+    color: require('../../config/config').branding.success,
+    fields: [
+      { name: 'Nutzer', value: `<@${userId}>`, inline: true },
+      { name: 'Rolle', value: `<@&${roleId}>`, inline: true },
+      { name: 'Dauer', value: formatDuration(durationMs), inline: true },
+      { name: 'Entfernt am', value: discordTimestamp(expiresAt, 'F'), inline: false },
+    ],
+    targetId: userId,
+    meta: { roleId, expiresAt, extended },
+  });
+
+  return { ok: true, expiresAt, extended };
+}
+
+module.exports = { grantGiveawayRole, grantTemporaryRole, removeExpired, restoreAll, sweep, schedule };

@@ -346,6 +346,203 @@ router.get('/guilds/:guildId/channels', (req, res) => res.json(serializeChannels
 router.get('/guilds/:guildId/roles', (req, res) => res.json(serializeRoles(req.guild)));
 
 /* ----------------------------------------------------------------
+ *  Rollenverwaltung – erstellen/löschen/umbenennen/Farbe, vergeben/entfernen
+ *  (inkl. befristet). Prüft immer die Bot-Rollenhierarchie (botCanManageRole).
+ * ---------------------------------------------------------------- */
+
+const { botCanManageRole } = require('../../src/utils/permissions');
+const temporaryRoleService = require('../../src/services/temporaryRoleService');
+
+function validHexColor(v) {
+  return typeof v === 'string' && /^#?[0-9a-fA-F]{6}$/.test(v);
+}
+
+router.post(
+  '/guilds/:guildId/roles',
+  requireScope('settings'),
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const name = String(req.body.name || '').trim().slice(0, 100);
+    if (!name) return res.status(400).json({ error: 'Bitte einen Namen angeben.' });
+    const me = req.guild.members.me ?? (await req.guild.members.fetchMe());
+    if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      return res.status(403).json({ error: 'Dem Bot fehlt „Rollen verwalten".' });
+    }
+    try {
+      const role = await req.guild.roles.create({
+        name,
+        color: validHexColor(req.body.color) ? req.body.color : undefined,
+        hoist: Boolean(req.body.hoist),
+        mentionable: Boolean(req.body.mentionable),
+        reason: `Erstellt über Dashboard von ${req.session.user.username}`,
+      });
+      await logService
+        .log({
+          guildId: req.guild.id,
+          category: 'roles',
+          type: 'role_create',
+          title: `➕ Rolle erstellt (${req.session.user.username})`,
+          description: `**${role.name}**`,
+          actorId: req.session.user.id,
+          targetId: role.id,
+        })
+        .catch(() => null);
+      res.json({ ok: true, role: { id: role.id, name: role.name, color: role.hexColor, position: role.position } });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
+router.patch(
+  '/guilds/:guildId/roles/:roleId',
+  requireScope('settings'),
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const role = req.guild.roles.cache.get(req.params.roleId) ?? (await req.guild.roles.fetch(req.params.roleId).catch(() => null));
+    if (!role) return res.status(404).json({ error: 'Rolle nicht gefunden.' });
+    const can = botCanManageRole(req.guild, role);
+    if (!can.ok) return res.status(403).json({ error: can.reason });
+
+    const patch = {};
+    if (typeof req.body.name === 'string' && req.body.name.trim()) patch.name = req.body.name.trim().slice(0, 100);
+    if (validHexColor(req.body.color)) patch.color = req.body.color;
+    if ('hoist' in req.body) patch.hoist = Boolean(req.body.hoist);
+    if ('mentionable' in req.body) patch.mentionable = Boolean(req.body.mentionable);
+    if (!Object.keys(patch).length) return res.status(400).json({ error: 'Nichts zu ändern.' });
+
+    const before = { name: role.name, color: role.hexColor };
+    try {
+      const updated = await role.edit({ ...patch, reason: `Geändert über Dashboard von ${req.session.user.username}` });
+      await logService
+        .log({
+          guildId: req.guild.id,
+          category: 'roles',
+          type: 'role_update',
+          title: `✏️ Rolle geändert (${req.session.user.username})`,
+          description: `**${before.name}** (${before.color}) → **${updated.name}** (${updated.hexColor})`,
+          actorId: req.session.user.id,
+          targetId: updated.id,
+          oldValue: before,
+          newValue: { name: updated.name, color: updated.hexColor },
+        })
+        .catch(() => null);
+      res.json({ ok: true, role: { id: updated.id, name: updated.name, color: updated.hexColor, position: updated.position } });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
+router.delete(
+  '/guilds/:guildId/roles/:roleId',
+  requireScope('settings'),
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const role = req.guild.roles.cache.get(req.params.roleId) ?? (await req.guild.roles.fetch(req.params.roleId).catch(() => null));
+    if (!role) return res.status(404).json({ error: 'Rolle nicht gefunden.' });
+    const can = botCanManageRole(req.guild, role);
+    if (!can.ok) return res.status(403).json({ error: can.reason });
+
+    const label = role.name;
+    try {
+      await role.delete(`Gelöscht über Dashboard von ${req.session.user.username}`);
+      await logService
+        .log({
+          guildId: req.guild.id,
+          category: 'roles',
+          type: 'role_delete',
+          title: `🗑️ Rolle gelöscht (${req.session.user.username})`,
+          description: `**${label}**`,
+          actorId: req.session.user.id,
+        })
+        .catch(() => null);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
+router.post(
+  '/guilds/:guildId/roles/:roleId/members/:userId',
+  requireScope('settings'),
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    if (!/^\d{5,25}$/.test(req.params.userId)) return res.status(400).json({ error: 'Ungültige User-ID.' });
+    const role = req.guild.roles.cache.get(req.params.roleId) ?? (await req.guild.roles.fetch(req.params.roleId).catch(() => null));
+    if (!role) return res.status(404).json({ error: 'Rolle nicht gefunden.' });
+    const can = botCanManageRole(req.guild, role);
+    if (!can.ok) return res.status(403).json({ error: can.reason });
+
+    const member = await req.guild.members.fetch(req.params.userId).catch(() => null);
+    if (!member) return res.status(404).json({ error: 'Mitglied nicht auf dem Server gefunden.' });
+
+    const rawDuration = String(req.body.duration || '').trim();
+    const durationMs = rawDuration ? (/^\d+$/.test(rawDuration) ? num(rawDuration, null) : parseDuration(rawDuration)) : null;
+    if (rawDuration && !durationMs) return res.status(400).json({ error: 'Ungültige Dauer (z. B. „2h", „30m", „1d").' });
+    try {
+      if (durationMs && durationMs > 0) {
+        const result = await temporaryRoleService.grantTemporaryRole(req.guild, req.params.userId, role.id, durationMs, {
+          actorTag: req.session.user.username,
+        });
+        if (!result.ok) return res.status(400).json({ error: result.reason });
+        return res.json({ ok: true, temporary: true, expiresAt: result.expiresAt });
+      }
+      await member.roles.add(role, `Vergeben über Dashboard von ${req.session.user.username}`);
+      await logService
+        .log({
+          guildId: req.guild.id,
+          category: 'roles',
+          type: 'role_assigned',
+          title: `👤 Rolle vergeben (${req.session.user.username})`,
+          description: `**${role.name}** an <@${member.id}>`,
+          actorId: req.session.user.id,
+          targetId: member.id,
+        })
+        .catch(() => null);
+      res.json({ ok: true, temporary: false });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
+router.delete(
+  '/guilds/:guildId/roles/:roleId/members/:userId',
+  requireScope('settings'),
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    if (!/^\d{5,25}$/.test(req.params.userId)) return res.status(400).json({ error: 'Ungültige User-ID.' });
+    const role = req.guild.roles.cache.get(req.params.roleId) ?? (await req.guild.roles.fetch(req.params.roleId).catch(() => null));
+    if (!role) return res.status(404).json({ error: 'Rolle nicht gefunden.' });
+    const can = botCanManageRole(req.guild, role);
+    if (!can.ok) return res.status(403).json({ error: can.reason });
+
+    const member = await req.guild.members.fetch(req.params.userId).catch(() => null);
+    if (!member) return res.status(404).json({ error: 'Mitglied nicht auf dem Server gefunden.' });
+
+    try {
+      await member.roles.remove(role, `Entfernt über Dashboard von ${req.session.user.username}`);
+      await logService
+        .log({
+          guildId: req.guild.id,
+          category: 'roles',
+          type: 'role_removed',
+          title: `👤 Rolle entfernt (${req.session.user.username})`,
+          description: `**${role.name}** von <@${member.id}>`,
+          actorId: req.session.user.id,
+          targetId: member.id,
+        })
+        .catch(() => null);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
+/* ----------------------------------------------------------------
  *  Über den Bot in einen Kanal schreiben (auch: bestehende Bot-Nachricht bearbeiten)
  * ---------------------------------------------------------------- */
 

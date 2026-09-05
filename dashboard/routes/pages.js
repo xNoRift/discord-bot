@@ -41,6 +41,7 @@ const NAV = [
     label: 'Server',
     items: [
       { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
+      { key: 'roles', label: 'Rollen', icon: 'shield', path: '/roles' },
       { key: 'statistics', label: 'Statistiken', icon: 'chart', path: '/statistics' },
       { key: 'settings', label: 'Einstellungen', icon: 'settings', path: '/settings' },
     ],
@@ -64,6 +65,7 @@ const CRUMB = {
   giveaways: { crumb: 'Giveaways', crumbIcon: 'gift' },
   applications: { crumb: 'Bewerbungen', crumbIcon: 'clipboard' },
   moderation: { crumb: 'Moderation', crumbIcon: 'shield' },
+  roles: { crumb: 'Rollen', crumbIcon: 'shield' },
   statistics: { crumb: 'Statistiken', crumbIcon: 'chart' },
   team: { crumb: 'Teamverwaltung', crumbIcon: 'users' },
   settings: { crumb: 'Einstellungen', crumbIcon: 'settings' },
@@ -139,6 +141,7 @@ const PAGES = [
   ['/giveaways', 'giveaways'],
   ['/applications', 'applications'],
   ['/moderation', 'moderation'],
+  ['/roles', 'roles'],
   ['/statistics', 'statistics'],
   ['/team', 'team'],
   ['/settings', 'settings'],

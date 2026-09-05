@@ -155,6 +155,11 @@ const SCOPED_ALLOWLIST = [
   { method: 'POST', path: /^\/antiraid\/lockdown\/lift$/, scope: 'moderation' },
   { method: 'GET', path: /^\/antinuke$/, scope: 'moderation' },
   { method: 'PATCH', path: /^\/antinuke$/, scope: 'moderation' },
+  { method: 'POST', path: /^\/roles$/, scope: 'settings' },
+  { method: 'PATCH', path: /^\/roles\/\d+$/, scope: 'settings' },
+  { method: 'DELETE', path: /^\/roles\/\d+$/, scope: 'settings' },
+  { method: 'POST', path: /^\/roles\/\d+\/members\/\d+$/, scope: 'settings' },
+  { method: 'DELETE', path: /^\/roles\/\d+\/members\/\d+$/, scope: 'settings' },
 ];
 
 function enforceDashboardScope(req, res, next) {
