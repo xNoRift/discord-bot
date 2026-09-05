@@ -82,7 +82,7 @@
 
 <div class="card">
   <div class="card__head"><h2><%- icon('file') %> Backups <span class="muted">(nur Besitzer)</span></h2></div>
-  <p class="card__sub">Sichert die komplette Datenbank (alle Server-Einstellungen, Tickets, Giveaways, Bewerbungen, Verwarnungen …). Läuft automatisch einmal täglich, die letzten 14 Sicherungen bleiben erhalten. Ein Wiederherstellen ist absichtlich nicht per Klick möglich – Datei herunterladen und im Zweifel manuell einspielen.</p>
+  <p class="card__sub">Sichert die komplette Datenbank (alle Server-Einstellungen, Tickets, Giveaways, Bewerbungen, Verwarnungen …). Läuft automatisch einmal täglich, die letzten 14 Sicherungen bleiben erhalten. Wiederherstellen ersetzt die komplette Live-Datenbank und startet den Bot danach neu – vorher wird automatisch noch ein Sicherheits-Backup des aktuellen Stands erstellt, aber alles, was NACH der gewählten Sicherung passiert ist, geht dabei verloren.</p>
   <div class="row-inline" style="margin-bottom:10px;">
     <button class="btn btn--primary btn--sm" type="button" id="bkCreate"><%- icon('file', 'icon--sm') %> Backup jetzt erstellen</button>
     <span class="muted" id="bkStatus"></span>

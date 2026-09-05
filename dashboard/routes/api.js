@@ -157,8 +157,7 @@ router.get('/security/logins', requireOwner, (req, res) => {
 });
 
 /* ----------------------------------------------------------------
- *  Backups (NUR Bot-Besitzer) – erstellen/auflisten/herunterladen.
- *  Bewusst kein Restore-Endpunkt, siehe backupService.js.
+ *  Backups (NUR Bot-Besitzer) – erstellen/auflisten/herunterladen/wiederherstellen.
  * ---------------------------------------------------------------- */
 
 const backupService = require('../../src/services/backupService');
@@ -186,6 +185,32 @@ router.get('/bot/backups/:name', requireOwner, (req, res) => {
   if (!full) return res.status(404).json({ error: 'Sicherung nicht gefunden.' });
   res.download(full, req.params.name);
 });
+
+// Schritt 1: Bestätigungs-Token anfordern (überschreibt noch nichts).
+router.post('/bot/backup/restore-request', requireOwner, actionLimiter, (req, res) => {
+  try {
+    const token = backupService.requestRestore(String(req.body.filename || ''));
+    res.json({ ok: true, token });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Schritt 2: tauscht die Live-DB aus und beendet den Prozess (pm2 startet neu).
+router.post(
+  '/bot/backup/restore',
+  requireOwner,
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      await backupService.restore(String(req.body.filename || ''), String(req.body.token || ''));
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    res.json({ ok: true, restarting: true });
+    setTimeout(() => process.exit(0), 300);
+  }),
+);
 
 /* ----------------------------------------------------------------
  *  Ab hier: alles pro Guild (mit Zugriffsschutz)

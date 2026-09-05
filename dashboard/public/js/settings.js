@@ -195,6 +195,7 @@ async function loadBackups() {
           <span class="activity__ico">${Dash.icon('file', 'icon--sm')}</span>
           <span>${escapeHtml(b.name)} · ${fmtBytes(b.size)}</span>
           <a href="/api/bot/backups/${encodeURIComponent(b.name)}" style="margin-left:auto;">Herunterladen</a>
+          <button class="btn btn--outline btn--sm" type="button" data-restore="${escapeHtml(b.name)}">Wiederherstellen</button>
           <time>${fmtRelative ? fmtRelative(b.createdAt) : new Date(b.createdAt).toLocaleString()}</time>
         </li>`,
       )
@@ -215,6 +216,34 @@ document.getElementById('bkCreate')?.addEventListener('click', async () => {
   } catch (e) {
     toast(e.message, 'error');
     status.textContent = e.message;
+  }
+});
+
+document.getElementById('bkList')?.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-restore]');
+  if (!btn) return;
+  const filename = btn.dataset.restore;
+  const typed = prompt(
+    `WARNUNG: Das ersetzt die komplette Live-Datenbank durch „${filename}" und startet den Bot neu.\n` +
+      `Alles, was danach passiert ist, geht verloren (ein Sicherheits-Backup des aktuellen Stands wird vorher automatisch erstellt).\n\n` +
+      `Zum Bestätigen den Dateinamen exakt eingeben:`,
+  );
+  if (typed !== filename) {
+    if (typed !== null) toast('Dateiname stimmte nicht überein, abgebrochen.', 'error');
+    return;
+  }
+  const status = document.getElementById('bkStatus');
+  btn.disabled = true;
+  status.textContent = 'Wird wiederhergestellt…';
+  try {
+    const { token } = await api('POST', '/api/bot/backup/restore-request', { filename });
+    await api('POST', '/api/bot/backup/restore', { filename, token });
+    status.textContent = 'Wiederhergestellt – Bot startet neu …';
+    toast('Wiederhergestellt. Der Bot startet jetzt neu.', 'success');
+  } catch (err) {
+    btn.disabled = false;
+    status.textContent = '';
+    toast(err.message, 'error');
   }
 });
 

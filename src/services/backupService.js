@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const db = require('../database/db');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
@@ -9,13 +10,20 @@ const logger = require('../utils/logger');
 /**
  * Sichert die SQLite-Datenbank per better-sqlite3 .backup() (sicheres
  * Hot-Backup, funktioniert auch bei laufendem WAL-Modus, kein Stop nötig).
- * Bewusst OHNE Wiederherstellen-Funktion – siehe Plan (Phase 0/1 Schritt 3):
- * ein Restore überschreibt die Live-Datenbank und braucht einen eigenen,
- * bewusst separaten und abgesicherten Schritt.
+ *
+ * Wiederherstellen (restore()) ist bewusst zweistufig und beendet den
+ * Prozess danach absichtlich (process.exit): die Live-DB-Datei wird auf
+ * Festplatte ausgetauscht, aber der offene better-sqlite3-Handle wird NICHT
+ * live umgehängt (Risiko für WAL-Korruption) – pm2 startet den Prozess neu
+ * und öffnet dann die wiederhergestellte Datei frisch.
  */
 
 const BACKUP_DIR = path.join(config.rootDir, 'backups');
 const KEEP = 14;
+const RESTORE_TOKEN_TTL_MS = 5 * 60 * 1000;
+
+/** Einmaliges, kurzlebiges Restore-Token (in-memory, kein Cluster-Betrieb). */
+let pendingRestore = null;
 
 function ensureDir() {
   if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
@@ -79,4 +87,56 @@ async function dailySweep() {
   logger.info('[backup] tägliche Sicherung erstellt');
 }
 
-module.exports = { create, list, prune, resolvePath, dailySweep, BACKUP_DIR };
+/**
+ * Schritt 1 des Restores: fordert ein kurzlebiges, einmaliges Token an.
+ * Ersetzt keine Datei, prüft nur, dass die Sicherung existiert.
+ */
+function requestRestore(filename) {
+  if (!resolvePath(filename)) throw new Error('Sicherung nicht gefunden.');
+  const token = crypto.randomBytes(24).toString('hex');
+  pendingRestore = { filename, token, expiresAt: Date.now() + RESTORE_TOKEN_TTL_MS };
+  return token;
+}
+
+/**
+ * Schritt 2: prüft das Token, sichert die aktuelle Live-DB (Sicherheitsnetz),
+ * tauscht dann die Datei auf Festplatte aus und schließt die Verbindung.
+ * Der Aufrufer muss den Prozess danach beenden (process.exit), damit pm2
+ * mit der wiederhergestellten Datei frisch neu startet.
+ */
+async function restore(filename, token) {
+  if (
+    !pendingRestore ||
+    pendingRestore.filename !== filename ||
+    pendingRestore.token !== token ||
+    !token
+  ) {
+    throw new Error('Ungültige oder abgelaufene Bestätigung. Bitte erneut anfordern.');
+  }
+  if (Date.now() > pendingRestore.expiresAt) {
+    pendingRestore = null;
+    throw new Error('Bestätigung abgelaufen. Bitte erneut anfordern.');
+  }
+  const source = resolvePath(filename);
+  if (!source) throw new Error('Sicherung nicht gefunden.');
+  pendingRestore = null; // Einmal-Token
+
+  await create(); // Sicherheits-Snapshot der aktuellen Live-DB, bevor sie überschrieben wird
+
+  const dbPath = config.database.path;
+  try {
+    db.close();
+  } catch {
+    /* bereits geschlossen */
+  }
+
+  fs.copyFileSync(source, dbPath);
+  for (const suffix of ['-wal', '-shm']) {
+    const sidecar = dbPath + suffix;
+    if (fs.existsSync(sidecar)) fs.unlinkSync(sidecar);
+  }
+
+  logger.info(`[backup] Wiederhergestellt aus ${filename} – Neustart erforderlich.`);
+}
+
+module.exports = { create, list, prune, resolvePath, dailySweep, requestRestore, restore, BACKUP_DIR };
