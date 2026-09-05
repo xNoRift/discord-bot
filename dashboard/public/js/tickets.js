@@ -658,6 +658,32 @@ document.getElementById('ticketTabs').addEventListener('click', (e) => {
 
 /* ================= Init ================= */
 
+function initModmail() {
+  const f = document.getElementById('modmailForm');
+  if (!f) return;
+  f.querySelector('#mm_enabled').checked = settings.modmail_enabled === 1;
+  f.querySelector('#mm_category').innerHTML = optList(CH.categories, settings.modmail_category_id);
+  f.querySelector('#mm_role').innerHTML = optList(ROLES, settings.modmail_support_role_id);
+  f.querySelector('#mm_log').innerHTML = optList(CH.text, settings.modmail_log_channel_id, '#');
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const st = document.getElementById('mmStatus');
+    try {
+      settings = await apiFor('PATCH', '/settings', {
+        modmail_enabled: f.querySelector('#mm_enabled').checked ? 1 : 0,
+        modmail_category_id: f.querySelector('#mm_category').value,
+        modmail_support_role_id: f.querySelector('#mm_role').value,
+        modmail_log_channel_id: f.querySelector('#mm_log').value,
+      });
+      toast('ModMail-Einstellungen gespeichert.', 'success');
+      st.textContent = 'Gespeichert ✓';
+    } catch (err) {
+      toast(err.message, 'error');
+      st.textContent = err.message;
+    }
+  });
+}
+
 async function initDefaults() {
   const f = document.getElementById('ticketDefaults');
   if (!f) return;
@@ -684,6 +710,7 @@ async function initDefaults() {
     [CH, ROLES, settings] = await Promise.all([getChannels(), getRoles(), apiFor('GET', '/settings')]);
     renderModule();
     await initDefaults();
+    initModmail();
     await loadPanels();
     await loadTickets();
     const m = window.location.hash.match(/panel-(\d+)/);

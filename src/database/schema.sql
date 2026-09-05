@@ -63,6 +63,10 @@ CREATE TABLE IF NOT EXISTS guild_settings (
   ticket_team_ping        INTEGER DEFAULT 1,
   ticket_close_restricted INTEGER DEFAULT 0,
   ticket_on_leave         TEXT DEFAULT 'nothing',
+  modmail_enabled          INTEGER DEFAULT 0,
+  modmail_category_id      TEXT,
+  modmail_support_role_id  TEXT,
+  modmail_log_channel_id   TEXT,
   ticket_category_id     TEXT,
   ticket_support_role_id TEXT,
   ticket_log_channel_id  TEXT,
@@ -175,7 +179,9 @@ CREATE TABLE IF NOT EXISTS tickets (
   closed_by  TEXT,
   reopened_at INTEGER,
   deleted_at INTEGER,
-  deleted_by TEXT
+  deleted_by TEXT,
+  is_modmail  INTEGER DEFAULT 0,
+  dm_channel_id TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_tickets_guild ON tickets(guild_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_channel ON tickets(channel_id);

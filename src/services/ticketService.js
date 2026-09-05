@@ -630,6 +630,9 @@ async function closeTicket(channel, member) {
   });
 
   await maybeRequestRating(channel, ticket).catch(() => null);
+  if (ticket.is_modmail) {
+    await require('./modmailService').notifyStateChange(ticket, 'close').catch(() => null);
+  }
   return updated;
 }
 
@@ -663,6 +666,9 @@ async function reopenTicket(channel, member) {
     overrideChannelId: ticketLogOverride(ticket),
     meta: { ticketId: ticket.id },
   });
+  if (ticket.is_modmail) {
+    await require('./modmailService').notifyStateChange(ticket, 'reopen').catch(() => null);
+  }
   return updated;
 }
 
@@ -690,6 +696,10 @@ async function deleteTicket(channel, member) {
     overrideChannelId: ticketLogOverride(ticket),
     meta: { ticketId: ticket.id },
   });
+
+  if (ticket.is_modmail) {
+    await require('./modmailService').notifyStateChange(ticket, 'delete').catch(() => null);
+  }
 
   await channel
     .send({ embeds: [embeds.error('🗑️ Ticket wird gelöscht', 'Dieser Kanal wird in 5 Sekunden entfernt…')] })

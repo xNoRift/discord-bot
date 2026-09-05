@@ -27,12 +27,37 @@ function create({ guildId, channelId, number, openerId, subject, panelId, catego
   return get(info.lastInsertRowid);
 }
 
+/** ModMail-Ticket (DM an den Bot). Nutzt dieselbe Tabelle mit is_modmail = 1. */
+function createModmail({ guildId, channelId, number, openerId, dmChannelId }) {
+  const info = db
+    .prepare(
+      `INSERT INTO tickets
+        (guild_id, channel_id, number, opener_id, status, created_at, is_modmail, dm_channel_id)
+       VALUES (?, ?, ?, ?, 'open', ?, 1, ?)`,
+    )
+    .run(guildId, channelId, number, openerId, Date.now(), dmChannelId ?? null);
+  return get(info.lastInsertRowid);
+}
+
 function get(id) {
   return db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
 }
 
 function getByChannel(channelId) {
   return db.prepare('SELECT * FROM tickets WHERE channel_id = ?').get(channelId);
+}
+
+/** Offenes ODER geschlossenes (aber nicht gelöschtes) ModMail-Ticket eines Nutzers – über alle Server. */
+function findActiveModmailForUser(userId) {
+  return db
+    .prepare("SELECT * FROM tickets WHERE opener_id = ? AND is_modmail = 1 AND status IN ('open','closed') ORDER BY id DESC LIMIT 1")
+    .get(userId);
+}
+
+function findActiveModmail(guildId, userId) {
+  return db
+    .prepare("SELECT * FROM tickets WHERE guild_id = ? AND opener_id = ? AND is_modmail = 1 AND status IN ('open','closed') ORDER BY id DESC LIMIT 1")
+    .get(guildId, userId);
 }
 
 /** Aktivitätszeitstempel aktualisieren (für Auto-Close). */
@@ -133,6 +158,9 @@ function markDeleted(id, userId) {
 
 module.exports = {
   create,
+  createModmail,
+  findActiveModmailForUser,
+  findActiveModmail,
   get,
   getByChannel,
   touch,
