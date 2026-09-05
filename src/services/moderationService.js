@@ -14,7 +14,7 @@ const warningsModel = require('../database/models/warnings');
 
 const ACTIONS = ['timeout', 'untimeout', 'kick', 'ban', 'unban', 'warn'];
 const MAX_TIMEOUT_MIN = 40320; // 28 Tage (Discord-Limit)
-const ESCALATABLE = ['timeout', 'kick', 'ban']; // welche Aktionen eine Eskalationsregel auslösen darf
+const ESCALATABLE = ['notice', 'timeout', 'kick', 'ban']; // welche Aktionen eine Eskalationsregel auslösen darf
 
 function assertBotCan(me, flag, label) {
   if (!me?.permissions.has(flag)) {
@@ -97,6 +97,7 @@ async function act(guild, { action, userId, reason, minutes, actorTag, actorId }
         { name: 'Grund', value: why, inline: true },
         ...(actorTag ? [{ name: 'Von', value: actorTag, inline: true }] : []),
       ],
+      actorId,
       targetId: userId,
     })
     .catch(() => null);
@@ -127,6 +128,10 @@ async function maybeEscalate(guild, userId, warnCount) {
   const rule = rules.find((r) => Number(r.count) === warnCount && ESCALATABLE.includes(r.action));
   if (!rule) return null;
 
+  // "Hinweis": keine zusätzliche Discord-Aktion, die Verwarnung selbst hat
+  // den Nutzer bereits per DM informiert – nur zur Konfiguration erwähnt.
+  if (rule.action === 'notice') return 'Hinweis (keine weitere Aktion)';
+
   try {
     return await act(guild, {
       action: rule.action,
@@ -144,7 +149,7 @@ async function maybeEscalate(guild, userId, warnCount) {
  * Löscht die letzten `count` Nachrichten in einem Kanal (max. 100, < 14 Tage).
  * @returns {Promise<number>} Anzahl gelöschter Nachrichten
  */
-async function purge(guild, channelId, count, filterUserId) {
+async function purge(guild, channelId, count, filterUserId, actorId) {
   const me = guild.members.me ?? (await guild.members.fetchMe());
   const channel = guild.channels.cache.get(String(channelId || ''));
   if (!channel || !channel.isTextBased()) throw new Error('Kanal nicht gefunden.');
@@ -169,6 +174,8 @@ async function purge(guild, channelId, count, filterUserId) {
         { name: 'Kanal', value: `<#${channel.id}>`, inline: true },
         { name: 'Anzahl', value: String(deleted.size), inline: true },
       ],
+      actorId,
+      targetId: /^\d{5,25}$/.test(String(filterUserId || '')) ? String(filterUserId) : undefined,
     })
     .catch(() => null);
   return deleted.size;

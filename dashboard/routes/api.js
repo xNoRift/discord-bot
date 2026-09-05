@@ -616,7 +616,7 @@ router.get('/guilds/:guildId/moderation/warnings', requireScope('moderation'), (
   if (userId && /^\d{5,25}$/.test(userId)) {
     return res.json({ warnings: warningsModel.listForUser(req.guild.id, userId) });
   }
-  res.json({ warnings: warningsModel.listRecent(req.guild.id, 30) });
+  res.json({ warnings: warningsModel.listRecent(req.guild.id, num(req.query.limit, 50)) });
 });
 
 router.post(
@@ -639,7 +639,7 @@ router.post(
       return res.status(400).json({ error: 'Bitte einen Kanal wählen.' });
     }
     try {
-      const deleted = await moderationService.purge(req.guild, req.body.channelId, req.body.count, req.body.userId);
+      const deleted = await moderationService.purge(req.guild, req.body.channelId, req.body.count, req.body.userId, req.session.user.id);
       res.json({ ok: true, deleted });
     } catch (err) {
       res.status(400).json({ error: err.message });
@@ -932,11 +932,12 @@ router.patch(
 
 router.get('/guilds/:guildId/activity', (req, res) => {
   const q = req.query;
-  if (q.category || q.actorId || q.from || q.to) {
+  if (q.category || q.actorId || q.targetId || q.from || q.to) {
     return res.json(
       activity.query(req.params.guildId, {
         category: q.category || undefined,
         actorId: q.actorId || undefined,
+        targetId: q.targetId || undefined,
         from: q.from ? num(q.from, undefined) : undefined,
         to: q.to ? num(q.to, undefined) : undefined,
         limit: num(q.limit, 60),

@@ -29,9 +29,9 @@ function recent(guildId, limit = 30) {
 }
 
 /**
- * Gefilterte Abfrage fürs Dashboard-Logs-Seite.
+ * Gefilterte Abfrage fürs Dashboard-Logs-Seite (und die Moderationshistorie).
  * @param {string} guildId
- * @param {{category?:string, actorId?:string, from?:number, to?:number, limit?:number}} [opts]
+ * @param {{category?:string, actorId?:string, targetId?:string, from?:number, to?:number, limit?:number}} [opts]
  */
 function query(guildId, opts = {}) {
   const clauses = ['guild_id = @guildId'];
@@ -44,6 +44,10 @@ function query(guildId, opts = {}) {
   if (opts.actorId && /^\d{5,25}$/.test(String(opts.actorId))) {
     clauses.push('actor_id = @actorId');
     params.actorId = String(opts.actorId);
+  }
+  if (opts.targetId && /^\d{5,25}$/.test(String(opts.targetId))) {
+    clauses.push('target_id = @targetId');
+    params.targetId = String(opts.targetId);
   }
   if (opts.from) {
     clauses.push('created_at >= @from');

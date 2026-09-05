@@ -61,26 +61,76 @@ actForm.addEventListener('submit', async (e) => {
 /* ---------------- Verwarnungshistorie ---------------- */
 
 const warnList = document.getElementById('warnList');
+const allWarnList = document.getElementById('allWarnList');
+const modHistoryList = document.getElementById('modHistoryList');
+
+const MOD_HISTORY_ICONS = {
+  mod_warn: 'bell',
+  mod_timeout: 'clock',
+  mod_kick: 'x',
+  mod_ban: 'x',
+  mod_unban: 'check',
+  mod_untimeout: 'check',
+  mod_purge: 'trash',
+  automod_spam: 'shield',
+  automod_caps: 'shield',
+  automod_links: 'shield',
+  automod_invites: 'shield',
+  automod_mention_spam: 'shield',
+  automod_wordlist: 'shield',
+};
+
+function warnRowHtml(w, { showUser = false } = {}) {
+  return `<li>
+    <span class="activity__ico">${w.active ? '⚠️' : '➖'}</span>
+    <span>
+      <b>#${w.id} · ${w.active ? 'Aktiv' : 'Zurückgezogen'}</b>${showUser ? ` · User-ID ${escapeHtml(w.user_id)}` : ''} · ${escapeHtml(w.reason || 'Kein Grund')}
+      <br><span class="muted">${fmtDate(w.created_at)}${w.moderator_tag ? ' · von ' + escapeHtml(w.moderator_tag) : ''}</span>
+    </span>
+    ${w.active ? `<button class="btn btn--ghost btn--sm" data-remove-warn="${w.id}" style="margin-left:auto;">Zurückziehen</button>` : ''}
+  </li>`;
+}
 
 async function loadWarnings(userId) {
   warnList.innerHTML = '<li class="muted">Lädt…</li>';
   try {
     const { warnings } = await apiFor('GET', `/moderation/warnings?userId=${encodeURIComponent(userId)}`);
-    if (!warnings.length) { warnList.innerHTML = '<li class="muted">Keine Verwarnungen gefunden.</li>'; return; }
-    warnList.innerHTML = warnings
-      .map(
-        (w) => `<li>
-          <span class="activity__ico">${w.active ? '⚠️' : '➖'}</span>
-          <span>
-            <b>${w.active ? 'Aktiv' : 'Zurückgezogen'}</b> · ${escapeHtml(w.reason || 'Kein Grund')}
-            <br><span class="muted">${fmtDate(w.created_at)}${w.moderator_tag ? ' · von ' + escapeHtml(w.moderator_tag) : ''}</span>
-          </span>
-          ${w.active ? `<button class="btn btn--ghost btn--sm" data-remove-warn="${w.id}" style="margin-left:auto;">Zurückziehen</button>` : ''}
-        </li>`,
-      )
-      .join('');
+    warnList.innerHTML = warnings.length
+      ? warnings.map((w) => warnRowHtml(w)).join('')
+      : '<li class="muted">Keine Verwarnungen gefunden.</li>';
   } catch (err) {
     warnList.innerHTML = `<li style="color:var(--red)">${escapeHtml(err.message)}</li>`;
+  }
+}
+
+async function loadAllWarnings() {
+  try {
+    const { warnings } = await apiFor('GET', '/moderation/warnings?limit=50');
+    allWarnList.innerHTML = warnings.length
+      ? warnings.map((w) => warnRowHtml(w, { showUser: true })).join('')
+      : '<li class="muted">Noch keine Verwarnungen auf diesem Server.</li>';
+  } catch (err) {
+    allWarnList.innerHTML = `<li style="color:var(--red)">${escapeHtml(err.message)}</li>`;
+  }
+}
+
+async function loadModHistory(userId) {
+  modHistoryList.innerHTML = '<li class="muted">Lädt…</li>';
+  try {
+    const rows = await apiFor('GET', `/activity?category=moderation&targetId=${encodeURIComponent(userId)}&limit=50`);
+    modHistoryList.innerHTML = rows.length
+      ? rows
+          .map(
+            (r) => `<li>
+              <span class="activity__ico">${Dash.icon(MOD_HISTORY_ICONS[r.type] || 'shield', 'icon--sm')}</span>
+              <span>${escapeHtml(r.message || r.type)}</span>
+              <time>${fmtDate(r.created_at)}</time>
+            </li>`,
+          )
+          .join('')
+      : '<li class="muted">Keine Moderations-Historie gefunden.</li>';
+  } catch (err) {
+    modHistoryList.innerHTML = `<li style="color:var(--red)">${escapeHtml(err.message)}</li>`;
   }
 }
 
@@ -88,25 +138,39 @@ document.getElementById('warnLookupBtn').addEventListener('click', () => {
   const id = document.getElementById('warnLookupId').value.trim();
   if (!/^\d{5,25}$/.test(id)) return toast('Bitte eine gültige User-ID angeben.', 'error');
   loadWarnings(id);
+  loadModHistory(id);
 });
 
-warnList.addEventListener('click', async (e) => {
-  const btn = e.target.closest('[data-remove-warn]');
-  if (!btn) return;
+async function removeWarning(id) {
   if (!(await Dash.confirmModal('Diese Verwarnung zurückziehen?'))) return;
   try {
-    await apiFor('POST', `/moderation/warnings/${btn.dataset.removeWarn}/remove`, {});
+    await apiFor('POST', `/moderation/warnings/${id}/remove`, {});
     toast('Verwarnung zurückgezogen.', 'success');
-    loadWarnings(document.getElementById('warnLookupId').value.trim());
+    const lookupId = document.getElementById('warnLookupId').value.trim();
+    if (lookupId) loadWarnings(lookupId);
+    loadAllWarnings();
   } catch (err) {
     toast(err.message, 'error');
   }
+}
+
+warnList.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-remove-warn]');
+  if (btn) removeWarning(btn.dataset.removeWarn);
 });
+
+allWarnList.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-remove-warn]');
+  if (btn) removeWarning(btn.dataset.removeWarn);
+});
+
+loadAllWarnings().catch((e) => toast(e.message, 'error'));
 
 /* ---------------- Eskalationsregeln ---------------- */
 
 const escRows = document.getElementById('escRows');
 const ESC_ACTIONS = [
+  ['notice', 'Hinweis'],
   ['timeout', 'Timeout'],
   ['kick', 'Kick'],
   ['ban', 'Ban'],

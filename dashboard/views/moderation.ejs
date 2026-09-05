@@ -37,13 +37,22 @@
 </div>
 
 <div class="card">
-  <div class="card__head"><h2><%- icon('bell') %> Verwarnungshistorie</h2></div>
-  <p class="card__sub">Zeigt alle Verwarnungen (auch zurückgezogene) einer bestimmten Person.</p>
+  <div class="card__head"><h2><%- icon('bell') %> Verwarnungshistorie & Moderationshistorie</h2></div>
+  <p class="card__sub">Zeigt Verwarnungen (auch zurückgezogene) sowie alle Moderations-Maßnahmen (Timeout/Kick/Bann/AutoMod/…) einer bestimmten Person.</p>
   <div class="row-inline" style="flex-wrap:wrap;gap:10px;">
     <input id="warnLookupId" inputmode="numeric" placeholder="User-ID" style="max-width:260px;" />
     <button class="btn btn--ghost btn--sm" type="button" id="warnLookupBtn"><%- icon('external', 'icon--sm') %> Anzeigen</button>
   </div>
-  <ul class="activity" id="warnList" style="margin-top:12px;"><li class="muted">Noch keine Suche.</li></ul>
+  <p class="muted" style="margin-top:14px;margin-bottom:4px;">Verwarnungen</p>
+  <ul class="activity" id="warnList"><li class="muted">Noch keine Suche.</li></ul>
+  <p class="muted" style="margin-top:14px;margin-bottom:4px;">Komplette Moderationshistorie</p>
+  <ul class="activity" id="modHistoryList"><li class="muted">Noch keine Suche.</li></ul>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('file') %> Alle Verwarnungen</h2></div>
+  <p class="card__sub">Die letzten Verwarnungen auf diesem Server, serverweit.</p>
+  <ul class="activity" id="allWarnList"><li class="loading">Lädt…</li></ul>
 </div>
 
 <div class="card">
