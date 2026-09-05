@@ -129,25 +129,32 @@ async function loadGuild(req, res, next) {
  * einzeln zu pruefen: alles, was hier nicht steht, bleibt fuer reine
  * Rollen-Inhaber ohne Discord-Adminrechte gesperrt. Kann also nur zu wenig
  * statt zu viel freigeben.
+ *
+ * `scope: null` = für jeden Rollen-Inhaber lesbar, egal welchen Bereich er
+ * hat (nötig, um überhaupt eine Seite zu rendern). Alles andere verlangt
+ * zusätzlich, dass req.dashboardScopes GENAU diesen Bereich enthält – sonst
+ * hätte z. B. eine nur für "tickets" freigeschaltete Rolle über diese
+ * Allowlist auch Zugriff auf Moderations-Routen bekommen (gefunden beim
+ * Entwurf von Phase 5, siehe Roadmap-Session).
  */
 const SCOPED_ALLOWLIST = [
-  { method: 'GET', path: /^\/settings$/ },
-  { method: 'GET', path: /^\/channels$/ },
-  { method: 'GET', path: /^\/roles$/ },
-  { method: 'GET', path: /^\/activity(\/|$)/ },
-  { method: 'GET', path: /^\/dashboard-roles$/ },
-  { method: 'GET', path: /^\/moderation\/warnings$/ },
-  { method: 'POST', path: /^\/moderation\/action$/ },
-  { method: 'POST', path: /^\/moderation\/warnings\/\d+\/remove$/ },
-  { method: 'POST', path: /^\/moderation\/purge$/ },
-  { method: 'PATCH', path: /^\/moderation\/settings$/ },
-  { method: 'GET', path: /^\/automod$/ },
-  { method: 'PATCH', path: /^\/automod\/[a-z_]+$/ },
-  { method: 'GET', path: /^\/antiraid$/ },
-  { method: 'PATCH', path: /^\/antiraid$/ },
-  { method: 'POST', path: /^\/antiraid\/lockdown\/lift$/ },
-  { method: 'GET', path: /^\/antinuke$/ },
-  { method: 'PATCH', path: /^\/antinuke$/ },
+  { method: 'GET', path: /^\/settings$/, scope: null },
+  { method: 'GET', path: /^\/channels$/, scope: null },
+  { method: 'GET', path: /^\/roles$/, scope: null },
+  { method: 'GET', path: /^\/activity(\/|$)/, scope: null },
+  { method: 'GET', path: /^\/dashboard-roles$/, scope: null },
+  { method: 'GET', path: /^\/moderation\/warnings$/, scope: 'moderation' },
+  { method: 'POST', path: /^\/moderation\/action$/, scope: 'moderation' },
+  { method: 'POST', path: /^\/moderation\/warnings\/\d+\/remove$/, scope: 'moderation' },
+  { method: 'POST', path: /^\/moderation\/purge$/, scope: 'moderation' },
+  { method: 'PATCH', path: /^\/moderation\/settings$/, scope: 'moderation' },
+  { method: 'GET', path: /^\/automod$/, scope: 'moderation' },
+  { method: 'PATCH', path: /^\/automod\/[a-z_]+$/, scope: 'moderation' },
+  { method: 'GET', path: /^\/antiraid$/, scope: 'moderation' },
+  { method: 'PATCH', path: /^\/antiraid$/, scope: 'moderation' },
+  { method: 'POST', path: /^\/antiraid\/lockdown\/lift$/, scope: 'moderation' },
+  { method: 'GET', path: /^\/antinuke$/, scope: 'moderation' },
+  { method: 'PATCH', path: /^\/antinuke$/, scope: 'moderation' },
 ];
 
 function enforceDashboardScope(req, res, next) {
@@ -155,7 +162,9 @@ function enforceDashboardScope(req, res, next) {
 
   const prefix = `/guilds/${req.params.guildId}`;
   const sub = req.path.startsWith(prefix) ? req.path.slice(prefix.length) || '/' : req.path;
-  const ok = SCOPED_ALLOWLIST.some((r) => r.method === req.method && r.path.test(sub));
+  const ok = SCOPED_ALLOWLIST.some(
+    (r) => r.method === req.method && r.path.test(sub) && (r.scope === null || req.dashboardScopes.has(r.scope)),
+  );
   if (ok) return next();
 
   if (isApiRequest(req)) return res.status(403).json({ error: 'Dir fehlt der Zugriff für diesen Bereich.' });
