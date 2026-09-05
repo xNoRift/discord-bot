@@ -396,6 +396,22 @@ CREATE TABLE IF NOT EXISTS anti_raid_settings (
   updated_at            INTEGER
 );
 
+-- ---------- Anti-Nuke: eine Zeile pro Server ----------
+-- action (Bestrafung des Täters): strip_roles | kick | ban
+-- limits_json: {"channel_delete":{"max":3,"windowSeconds":10}, ...} - fehlende Typen nutzen eingebaute Standardwerte
+CREATE TABLE IF NOT EXISTS anti_nuke_settings (
+  guild_id         TEXT PRIMARY KEY,
+  enabled          INTEGER DEFAULT 0,
+  limits_json      TEXT DEFAULT '{}',
+  action           TEXT DEFAULT 'strip_roles',
+  revert           INTEGER DEFAULT 1,
+  notify_owner     INTEGER DEFAULT 1,
+  exempt_role_ids  TEXT DEFAULT '[]',
+  exempt_user_ids  TEXT DEFAULT '[]',
+  created_at       INTEGER,
+  updated_at       INTEGER
+);
+
 -- ---------- Dashboard-Nutzer (OAuth2) ----------
 CREATE TABLE IF NOT EXISTS dashboard_users (
   user_id          TEXT PRIMARY KEY,

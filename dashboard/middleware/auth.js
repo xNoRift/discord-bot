@@ -146,6 +146,8 @@ const SCOPED_ALLOWLIST = [
   { method: 'GET', path: /^\/antiraid$/ },
   { method: 'PATCH', path: /^\/antiraid$/ },
   { method: 'POST', path: /^\/antiraid\/lockdown\/lift$/ },
+  { method: 'GET', path: /^\/antinuke$/ },
+  { method: 'PATCH', path: /^\/antinuke$/ },
 ];
 
 function enforceDashboardScope(req, res, next) {

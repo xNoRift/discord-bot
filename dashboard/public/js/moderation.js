@@ -518,3 +518,88 @@ liftLockdownBtn.addEventListener('click', async () => {
 });
 
 loadAntiRaid().catch((e) => toast(e.message, 'error'));
+
+/* ---------------- Anti-Nuke ---------------- */
+
+const antiNukeForm = document.getElementById('antiNukeForm');
+const antiNukeLimitsWrap = document.getElementById('antiNukeLimits');
+
+const ANTINUKE_LABELS = {
+  channel_delete: 'Kanal gelöscht',
+  channel_create: 'Kanal erstellt',
+  role_delete: 'Rolle gelöscht',
+  role_create: 'Rolle erstellt',
+  role_dangerous_permission: 'Gefährliche Rechteänderung',
+  ban: 'Massenban',
+  kick: 'Massenkick',
+  webhook_create: 'Webhook erstellt',
+  webhook_delete: 'Webhook gelöscht',
+  bot_add: 'Bot hinzugefügt',
+};
+
+function antiNukeLimitRow(type, limit) {
+  return `<div class="row-inline" style="flex-wrap:wrap;gap:8px;margin-bottom:8px;align-items:center;" data-type="${type}">
+    <span style="min-width:220px;">${escapeHtml(ANTINUKE_LABELS[type] || type)}</span>
+    <span class="muted">Max.</span>
+    <input type="number" min="1" max="1000" value="${limit.max}" data-f="max" style="max-width:90px;" />
+    <span class="muted">in Sek.</span>
+    <input type="number" min="2" max="600" value="${limit.windowSeconds}" data-f="windowSeconds" style="max-width:90px;" />
+  </div>`;
+}
+
+async function loadAntiNuke() {
+  const status = document.getElementById('antiNukeStatus');
+  try {
+    const [{ settings, types, defaultLimits }, roles] = await Promise.all([apiFor('GET', '/antinuke'), getRoles()]);
+    antiNukeForm.elements.enabled.checked = Boolean(settings.enabled);
+    antiNukeForm.elements.action.value = settings.action;
+    antiNukeForm.elements.revert.checked = Boolean(settings.revert);
+    antiNukeForm.elements.notifyOwner.checked = Boolean(settings.notify_owner);
+    antiNukeForm.elements.exemptUserIds.value = JSON.parse(settings.exempt_user_ids || '[]').join('\n');
+
+    const overrides = JSON.parse(settings.limits_json || '{}');
+    antiNukeLimitsWrap.innerHTML = types.map((t) => antiNukeLimitRow(t, overrides[t] || defaultLimits[t])).join('');
+
+    const selectedRoles = new Set(JSON.parse(settings.exempt_role_ids || '[]'));
+    document.getElementById('antiNukeRoles').innerHTML = roles.length
+      ? roleChecklist(roles, selectedRoles)
+      : '<p class="muted">Keine Rollen gefunden.</p>';
+  } catch (e) {
+    status.textContent = e.message;
+  }
+}
+
+antiNukeForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const status = document.getElementById('antiNukeStatus');
+  const a = readForm(antiNukeForm);
+  const exemptRoleIds = [...document.querySelectorAll('#antiNukeRoles input:checked')].map((c) => c.value);
+  const exemptUserIds = a.exemptUserIds.split('\n').map((s) => s.trim()).filter(Boolean);
+  const limits = {};
+  antiNukeLimitsWrap.querySelectorAll('[data-type]').forEach((row) => {
+    limits[row.dataset.type] = {
+      max: parseInt(row.querySelector('[data-f="max"]').value, 10),
+      windowSeconds: parseInt(row.querySelector('[data-f="windowSeconds"]').value, 10),
+    };
+  });
+
+  status.textContent = 'Speichert…';
+  try {
+    await apiFor('PATCH', '/antinuke', {
+      enabled: a.enabled,
+      action: a.action,
+      revert: a.revert,
+      notifyOwner: a.notifyOwner,
+      limits,
+      exemptRoleIds,
+      exemptUserIds,
+    });
+    toast('Anti-Nuke-Einstellungen gespeichert.', 'success');
+    status.textContent = 'Gespeichert ✓';
+  } catch (err) {
+    toast(err.message, 'error');
+    status.textContent = err.message;
+  }
+});
+
+loadAntiNuke().catch((e) => toast(e.message, 'error'));

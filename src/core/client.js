@@ -16,6 +16,8 @@ const intents = [
   GatewayIntentBits.Guilds,
   GatewayIntentBits.GuildMessages, // Ticket-Aktivität (Auto-Close) – nicht privilegiert
   GatewayIntentBits.GuildVoiceStates, // Temp-Voice ("Join to Create") – nicht privilegiert
+  GatewayIntentBits.GuildModeration, // Anti-Nuke: Ban-Events – nicht privilegiert
+  GatewayIntentBits.GuildWebhooks, // Anti-Nuke: Webhook-Erstellung/-Löschung – nicht privilegiert
 ];
 if (config.discord.intentGuildMembers) {
   intents.push(GatewayIntentBits.GuildMembers); // Auto-Rolle, Willkommen, Verlassen – PRIVILEGIERT

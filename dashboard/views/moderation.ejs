@@ -91,6 +91,50 @@
 </div>
 
 <div class="card">
+  <div class="card__head"><h2><%- icon('shield') %> Anti-Nuke</h2></div>
+  <p class="card__sub">Überwacht gefährliche Server-Aktionen (Kanäle/Rollen löschen/erstellen, gefährliche Rechteänderungen, Massenban/-kick, Webhooks, Bot-Additions). Reagiert erst, wenn ein Limit pro Person überschritten wird – nicht bei jeder einzelnen Aktion. Serverbesitzer und der Bot selbst sind immer geschützt.</p>
+  <form id="antiNukeForm" class="form">
+    <label class="setting-row" style="cursor:pointer;padding:8px 0;">
+      <input type="checkbox" name="enabled" style="width:17px;height:17px;accent-color:var(--accent);">
+      <span class="setting-row__text"><b>Anti-Nuke aktivieren</b></span>
+    </label>
+    <div class="col-2">
+      <div class="field"><label>Aktion gegen den Täter</label>
+        <select name="action">
+          <option value="strip_roles">Alle Rollen entfernen</option>
+          <option value="kick">Kicken</option>
+          <option value="ban">Bannen</option>
+        </select>
+      </div>
+      <div class="field"><label>&nbsp;</label>
+        <label class="setting-row" style="cursor:pointer;padding:4px 0;">
+          <input type="checkbox" name="revert" style="width:17px;height:17px;accent-color:var(--accent);">
+          <span class="setting-row__text">Änderung wiederherstellen, wenn technisch möglich</span>
+        </label>
+      </div>
+    </div>
+    <label class="setting-row" style="cursor:pointer;padding:8px 0;">
+      <input type="checkbox" name="notifyOwner" style="width:17px;height:17px;accent-color:var(--accent);">
+      <span class="setting-row__text"><b>Serverbesitzer per DM benachrichtigen</b></span>
+    </label>
+
+    <p class="muted" style="margin-top:14px;margin-bottom:4px;">Limits pro Aktionstyp (Anzahl innerhalb von X Sekunden pro Person)</p>
+    <div id="antiNukeLimits"></div>
+
+    <div class="field" style="margin-top:10px;"><label>Ausnahme-Rollen (nie betroffen)</label>
+      <div id="antiNukeRoles" style="max-height:160px;overflow:auto;"><div class="loading">Lädt…</div></div>
+    </div>
+    <div class="field"><label>Ausnahme-User-IDs (eine pro Zeile)</label>
+      <textarea name="exemptUserIds" rows="3" placeholder="123456789012345678"></textarea>
+    </div>
+    <div class="row-inline" style="margin-top:6px;">
+      <button class="btn btn--primary btn--sm" type="submit">Speichern</button>
+      <span class="muted" id="antiNukeStatus"></span>
+    </div>
+  </form>
+</div>
+
+<div class="card">
   <div class="card__head"><h2><%- icon('shield') %> Anti-Raid</h2></div>
   <p class="card__sub">Erkennt ungewöhnlich viele Beitritte in kurzer Zeit und optional zu junge Accounts. Reagiert immer mit Alarm + Log, optional zusätzlich mit Kick/Bann und einem temporären Lockdown (angehobene Verifizierungsstufe).</p>
   <p class="muted" id="antiRaidStatus">Lädt…</p>

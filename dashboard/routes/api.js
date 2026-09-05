@@ -749,6 +749,39 @@ router.post(
 );
 
 /* ----------------------------------------------------------------
+ *  Anti-Nuke – überwacht gefährliche Server-Aktionen, bestraft den Täter
+ * ---------------------------------------------------------------- */
+
+const antiNukeModel = require('../../src/database/models/antiNukeSettings');
+
+router.get('/guilds/:guildId/antinuke', requireScope('moderation'), (req, res) => {
+  res.json({
+    settings: antiNukeModel.get(req.guild.id),
+    types: antiNukeModel.TYPES,
+    defaultLimits: antiNukeModel.DEFAULT_LIMITS,
+    actions: antiNukeModel.ACTIONS,
+  });
+});
+
+router.patch(
+  '/guilds/:guildId/antinuke',
+  requireScope('moderation'),
+  actionLimiter,
+  (req, res) => {
+    const patch = {};
+    for (const key of ['enabled', 'limits', 'action', 'revert', 'notifyOwner', 'exemptRoleIds', 'exemptUserIds']) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) patch[key] = req.body[key];
+    }
+    try {
+      const settings = antiNukeModel.update(req.guild.id, patch);
+      res.json({ ok: true, settings });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  },
+);
+
+/* ----------------------------------------------------------------
  *  Dashboard-Rollen (welche Discord-Rollen dürfen was zusätzlich sehen)
  * ---------------------------------------------------------------- */
 
