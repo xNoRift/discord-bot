@@ -16,7 +16,6 @@ async function saveTv() {
   const a = readForm(form);
   try {
     await apiFor('PATCH', '/settings', {
-      tempvoice_enabled: a.tempvoice_enabled ? 1 : 0,
       tempvoice_hub_channel_id: a.tempvoice_hub_channel_id || null,
       tempvoice_category_id: a.tempvoice_category_id || null,
       tempvoice_name_format: a.tempvoice_name_format || null,
@@ -53,6 +52,11 @@ document.getElementById('tvMakeHub').addEventListener('click', async () => {
     toast(err.message, 'error');
     statusEl.textContent = err.message;
   }
+});
+
+Dash.initModuleStatus('tempvoice_enabled', {
+  on: 'Temp-Voice ist aktiviert. Wer den Hub-Kanal betritt, bekommt einen eigenen Sprachkanal.',
+  off: 'Temp-Voice ist deaktiviert. Aktiviere es und wähle unten einen Hub-Kanal.',
 });
 
 load()

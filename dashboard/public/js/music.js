@@ -64,34 +64,15 @@ function render(state) {
     : '<li class="muted">Die Warteschlange ist leer.</li>';
 }
 
-function renderModule(state) {
-  const on = state.moduleEnabled !== false;
-  const box = document.getElementById('moduleStatus');
-  box.classList.toggle('is-off', !on);
-  document.getElementById('msTitle').textContent = on ? 'Modul aktiviert' : 'Modul deaktiviert';
-  document.getElementById('msText').textContent = on
-    ? 'Musik ist aktiviert. Ein Klick deaktiviert das Modul – der Bot spielt dann nichts mehr ab.'
-    : 'Musik ist deaktiviert. Aktiviere es, damit /play, /join und die Dashboard-Steuerung funktionieren.';
-  const btn = document.getElementById('msToggle');
-  btn.textContent = on ? 'Deaktivieren' : 'Aktivieren';
-  btn.className = 'btn btn--sm ' + (on ? 'btn--outline-green' : 'btn--success');
-}
-
-document.getElementById('msToggle').addEventListener('click', async () => {
-  try {
-    const s = await apiFor('GET', '/settings');
-    const next = s.music_enabled === 0 ? 1 : 0;
-    await apiFor('PATCH', '/settings', { music_enabled: next });
-    toast('Gespeichert.', 'success');
-    await refresh();
-  } catch (e) { toast(e.message, 'error'); }
+Dash.initModuleStatus('music_enabled', {
+  on: 'Musik ist aktiviert. Ein Klick deaktiviert das Modul – der Bot spielt dann nichts mehr ab.',
+  off: 'Musik ist deaktiviert. Aktiviere es, damit /play, /join und die Dashboard-Steuerung funktionieren.',
 });
 
 async function refresh() {
   try {
     const state = await apiFor('GET', '/music');
     render(state);
-    renderModule(state);
     const offBox = document.getElementById('musicOffBox');
     offBox.hidden = state.enabled !== false;
     if (state.enabled === false) {

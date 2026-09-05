@@ -54,7 +54,6 @@ async function saveWelcome() {
   const a = readForm(form);
   try {
     await apiFor('PATCH', '/settings', {
-      welcome_enabled: a.welcome_enabled ? 1 : 0,
       welcome_channel_id: a.welcome_channel_id || null,
       welcome_message: a.welcome_message || null,
       welcome_embed: a.welcome_embed ? 1 : 0,
@@ -102,6 +101,11 @@ document.getElementById('wcTest').addEventListener('click', async () => {
     toast(err.message, 'error');
     statusEl.textContent = err.message;
   }
+});
+
+Dash.initModuleStatus('welcome_enabled', {
+  on: 'Das Willkommens-System ist aktiviert. Neue Mitglieder werden im gewählten Kanal begrüßt.',
+  off: 'Das Willkommens-System ist deaktiviert. Aktiviere es und wähle unten einen Kanal.',
 });
 
 load()

@@ -30,3 +30,6 @@ npm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Claude Code local dev config
+.claude/

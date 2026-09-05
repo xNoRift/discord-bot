@@ -640,6 +640,59 @@ function applyToForm(form, data) {
   }
 }
 
+/* ---------------- Modul-Status-Box (einheitlicher Aktivieren-Schalter) ---------------- */
+
+/**
+ * Zeichnet die #moduleStatus-Box. Standard-Markup:
+ *   <div class="module-status" id="moduleStatus">
+ *     <span class="module-status__dot"></span>
+ *     <span class="module-status__text"><b id="msTitle"></b><span id="msText"></span></span>
+ *     <button id="msToggle"></button>
+ *   </div>
+ */
+function renderModuleStatus(enabled, opts = {}) {
+  const box = document.getElementById('moduleStatus');
+  if (!box) return;
+  box.classList.toggle('is-off', !enabled);
+  document.getElementById('msTitle').textContent = enabled ? 'Modul aktiviert' : 'Modul deaktiviert';
+  document.getElementById('msText').textContent = enabled
+    ? opts.on || 'Dieses Modul ist aktiviert. Ein Klick auf den Button deaktiviert es.'
+    : opts.off || 'Dieses Modul ist deaktiviert. Aktiviere es, damit die Funktion greift.';
+  const btn = document.getElementById('msToggle');
+  btn.textContent = enabled ? 'Deaktivieren' : 'Aktivieren';
+  btn.className = 'btn btn--sm ' + (enabled ? 'btn--outline-green' : 'btn--success');
+}
+
+/**
+ * Verkabelt die #moduleStatus-Box mit einem guild_settings-Feld (der Normalfall).
+ * @param {string} field  z.B. 'welcome_enabled'
+ * @param {{on?:string, off?:string, onChange?:(enabled:boolean)=>void}} [opts]
+ */
+async function initModuleStatus(field, opts = {}) {
+  const btn = document.getElementById('msToggle');
+  if (!btn) return;
+  let enabled = true;
+  try {
+    enabled = (await apiFor('GET', '/settings'))[field] !== 0;
+  } catch {
+    /* zeigt vorsichtshalber "aktiviert" */
+  }
+  renderModuleStatus(enabled, opts);
+
+  btn.addEventListener('click', async () => {
+    const next = !enabled;
+    try {
+      await apiFor('PATCH', '/settings', { [field]: next ? 1 : 0 });
+      enabled = next;
+      renderModuleStatus(enabled, opts);
+      toast('Gespeichert.', 'success');
+      if (opts.onChange) opts.onChange(enabled);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+}
+
 window.Dash = {
   api,
   apiFor,
@@ -661,6 +714,8 @@ window.Dash = {
   fillSelectors,
   readForm,
   applyToForm,
+  initModuleStatus,
+  renderModuleStatus,
   icon,
   GUILD_ID,
   PAGE_DATA,

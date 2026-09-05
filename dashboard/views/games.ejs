@@ -21,12 +21,13 @@
     <div class="kpi"><span class="kpi__label">Insgesamt gezählt</span><div class="kpi__value" id="cntTotal">–</div></div>
   </div>
 
-  <form id="cntForm" class="form" style="margin-top:16px;">
-    <div class="setting-row">
-      <div class="setting-row__text"><b>Zähl-Spiel aktivieren</b><span>Benötigt den „Message Content"-Intent</span></div>
-      <label class="toggle"><input type="checkbox" name="enabled" /><span class="toggle__track"></span></label>
-    </div>
+  <div class="module-status" id="moduleStatus" style="margin-top:14px;">
+    <span class="module-status__dot"></span>
+    <span class="module-status__text"><b id="msTitle">…</b><span id="msText"></span></span>
+    <button class="btn btn--ghost btn--sm" id="msToggle">…</button>
+  </div>
 
+  <form id="cntForm" class="form" style="margin-top:16px;">
     <div class="field"><label>Kanal</label><select name="channelId" data-type="text"></select></div>
 
     <div class="col-2">

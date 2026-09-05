@@ -24,30 +24,52 @@ function paintIntent(active) {
     : 'Aktiviere im Discord Developer Portal → Bot → „MESSAGE CONTENT INTENT" und setze in der .env INTENT_MESSAGE_CONTENT=true (bzw. entferne die Zeile), dann Bot neu starten.';
 }
 
+let cntEnabled = true;
+const cntTextOn = 'Das Zähl-Spiel ist aktiviert. Im gewählten Kanal wird abwechselnd hochgezählt.';
+const cntTextOff = 'Das Zähl-Spiel ist deaktiviert. Aktiviere es und wähle unten einen Kanal.';
+
 async function load() {
   const s = await apiFor('GET', '/games/counting');
   paintIntent(s.intentActive);
   await fillSelectors({ channelId: s.channelId });
   applyToForm(form, {
-    enabled: s.enabled,
     channelId: s.channelId || '',
     allowSameUser: s.allowSameUser,
     resetOnFail: s.resetOnFail,
     reactEmoji: s.reactEmoji,
   });
+  cntEnabled = !!s.enabled;
+  Dash.renderModuleStatus(cntEnabled, { on: cntTextOn, off: cntTextOff });
   paintStats(s);
 }
 
-async function saveCounting() {
+async function postCounting(overrides) {
   const a = readForm(form);
+  return apiFor('POST', '/games/counting', {
+    enabled: cntEnabled,
+    channelId: a.channelId || '',
+    allowSameUser: !!a.allowSameUser,
+    resetOnFail: !!a.resetOnFail,
+    reactEmoji: a.reactEmoji || '✅',
+    ...overrides,
+  });
+}
+
+document.getElementById('msToggle').addEventListener('click', async () => {
   try {
-    const s = await apiFor('POST', '/games/counting', {
-      enabled: !!a.enabled,
-      channelId: a.channelId || '',
-      allowSameUser: !!a.allowSameUser,
-      resetOnFail: !!a.resetOnFail,
-      reactEmoji: a.reactEmoji || '✅',
-    });
+    const s = await postCounting({ enabled: !cntEnabled });
+    cntEnabled = !!s.enabled;
+    Dash.renderModuleStatus(cntEnabled, { on: cntTextOn, off: cntTextOff });
+    paintStats(s);
+    toast('Gespeichert.', 'success');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+});
+
+async function saveCounting() {
+  try {
+    const s = await postCounting();
     paintStats(s);
     toast('Zähl-Spiel gespeichert.', 'success');
     statusEl.textContent = 'Gespeichert ✓';

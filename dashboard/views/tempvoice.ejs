@@ -6,14 +6,15 @@
   <p>„Join to Create": Betritt jemand den Hub-Kanal, bekommt er automatisch einen eigenen Sprachkanal, den er selbst steuern kann. Ist der Kanal leer, wird er gelöscht.</p>
 </div>
 
+<div class="module-status" id="moduleStatus">
+  <span class="module-status__dot"></span>
+  <span class="module-status__text"><b id="msTitle">…</b><span id="msText"></span></span>
+  <button class="btn btn--ghost btn--sm" id="msToggle">…</button>
+</div>
+
 <form id="tvForm">
   <div class="card">
     <div class="card__head"><h2><%- icon('settings') %> Einstellungen</h2></div>
-
-    <div class="setting-row">
-      <div class="setting-row__text"><b>Temp-Voice aktivieren</b><span>Der Bot braucht „Kanäle verwalten" und „Mitglieder verschieben"</span></div>
-      <label class="toggle"><input type="checkbox" name="tempvoice_enabled" /><span class="toggle__track"></span></label>
-    </div>
 
     <div class="field">
       <label>Hub-Kanal (zum Erstellen)</label>
