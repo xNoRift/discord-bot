@@ -112,6 +112,10 @@ ensureColumn('activity_log', 'category', 'TEXT');
 // Sicherheits-Log-Kanal (Anti-Raid/Anti-Nuke-Alarme)
 ensureColumn('guild_settings', 'security_log_channel_id', 'TEXT');
 
+// Zentrales Audit-Log: alter/neuer Wert einer Änderung (z. B. Einstellungen)
+ensureColumn('activity_log', 'old_value', 'TEXT');
+ensureColumn('activity_log', 'new_value', 'TEXT');
+
 logger.info(`[db] Datenbank verbunden: ${config.database.path}`);
 
 process.on('exit', () => {

@@ -11,6 +11,7 @@ const { apiLimiter, actionLimiter } = require('../middleware/rateLimit');
 const guildAccess = require('../services/guildAccess');
 
 const settingsModel = require('../../src/database/models/settings');
+const logService = require('../../src/services/logService');
 const ticketsModel = require('../../src/database/models/tickets');
 const ticketPanels = require('../../src/database/models/ticketPanels');
 const giveawaysModel = require('../../src/database/models/giveaways');
@@ -72,6 +73,37 @@ function serializeRoles(guild) {
 function num(value, fallback = null) {
   const n = Number.parseInt(value, 10);
   return Number.isFinite(n) ? n : fallback;
+}
+
+/**
+ * Protokolliert eine Einstellungsänderung fürs zentrale Audit-Log (nur wenn
+ * sich tatsächlich etwas geändert hat). `keys` sind die Felder, die im
+ * PATCH-Body vorkamen (nicht alle EDITABLE_FIELDS).
+ */
+async function logSettingsChange(req, before, after, keys) {
+  const changedOld = {};
+  const changedNew = {};
+  for (const key of keys) {
+    if (before[key] !== after[key]) {
+      changedOld[key] = before[key] ?? null;
+      changedNew[key] = after[key] ?? null;
+    }
+  }
+  const changedKeys = Object.keys(changedNew);
+  if (!changedKeys.length) return;
+
+  await logService
+    .log({
+      guildId: req.params.guildId,
+      category: 'settings',
+      type: 'settings_update',
+      title: `⚙️ Einstellungen geändert (${req.session.user.username})`,
+      description: changedKeys.map((k) => `**${k}**: ${changedOld[k] ?? '–'} → ${changedNew[k] ?? '–'}`).join('\n').slice(0, 1000),
+      actorId: req.session.user.id,
+      oldValue: changedOld,
+      newValue: changedNew,
+    })
+    .catch(() => null);
 }
 
 /* ----------------------------------------------------------------
@@ -654,13 +686,15 @@ router.post(
 router.patch(
   '/guilds/:guildId/moderation/settings',
   requireScope('moderation'),
-  (req, res) => {
+  asyncHandler(async (req, res) => {
+    const before = req.settings;
     const updated = settingsModel.update(req.params.guildId, {
       mod_log_channel_id: req.body.mod_log_channel_id,
       security_log_channel_id: req.body.security_log_channel_id,
     });
+    await logSettingsChange(req, before, updated, ['mod_log_channel_id', 'security_log_channel_id']);
     res.json({ mod_log_channel_id: updated.mod_log_channel_id, security_log_channel_id: updated.security_log_channel_id });
-  },
+  }),
 );
 
 /* ----------------------------------------------------------------
@@ -1015,17 +1049,20 @@ router.patch(
     if ('application_enabled' in patch) {
       patch.application_enabled = patch.application_enabled ? 1 : 0;
     }
+    const before = req.settings;
     const updated = settingsModel.update(req.params.guildId, patch);
+    await logSettingsChange(req, before, updated, Object.keys(patch));
     res.json(updated);
   }),
 );
 
 router.get('/guilds/:guildId/activity', (req, res) => {
   const q = req.query;
-  if (q.category || q.actorId || q.targetId || q.from || q.to) {
+  if (q.category || q.categories || q.actorId || q.targetId || q.from || q.to) {
     return res.json(
       activity.query(req.params.guildId, {
         category: q.category || undefined,
+        categories: q.categories ? String(q.categories).split(',').filter(Boolean) : undefined,
         actorId: q.actorId || undefined,
         targetId: q.targetId || undefined,
         from: q.from ? num(q.from, undefined) : undefined,

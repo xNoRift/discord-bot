@@ -139,7 +139,7 @@ async function applyAction(message, rule, reasonText) {
   await logService
     .log({
       guildId: guild.id,
-      category: 'moderation',
+      category: 'automod',
       type: `automod_${rule.type}`,
       title: `🤖 AutoMod: ${LABELS[rule.type] || rule.type}`,
       description: reasonText,

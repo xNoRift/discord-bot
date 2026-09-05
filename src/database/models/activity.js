@@ -6,10 +6,10 @@ const db = require('../db');
  * Allgemeines Aktivitaets-Log (fuer Dashboard-Anzeige, unabhaengig von den Discord-Log-Channels).
  */
 
-function add({ guildId, category, type, actorId, targetId, message, meta }) {
+function add({ guildId, category, type, actorId, targetId, message, meta, oldValue, newValue }) {
   db.prepare(
-    `INSERT INTO activity_log (guild_id, category, type, actor_id, target_id, message, meta_json, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO activity_log (guild_id, category, type, actor_id, target_id, message, meta_json, old_value, new_value, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     guildId ?? null,
     category ?? null,
@@ -18,6 +18,8 @@ function add({ guildId, category, type, actorId, targetId, message, meta }) {
     targetId ?? null,
     message ?? null,
     meta ? JSON.stringify(meta) : null,
+    oldValue !== undefined ? (typeof oldValue === 'string' ? oldValue : JSON.stringify(oldValue)) : null,
+    newValue !== undefined ? (typeof newValue === 'string' ? newValue : JSON.stringify(newValue)) : null,
     Date.now(),
   );
 }
@@ -31,13 +33,22 @@ function recent(guildId, limit = 30) {
 /**
  * Gefilterte Abfrage fürs Dashboard-Logs-Seite (und die Moderationshistorie).
  * @param {string} guildId
- * @param {{category?:string, actorId?:string, targetId?:string, from?:number, to?:number, limit?:number}} [opts]
+ * @param {{category?:string, categories?:string[], actorId?:string, targetId?:string, from?:number, to?:number, limit?:number}} [opts]
+ *   `categories` (mehrere, ODER-verknüpft) ist für interne Zwecke wie die
+ *   "komplette Moderationshistorie" (moderation + automod zusammen) gedacht;
+ *   die normale Logs-Seite nutzt weiterhin das einzelne `category`.
  */
 function query(guildId, opts = {}) {
   const clauses = ['guild_id = @guildId'];
   const params = { guildId, limit: Math.min(200, Math.max(1, opts.limit || 60)) };
 
-  if (opts.category) {
+  if (opts.categories && opts.categories.length) {
+    const names = opts.categories.map((c, i) => `@cat${i}`);
+    opts.categories.forEach((c, i) => {
+      params[`cat${i}`] = c;
+    });
+    clauses.push(`category IN (${names.join(', ')})`);
+  } else if (opts.category) {
     clauses.push('category = @category');
     params.category = opts.category;
   }

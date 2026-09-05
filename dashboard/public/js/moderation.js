@@ -117,7 +117,7 @@ async function loadAllWarnings() {
 async function loadModHistory(userId) {
   modHistoryList.innerHTML = '<li class="muted">Lädt…</li>';
   try {
-    const rows = await apiFor('GET', `/activity?category=moderation&targetId=${encodeURIComponent(userId)}&limit=50`);
+    const rows = await apiFor('GET', `/activity?categories=moderation,automod&targetId=${encodeURIComponent(userId)}&limit=50`);
     modHistoryList.innerHTML = rows.length
       ? rows
           .map(

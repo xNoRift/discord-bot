@@ -442,12 +442,14 @@ CREATE INDEX IF NOT EXISTS idx_login_audit_time ON login_audit(created_at);
 CREATE TABLE IF NOT EXISTS activity_log (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   guild_id   TEXT,
-  category   TEXT,   -- ticket | giveaway | application | moderation | general
+  category   TEXT,   -- ticket | giveaway | application | moderation | automod | security | settings | general
   type       TEXT,
   actor_id   TEXT,
   target_id  TEXT,
   message    TEXT,
   meta_json  TEXT,
+  old_value  TEXT,   -- Stand vor einer Änderung (falls zutreffend), oft JSON
+  new_value  TEXT,   -- Stand nach einer Änderung (falls zutreffend), oft JSON
   created_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_activity_guild ON activity_log(guild_id, created_at);

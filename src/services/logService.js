@@ -24,7 +24,9 @@ const CATEGORY_FIELDS = {
   giveaway: 'giveaway_log_channel_id',
   application: 'application_log_channel_id',
   moderation: 'mod_log_channel_id',
+  automod: 'mod_log_channel_id',
   security: 'security_log_channel_id',
+  settings: 'log_channel_id',
   general: 'log_channel_id',
 };
 
@@ -51,6 +53,8 @@ function parseHexColor(hex) {
  * @param {string} [opts.actorId]
  * @param {string} [opts.targetId]
  * @param {object} [opts.meta]
+ * @param {*} [opts.oldValue]  Stand vor einer Änderung (für die Änderungshistorie)
+ * @param {*} [opts.newValue]  Stand nach einer Änderung
  */
 async function log(opts) {
   const {
@@ -64,6 +68,8 @@ async function log(opts) {
     actorId,
     targetId,
     meta,
+    oldValue,
+    newValue,
     overrideChannelId,
   } = opts;
 
@@ -77,6 +83,8 @@ async function log(opts) {
       targetId,
       message: title,
       meta,
+      oldValue,
+      newValue,
     });
   } catch (err) {
     logger.error('[log] activity.add fehlgeschlagen:', err.message);
