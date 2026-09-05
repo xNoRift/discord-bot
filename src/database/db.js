@@ -62,6 +62,8 @@ ensureColumn('ticket_panels', 'thumbnail_url', 'TEXT');
 
 // Dashboard-Erweiterung (Redesign)
 ensureColumn('guild_settings', 'tickets_enabled', 'INTEGER DEFAULT 1');
+ensureColumn('guild_settings', 'music_enabled', 'INTEGER DEFAULT 1');
+ensureColumn('guild_settings', 'giveaways_enabled', 'INTEGER DEFAULT 1');
 ensureColumn('guild_settings', 'ticket_team_ping', 'INTEGER DEFAULT 1');
 ensureColumn('guild_settings', 'ticket_close_restricted', 'INTEGER DEFAULT 0');
 ensureColumn('guild_settings', 'ticket_on_leave', "TEXT DEFAULT 'nothing'");

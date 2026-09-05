@@ -159,6 +159,7 @@ async function refreshGiveawayMessage(giveawayId) {
  */
 async function createGiveaway(guild, data) {
   const settings = settingsModel.get(guild.id);
+  if (settings.giveaways_enabled === 0) throw new Error('Das Giveaway-Modul ist auf diesem Server deaktiviert.');
   const channelId = data.channelId || settings.giveaway_channel_id;
   if (!channelId) throw new Error('Kein Giveaway-Kanal angegeben oder konfiguriert.');
 

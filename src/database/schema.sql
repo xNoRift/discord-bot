@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS guild_settings (
 
   -- Tickets
   tickets_enabled         INTEGER DEFAULT 1,
+  music_enabled           INTEGER DEFAULT 1,
+  giveaways_enabled       INTEGER DEFAULT 1,
   ticket_team_ping        INTEGER DEFAULT 1,
   ticket_close_restricted INTEGER DEFAULT 0,
   ticket_on_leave         TEXT DEFAULT 'nothing',

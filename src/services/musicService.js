@@ -50,6 +50,13 @@ function assertMusic() {
   }
 }
 
+/** Vom Server-Admin im Dashboard abschaltbar (guild_settings.music_enabled). */
+function assertMusicAllowed(guildId) {
+  if (settingsModel.get(guildId).music_enabled === 0) {
+    throw new Error('Das Musik-Modul ist auf diesem Server deaktiviert.');
+  }
+}
+
 const IDLE_DISCONNECT_MS = 3 * 60 * 1000;
 const MAX_QUEUE = 200;
 
@@ -370,6 +377,7 @@ async function resolveTracks(guildId, query, requestedBy) {
  * @returns {{ added: number, first: object|null, startedNow: boolean }}
  */
 async function play_(guild, voiceChannel, textChannelId, query, requestedBy) {
+  assertMusicAllowed(guild.id);
   const session = getOrCreate(guild);
   await session.connect(voiceChannel, textChannelId);
   const tracks = await resolveTracks(guild.id, query, requestedBy);
@@ -387,6 +395,7 @@ async function playStation(guild, voiceChannel, textChannelId, stationQuery, req
 
 /** Bot in einen Sprachkanal holen, ohne etwas abzuspielen. */
 async function join(guild, voiceChannel, textChannelId) {
+  assertMusicAllowed(guild.id);
   const session = getOrCreate(guild);
   await session.connect(voiceChannel, textChannelId);
   return session;

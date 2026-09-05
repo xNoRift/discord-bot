@@ -36,6 +36,8 @@ const EDITABLE_FIELDS = [
   'application_panel_message_id',
   // Redesign / erweiterte Einstellungen
   'tickets_enabled',
+  'music_enabled',
+  'giveaways_enabled',
   'ticket_team_ping',
   'ticket_close_restricted',
   'ticket_on_leave',

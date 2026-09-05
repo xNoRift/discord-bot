@@ -17,7 +17,29 @@ async function loadSettings() {
   f.giveaway_winner_role_id.value = settings.giveaway_winner_role_id || '';
   f.giveaway_log_channel_id.value = settings.giveaway_log_channel_id || '';
   f.giveaway_winner_role_duration_ms.value = fmtDuration(settings.giveaway_winner_role_duration_ms || 86400000);
+  renderModule();
 }
+
+function renderModule() {
+  const on = settings.giveaways_enabled !== 0;
+  const box = document.getElementById('moduleStatus');
+  box.classList.toggle('is-off', !on);
+  document.getElementById('msTitle').textContent = on ? 'Modul aktiviert' : 'Modul deaktiviert';
+  document.getElementById('msText').textContent = on
+    ? 'Giveaways sind aktiviert. Ein Klick deaktiviert das Modul – es lassen sich dann keine neuen Giveaways mehr erstellen.'
+    : 'Giveaways sind deaktiviert. Aktiviere das Modul, um neue Giveaways zu erstellen.';
+  const btn = document.getElementById('msToggle');
+  btn.textContent = on ? 'Deaktivieren' : 'Aktivieren';
+  btn.className = 'btn btn--sm ' + (on ? 'btn--outline-green' : 'btn--success');
+}
+
+document.getElementById('msToggle').addEventListener('click', async () => {
+  try {
+    settings = await apiFor('PATCH', '/settings', { giveaways_enabled: settings.giveaways_enabled !== 0 ? 0 : 1 });
+    renderModule();
+    toast('Gespeichert.', 'success');
+  } catch (e) { toast(e.message, 'error'); }
+});
 
 document.getElementById('gwSettings').addEventListener('submit', async (e) => {
   e.preventDefault();

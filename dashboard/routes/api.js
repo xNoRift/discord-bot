@@ -581,6 +581,7 @@ function musicState(guild) {
   base.youtube = musicService.youtubeAvailable();
   base.enabled = musicService.musicEnabled();
   base.error = musicService.musicError();
+  base.moduleEnabled = settingsModel.get(guild.id).music_enabled !== 0;
   return base;
 }
 
