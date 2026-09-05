@@ -641,6 +641,104 @@ router.post(
 );
 
 /* ----------------------------------------------------------------
+ *  Custom Commands (eigene Prefix-Befehle pro Server)
+ * ---------------------------------------------------------------- */
+
+const customCommandsModel = require('../../src/database/models/customCommands');
+
+function ownedCommand(req) {
+  const c = customCommandsModel.get(num(req.params.cmdId));
+  return c && c.guild_id === req.params.guildId ? c : null;
+}
+
+router.get('/guilds/:guildId/custom-commands', requireScope('settings'), (req, res) => {
+  res.json(customCommandsModel.listForGuild(req.guild.id));
+});
+
+router.post(
+  '/guilds/:guildId/custom-commands',
+  requireScope('settings'),
+  actionLimiter,
+  (req, res) => {
+    try {
+      const cmd = customCommandsModel.create({
+        guildId: req.guild.id,
+        name: req.body.name,
+        responseType: req.body.response_type,
+        content: req.body.content ? String(req.body.content).slice(0, 4000) : null,
+      });
+      logService
+        .log({
+          guildId: req.guild.id,
+          category: 'settings',
+          type: 'custom_command_create',
+          title: `⚙️ Custom Command erstellt (${req.session.user.username})`,
+          description: `\`${cmd.name}\``,
+          actorId: req.session.user.id,
+        })
+        .catch(() => null);
+      res.json(cmd);
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  },
+);
+
+router.patch(
+  '/guilds/:guildId/custom-commands/:cmdId',
+  requireScope('settings'),
+  actionLimiter,
+  (req, res) => {
+    if (!ownedCommand(req)) return res.status(404).json({ error: 'Command nicht gefunden.' });
+    const b = req.body;
+    const patch = {};
+    for (const k of [
+      'name', 'content', 'embed_title', 'embed_color', 'embed_image_url', 'embed_thumbnail_url',
+    ]) {
+      if (b[k] !== undefined) patch[k] = b[k];
+    }
+    if (b.response_type !== undefined) patch.response_type = b.response_type;
+    if (b.enabled !== undefined) patch.enabled = b.enabled ? 1 : 0;
+    if (b.delete_invocation !== undefined) patch.delete_invocation = b.delete_invocation ? 1 : 0;
+    if (b.buttons !== undefined) {
+      const clean = (Array.isArray(b.buttons) ? b.buttons : [])
+        .filter((x) => /^https?:\/\//i.test(x.url || ''))
+        .slice(0, 5)
+        .map((x) => ({ label: String(x.label || 'Link').slice(0, 80), url: String(x.url), emoji: x.emoji || undefined }));
+      patch.buttons_json = JSON.stringify(clean);
+    }
+    try {
+      const cmd = customCommandsModel.update(num(req.params.cmdId), patch);
+      res.json(cmd);
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  },
+);
+
+router.delete(
+  '/guilds/:guildId/custom-commands/:cmdId',
+  requireScope('settings'),
+  actionLimiter,
+  (req, res) => {
+    const cmd = ownedCommand(req);
+    if (!cmd) return res.status(404).json({ error: 'Command nicht gefunden.' });
+    customCommandsModel.remove(cmd.id);
+    logService
+      .log({
+        guildId: req.guild.id,
+        category: 'settings',
+        type: 'custom_command_delete',
+        title: `⚙️ Custom Command gelöscht (${req.session.user.username})`,
+        description: `\`${cmd.name}\``,
+        actorId: req.session.user.id,
+      })
+      .catch(() => null);
+    res.json({ ok: true });
+  },
+);
+
+/* ----------------------------------------------------------------
  *  Über den Bot in einen Kanal schreiben (auch: bestehende Bot-Nachricht bearbeiten)
  * ---------------------------------------------------------------- */
 

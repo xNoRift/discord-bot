@@ -483,3 +483,22 @@ CREATE TABLE IF NOT EXISTS role_panel_roles (
   position     INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_role_panel_roles_panel ON role_panel_roles(panel_id);
+
+-- ---------- Custom Commands (eigene Text-/Embed-Befehle pro Server) ----------
+CREATE TABLE IF NOT EXISTS custom_commands (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id            TEXT NOT NULL,
+  name                TEXT NOT NULL,       -- ohne Prefix, klein, z. B. "socials"
+  enabled             INTEGER DEFAULT 1,
+  response_type       TEXT DEFAULT 'text', -- 'text' | 'embed'
+  content             TEXT,               -- Text-Antwort ODER Embed-Beschreibung
+  embed_title         TEXT,
+  embed_color         TEXT,
+  embed_image_url     TEXT,
+  embed_thumbnail_url TEXT,
+  buttons_json        TEXT DEFAULT '[]',  -- [{label,url,emoji}] - reine Link-Buttons
+  delete_invocation   INTEGER DEFAULT 0,  -- auslösende Nachricht löschen
+  created_at          INTEGER,
+  updated_at          INTEGER
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_custom_commands_guild_name ON custom_commands(guild_id, name);
