@@ -163,13 +163,14 @@ async function postOrUpdatePanel(guild, panelId, channelId) {
 
 function buildManagementRow(ticket) {
   const closed = ticket.status === 'closed';
+  const claimed = Boolean(ticket.claimed_by);
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId('ticket:claim')
-      .setLabel('Übernehmen')
+      .setCustomId(claimed ? 'ticket:unclaim' : 'ticket:claim')
+      .setLabel(claimed ? 'Freigeben' : 'Übernehmen')
       .setEmoji('📌')
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(Boolean(ticket.claimed_by)),
+      .setStyle(claimed ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setDisabled(closed),
     new ButtonBuilder()
       .setCustomId('ticket:close')
       .setLabel('Schließen')
@@ -440,6 +441,151 @@ async function claimTicket(channel, member) {
   return updated;
 }
 
+async function unclaimTicket(channel, member) {
+  const ticket = ticketsModel.getByChannel(channel.id);
+  if (!ticket) throw new Error('Kein Ticket zu diesem Kanal gefunden.');
+  if (!ticket.claimed_by) throw new Error('Dieses Ticket ist nicht übernommen.');
+
+  const previousClaimer = ticket.claimed_by;
+  const updated = ticketsModel.unclaim(ticket.id);
+  await updateManagementMessage(channel, updated);
+
+  // Falls beim Übernehmen verschoben wurde: zurück in die ursprüngliche Kategorie.
+  const cat = ticket.category_id ? ticketPanels.getCategory(ticket.category_id) : null;
+  const settings = settingsModel.get(channel.guild.id);
+  const backCategoryId = cat?.discord_category_id || settings.ticket_category_id;
+  const panel = ticket.panel_id ? ticketPanels.getPanel(ticket.panel_id) : null;
+  if (panel?.claim_category_id && backCategoryId && channel.parentId === panel.claim_category_id) {
+    await channel.setParent(backCategoryId, { lockPermissions: false }).catch(() => null);
+  }
+
+  await channel
+    .send({ embeds: [embeds.warning('📌 Ticket freigegeben', `<@${member.id}> hat das Ticket wieder freigegeben.`)] })
+    .catch(() => null);
+
+  await logService.log({
+    guildId: channel.guild.id,
+    category: 'ticket',
+    type: 'ticket_unclaim',
+    title: '📌 Ticket freigegeben',
+    fields: [
+      { name: 'Ticket', value: `#${ticket.number}`, inline: true },
+      { name: 'Freigegeben von', value: `<@${member.id}>`, inline: true },
+      { name: 'Vorher übernommen von', value: `<@${previousClaimer}>`, inline: true },
+    ],
+    actorId: member.id,
+    overrideChannelId: ticketLogOverride(ticket),
+    meta: { ticketId: ticket.id },
+  });
+  return updated;
+}
+
+/** Kanalname eines Tickets ändern (Support/Manager). */
+async function renameTicket(channel, member, rawName) {
+  const ticket = ticketsModel.getByChannel(channel.id);
+  if (!ticket) throw new Error('Kein Ticket zu diesem Kanal gefunden.');
+
+  const clean = String(rawName || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\-_ ]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 90);
+  if (!clean) throw new Error('Bitte einen gültigen Namen angeben (a–z, 0–9, - und _).');
+
+  const oldName = channel.name;
+  await channel.setName(clean).catch((err) => {
+    throw new Error(`Kanal konnte nicht umbenannt werden: ${err.message}`);
+  });
+
+  await logService.log({
+    guildId: channel.guild.id,
+    category: 'ticket',
+    type: 'ticket_rename',
+    title: '✏️ Ticket umbenannt',
+    fields: [
+      { name: 'Ticket', value: `#${ticket.number}`, inline: true },
+      { name: 'Von', value: `#${oldName}`, inline: true },
+      { name: 'Zu', value: `#${clean}`, inline: true },
+      { name: 'Durch', value: `<@${member.id}>`, inline: true },
+    ],
+    actorId: member.id,
+    overrideChannelId: ticketLogOverride(ticket),
+    meta: { ticketId: ticket.id },
+  });
+  return clean;
+}
+
+/** Einen weiteren Nutzer zum Ticket hinzufügen (Support/Manager). */
+async function addMemberToTicket(channel, actor, targetUser) {
+  const ticket = ticketsModel.getByChannel(channel.id);
+  if (!ticket) throw new Error('Kein Ticket zu diesem Kanal gefunden.');
+
+  await channel.permissionOverwrites
+    .edit(targetUser.id, {
+      ViewChannel: true,
+      SendMessages: true,
+      ReadMessageHistory: true,
+      AttachFiles: true,
+      EmbedLinks: true,
+    })
+    .catch((err) => {
+      throw new Error(`Konnte den Nutzer nicht hinzufügen: ${err.message}`);
+    });
+
+  await channel
+    .send({ embeds: [embeds.success('➕ Nutzer hinzugefügt', `<@${targetUser.id}> wurde von <@${actor.id}> zum Ticket hinzugefügt.`)] })
+    .catch(() => null);
+
+  await logService.log({
+    guildId: channel.guild.id,
+    category: 'ticket',
+    type: 'ticket_user_add',
+    title: '➕ Nutzer zu Ticket hinzugefügt',
+    fields: [
+      { name: 'Ticket', value: `#${ticket.number}`, inline: true },
+      { name: 'Nutzer', value: `<@${targetUser.id}>`, inline: true },
+      { name: 'Durch', value: `<@${actor.id}>`, inline: true },
+    ],
+    actorId: actor.id,
+    targetId: targetUser.id,
+    overrideChannelId: ticketLogOverride(ticket),
+    meta: { ticketId: ticket.id },
+  });
+}
+
+/** Einen Nutzer wieder aus dem Ticket entfernen (Support/Manager). Der Ersteller kann nicht entfernt werden. */
+async function removeMemberFromTicket(channel, actor, targetUser) {
+  const ticket = ticketsModel.getByChannel(channel.id);
+  if (!ticket) throw new Error('Kein Ticket zu diesem Kanal gefunden.');
+  if (targetUser.id === ticket.opener_id) throw new Error('Der Ersteller kann nicht aus seinem eigenen Ticket entfernt werden.');
+
+  await channel.permissionOverwrites.delete(targetUser.id, `Aus Ticket entfernt von ${actor.user.tag}`).catch((err) => {
+    throw new Error(`Konnte den Nutzer nicht entfernen: ${err.message}`);
+  });
+
+  await channel
+    .send({ embeds: [embeds.warning('➖ Nutzer entfernt', `<@${targetUser.id}> wurde von <@${actor.id}> aus dem Ticket entfernt.`)] })
+    .catch(() => null);
+
+  await logService.log({
+    guildId: channel.guild.id,
+    category: 'ticket',
+    type: 'ticket_user_remove',
+    title: '➖ Nutzer aus Ticket entfernt',
+    fields: [
+      { name: 'Ticket', value: `#${ticket.number}`, inline: true },
+      { name: 'Nutzer', value: `<@${targetUser.id}>`, inline: true },
+      { name: 'Durch', value: `<@${actor.id}>`, inline: true },
+    ],
+    actorId: actor.id,
+    targetId: targetUser.id,
+    overrideChannelId: ticketLogOverride(ticket),
+    meta: { ticketId: ticket.id },
+  });
+}
+
 async function closeTicket(channel, member) {
   const ticket = ticketsModel.getByChannel(channel.id);
   if (!ticket) throw new Error('Kein Ticket zu diesem Kanal gefunden.');
@@ -640,6 +786,10 @@ module.exports = {
   postOrUpdatePanel,
   createTicket,
   claimTicket,
+  unclaimTicket,
+  renameTicket,
+  addMemberToTicket,
+  removeMemberFromTicket,
   closeTicket,
   reopenTicket,
   deleteTicket,

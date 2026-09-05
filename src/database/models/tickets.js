@@ -105,6 +105,11 @@ function claim(id, userId) {
   return get(id);
 }
 
+function unclaim(id) {
+  db.prepare('UPDATE tickets SET claimed_by = NULL, claimed_at = NULL WHERE id = ?').run(id);
+  return get(id);
+}
+
 function close(id, userId) {
   db.prepare(
     "UPDATE tickets SET status = 'closed', closed_by = ?, closed_at = ? WHERE id = ?",
@@ -137,6 +142,7 @@ module.exports = {
   listByGuild,
   stats,
   claim,
+  unclaim,
   close,
   reopen,
   markDeleted,
