@@ -109,6 +109,9 @@ ensureColumn('guild_settings', 'warn_escalation', 'TEXT');
 // Aktivitäts-Log: Kategorie für Filterung (ticket/giveaway/application/moderation/general)
 ensureColumn('activity_log', 'category', 'TEXT');
 
+// Sicherheits-Log-Kanal (Anti-Raid/Anti-Nuke-Alarme)
+ensureColumn('guild_settings', 'security_log_channel_id', 'TEXT');
+
 logger.info(`[db] Datenbank verbunden: ${config.database.path}`);
 
 process.on('exit', () => {

@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS guild_settings (
   timezone       TEXT DEFAULT 'Europe/Berlin',
   bot_language   TEXT DEFAULT 'de',
   mod_log_channel_id TEXT,
+  security_log_channel_id TEXT,
   suggestions_enabled     INTEGER DEFAULT 0,
   suggestions_channel_id  TEXT,
   team_role_ids  TEXT,
@@ -376,6 +377,24 @@ CREATE TABLE IF NOT EXISTS automod_rules (
   updated_at         INTEGER
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_automod_rules_guild_type ON automod_rules(guild_id, type);
+
+-- ---------- Anti-Raid: eine Zeile pro Server ----------
+-- action: log | kick | ban (was bei einem erkannten Join-Spike zusätzlich zu Alarm+Log passiert)
+CREATE TABLE IF NOT EXISTS anti_raid_settings (
+  guild_id              TEXT PRIMARY KEY,
+  enabled               INTEGER DEFAULT 0,
+  window_seconds        INTEGER DEFAULT 10,
+  max_joins             INTEGER DEFAULT 10,
+  min_account_age_hours INTEGER DEFAULT 0,   -- 0 = keine Mindestalter-Prüfung
+  action                TEXT DEFAULT 'log',
+  lockdown              INTEGER DEFAULT 0,   -- Verifizierungsstufe temporär anheben bei Alarm
+  lockdown_minutes       INTEGER DEFAULT 10,
+  notify_owner          INTEGER DEFAULT 1,
+  exempt_role_ids       TEXT DEFAULT '[]',
+  exempt_user_ids       TEXT DEFAULT '[]',
+  created_at            INTEGER,
+  updated_at            INTEGER
+);
 
 -- ---------- Dashboard-Nutzer (OAuth2) ----------
 CREATE TABLE IF NOT EXISTS dashboard_users (

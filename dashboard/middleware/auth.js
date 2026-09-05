@@ -143,6 +143,9 @@ const SCOPED_ALLOWLIST = [
   { method: 'PATCH', path: /^\/moderation\/settings$/ },
   { method: 'GET', path: /^\/automod$/ },
   { method: 'PATCH', path: /^\/automod\/[a-z_]+$/ },
+  { method: 'GET', path: /^\/antiraid$/ },
+  { method: 'PATCH', path: /^\/antiraid$/ },
+  { method: 'POST', path: /^\/antiraid\/lockdown\/lift$/ },
 ];
 
 function enforceDashboardScope(req, res, next) {

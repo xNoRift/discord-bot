@@ -9,8 +9,12 @@
 <div class="card">
   <div class="card__head"><h2><%- icon('file') %> Moderations-Log</h2></div>
   <form id="modForm" class="form">
-    <div class="field"><label>Moderations-Log-Kanal</label><select name="mod_log_channel_id" data-type="text"></select>
-      <small>Kanal für Moderations-Ereignisse.</small></div>
+    <div class="col-2">
+      <div class="field"><label>Moderations-Log-Kanal</label><select name="mod_log_channel_id" data-type="text"></select>
+        <small>Kanal für Moderations-Ereignisse.</small></div>
+      <div class="field"><label>Sicherheits-Log-Kanal</label><select name="security_log_channel_id" data-type="text"></select>
+        <small>Kanal für Anti-Raid-/Anti-Nuke-Alarme.</small></div>
+    </div>
     <div><button class="btn btn--primary btn--sm" type="submit">Speichern</button></div>
   </form>
 </div>
@@ -83,6 +87,52 @@
     </div>
     <div class="field"><label>Nur von User-ID (optional)</label><input name="userId" inputmode="numeric" placeholder="leer = alle" /></div>
     <div style="margin-top:6px;"><button class="btn btn--danger btn--sm" type="submit"><%- icon('trash', 'icon--sm') %> Löschen</button> <span class="muted" id="modPurgeStatus"></span></div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('shield') %> Anti-Raid</h2></div>
+  <p class="card__sub">Erkennt ungewöhnlich viele Beitritte in kurzer Zeit und optional zu junge Accounts. Reagiert immer mit Alarm + Log, optional zusätzlich mit Kick/Bann und einem temporären Lockdown (angehobene Verifizierungsstufe).</p>
+  <p class="muted" id="antiRaidStatus">Lädt…</p>
+  <form id="antiRaidForm" class="form">
+    <label class="setting-row" style="cursor:pointer;padding:8px 0;">
+      <input type="checkbox" name="enabled" style="width:17px;height:17px;accent-color:var(--accent);">
+      <span class="setting-row__text"><b>Anti-Raid aktivieren</b></span>
+    </label>
+    <div class="col-2">
+      <div class="field"><label>Zeitfenster (Sekunden)</label><input name="windowSeconds" type="number" min="2" max="600" placeholder="10" /></div>
+      <div class="field"><label>Max. Beitritte im Zeitfenster</label><input name="maxJoins" type="number" min="2" max="1000" placeholder="10" /></div>
+    </div>
+    <div class="col-2">
+      <div class="field"><label>Mindest-Accountalter (Stunden, 0 = aus)</label><input name="minAccountAgeHours" type="number" min="0" max="8760" placeholder="0" /></div>
+      <div class="field"><label>Aktion bei Alarm</label>
+        <select name="action">
+          <option value="log">Nur Alarm + Log</option>
+          <option value="kick">+ Kick</option>
+          <option value="ban">+ Bann</option>
+        </select>
+      </div>
+    </div>
+    <label class="setting-row" style="cursor:pointer;padding:8px 0;">
+      <input type="checkbox" name="notifyOwner" style="width:17px;height:17px;accent-color:var(--accent);">
+      <span class="setting-row__text"><b>Serverbesitzer per DM benachrichtigen</b><span class="muted">Höchstens alle 5 Minuten erneut, um Spam zu vermeiden.</span></span>
+    </label>
+    <label class="setting-row" style="cursor:pointer;padding:8px 0;">
+      <input type="checkbox" name="lockdown" style="width:17px;height:17px;accent-color:var(--accent);">
+      <span class="setting-row__text"><b>Lockdown bei Alarm</b><span class="muted">Verifizierungsstufe temporär auf „Sehr hoch" anheben.</span></span>
+    </label>
+    <div class="field"><label>Lockdown-Dauer (Minuten)</label><input name="lockdownMinutes" type="number" min="1" max="1440" placeholder="10" style="max-width:160px;" /></div>
+    <div class="field"><label>Ausnahme-Rollen (nie betroffen)</label>
+      <div id="antiRaidRoles" style="max-height:160px;overflow:auto;"><div class="loading">Lädt…</div></div>
+    </div>
+    <div class="field"><label>Ausnahme-User-IDs (eine pro Zeile, z. B. bekannte Bots)</label>
+      <textarea name="exemptUserIds" rows="3" placeholder="123456789012345678"></textarea>
+    </div>
+    <div class="row-inline" style="margin-top:6px;">
+      <button class="btn btn--primary btn--sm" type="submit">Speichern</button>
+      <button class="btn btn--ghost btn--sm" type="button" id="antiRaidLiftLockdown" hidden>Lockdown jetzt aufheben</button>
+      <span class="muted" id="antiRaidFormStatus"></span>
+    </div>
   </form>
 </div>
 

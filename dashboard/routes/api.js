@@ -655,8 +655,11 @@ router.patch(
   '/guilds/:guildId/moderation/settings',
   requireScope('moderation'),
   (req, res) => {
-    const updated = settingsModel.update(req.params.guildId, { mod_log_channel_id: req.body.mod_log_channel_id });
-    res.json({ mod_log_channel_id: updated.mod_log_channel_id });
+    const updated = settingsModel.update(req.params.guildId, {
+      mod_log_channel_id: req.body.mod_log_channel_id,
+      security_log_channel_id: req.body.security_log_channel_id,
+    });
+    res.json({ mod_log_channel_id: updated.mod_log_channel_id, security_log_channel_id: updated.security_log_channel_id });
   },
 );
 
@@ -689,6 +692,60 @@ router.patch(
       res.status(400).json({ error: err.message });
     }
   },
+);
+
+/* ----------------------------------------------------------------
+ *  Anti-Raid – Join-Spike-Erkennung + Lockdown
+ * ---------------------------------------------------------------- */
+
+const antiRaidModel = require('../../src/database/models/antiRaidSettings');
+const antiRaidService = require('../../src/services/antiRaidService');
+
+router.get('/guilds/:guildId/antiraid', requireScope('moderation'), (req, res) => {
+  res.json({
+    settings: antiRaidModel.get(req.guild.id),
+    status: antiRaidService.status(req.guild.id),
+    actions: antiRaidModel.ACTIONS,
+  });
+});
+
+router.patch(
+  '/guilds/:guildId/antiraid',
+  requireScope('moderation'),
+  actionLimiter,
+  (req, res) => {
+    const patch = {};
+    for (const key of [
+      'enabled',
+      'windowSeconds',
+      'maxJoins',
+      'minAccountAgeHours',
+      'action',
+      'lockdown',
+      'lockdownMinutes',
+      'notifyOwner',
+      'exemptRoleIds',
+      'exemptUserIds',
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) patch[key] = req.body[key];
+    }
+    try {
+      const settings = antiRaidModel.update(req.guild.id, patch);
+      res.json({ ok: true, settings });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  },
+);
+
+router.post(
+  '/guilds/:guildId/antiraid/lockdown/lift',
+  requireScope('moderation'),
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const lifted = await antiRaidService.liftLockdown(req.guild.id);
+    res.json({ ok: true, lifted });
+  }),
 );
 
 /* ----------------------------------------------------------------

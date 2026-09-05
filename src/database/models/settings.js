@@ -45,6 +45,7 @@ const EDITABLE_FIELDS = [
   'suggestions_enabled',
   'suggestions_channel_id',
   'mod_log_channel_id',
+  'security_log_channel_id',
   'team_role_ids',
   'autorole_ids',
   'autorole_bot_ids',

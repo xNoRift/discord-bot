@@ -2,11 +2,19 @@
 
 const autoRoleService = require('../services/autoRoleService');
 const welcomeService = require('../services/welcomeService');
+const antiRaidService = require('../services/antiRaidService');
 const logger = require('../utils/logger');
 
 module.exports = {
   name: 'guildMemberAdd',
   async execute(member) {
+    try {
+      const removed = await antiRaidService.handleJoin(member);
+      if (removed) return; // Mitglied wurde gekickt/gebannt - keine Auto-Rolle/Willkommensnachricht mehr
+    } catch (err) {
+      logger.error('[guildMemberAdd] Anti-Raid:', err.message);
+    }
+
     try {
       await autoRoleService.applyOnJoin(member);
     } catch (err) {

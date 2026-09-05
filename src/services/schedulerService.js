@@ -5,6 +5,7 @@ const temporaryRoleService = require('./temporaryRoleService');
 const ticketService = require('./ticketService');
 const backupService = require('./backupService');
 const automodService = require('./automodService');
+const antiRaidService = require('./antiRaidService');
 const logger = require('../utils/logger');
 
 /**
@@ -31,6 +32,7 @@ async function start() {
     } catch (err) {
       logger.error('[scheduler] automod prune:', err.message);
     }
+    antiRaidService.sweep().catch((err) => logger.error('[scheduler] antiraid sweep:', err.message));
   }, 60_000);
 
   logger.success('[scheduler] gestartet (Sweep alle 60s)');

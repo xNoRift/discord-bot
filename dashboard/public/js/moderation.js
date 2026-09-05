@@ -441,3 +441,80 @@ document.getElementById('automodSave').addEventListener('click', async () => {
 });
 
 loadAutomod().catch((e) => toast(e.message, 'error'));
+
+/* ---------------- Anti-Raid ---------------- */
+
+const antiRaidForm = document.getElementById('antiRaidForm');
+const liftLockdownBtn = document.getElementById('antiRaidLiftLockdown');
+
+function applyAntiRaidData(settings) {
+  antiRaidForm.elements.enabled.checked = Boolean(settings.enabled);
+  antiRaidForm.elements.windowSeconds.value = settings.window_seconds;
+  antiRaidForm.elements.maxJoins.value = settings.max_joins;
+  antiRaidForm.elements.minAccountAgeHours.value = settings.min_account_age_hours;
+  antiRaidForm.elements.action.value = settings.action;
+  antiRaidForm.elements.notifyOwner.checked = Boolean(settings.notify_owner);
+  antiRaidForm.elements.lockdown.checked = Boolean(settings.lockdown);
+  antiRaidForm.elements.lockdownMinutes.value = settings.lockdown_minutes;
+  antiRaidForm.elements.exemptUserIds.value = (JSON.parse(settings.exempt_user_ids || '[]')).join('\n');
+}
+
+async function loadAntiRaid() {
+  try {
+    const [{ settings, status }, roles] = await Promise.all([apiFor('GET', '/antiraid'), getRoles()]);
+    applyAntiRaidData(settings);
+    const selectedRoles = new Set(JSON.parse(settings.exempt_role_ids || '[]'));
+    document.getElementById('antiRaidRoles').innerHTML = roles.length
+      ? roleChecklist(roles, selectedRoles)
+      : '<p class="muted">Keine Rollen gefunden.</p>';
+
+    const parts = [`${status.recentJoins} Beitritt(e) im aktuellen Zeitfenster`];
+    if (status.raidActive) parts.push('⚠️ Alarm aktuell aktiv');
+    if (status.lockdownActive) parts.push(`Lockdown aktiv bis ${new Date(status.lockdownRevertAt).toLocaleTimeString('de-DE')}`);
+    document.getElementById('antiRaidStatus').textContent = parts.join(' · ');
+    liftLockdownBtn.hidden = !status.lockdownActive;
+  } catch (e) {
+    document.getElementById('antiRaidStatus').textContent = e.message;
+  }
+}
+
+antiRaidForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const status = document.getElementById('antiRaidFormStatus');
+  const a = readForm(antiRaidForm);
+  const exemptRoleIds = [...document.querySelectorAll('#antiRaidRoles input:checked')].map((c) => c.value);
+  const exemptUserIds = a.exemptUserIds.split('\n').map((s) => s.trim()).filter(Boolean);
+  status.textContent = 'Speichert…';
+  try {
+    await apiFor('PATCH', '/antiraid', {
+      enabled: a.enabled,
+      windowSeconds: a.windowSeconds,
+      maxJoins: a.maxJoins,
+      minAccountAgeHours: a.minAccountAgeHours,
+      action: a.action,
+      notifyOwner: a.notifyOwner,
+      lockdown: a.lockdown,
+      lockdownMinutes: a.lockdownMinutes,
+      exemptRoleIds,
+      exemptUserIds,
+    });
+    toast('Anti-Raid-Einstellungen gespeichert.', 'success');
+    status.textContent = 'Gespeichert ✓';
+    loadAntiRaid();
+  } catch (err) {
+    toast(err.message, 'error');
+    status.textContent = err.message;
+  }
+});
+
+liftLockdownBtn.addEventListener('click', async () => {
+  try {
+    await apiFor('POST', '/antiraid/lockdown/lift', {});
+    toast('Lockdown aufgehoben.', 'success');
+    loadAntiRaid();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+});
+
+loadAntiRaid().catch((e) => toast(e.message, 'error'));
