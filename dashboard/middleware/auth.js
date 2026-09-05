@@ -170,6 +170,9 @@ const SCOPED_ALLOWLIST = [
   { method: 'POST', path: /^\/custom-commands$/, scope: 'settings' },
   { method: 'PATCH', path: /^\/custom-commands\/\d+$/, scope: 'settings' },
   { method: 'DELETE', path: /^\/custom-commands\/\d+$/, scope: 'settings' },
+  { method: 'GET', path: /^\/notifications\/(config|inbox|unread-count)$/, scope: 'settings' },
+  { method: 'PUT', path: /^\/notifications\/config\/[a-z_]+$/, scope: 'settings' },
+  { method: 'POST', path: /^\/notifications\/inbox\/(read-all|\d+\/read)$/, scope: 'settings' },
 ];
 
 function enforceDashboardScope(req, res, next) {

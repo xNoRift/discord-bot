@@ -34,6 +34,7 @@ const NAV = [
     label: 'Moderation',
     items: [
       { key: 'moderation', label: 'Moderation', icon: 'shield', path: '/moderation' },
+      { key: 'notifications', label: 'Benachrichtigungen', icon: 'bell', path: '/notifications' },
       { key: 'logs', label: 'Logs', icon: 'file', path: '/logs' },
     ],
   },
@@ -67,6 +68,7 @@ const CRUMB = {
   giveaways: { crumb: 'Giveaways', crumbIcon: 'gift' },
   applications: { crumb: 'Bewerbungen', crumbIcon: 'clipboard' },
   moderation: { crumb: 'Moderation', crumbIcon: 'shield' },
+  notifications: { crumb: 'Benachrichtigungen', crumbIcon: 'bell' },
   roles: { crumb: 'Rollen', crumbIcon: 'shield' },
   rolepanels: { crumb: 'Rollen-Panels', crumbIcon: 'sparkles' },
   commands: { crumb: 'Custom Commands', crumbIcon: 'sparkles' },
@@ -145,6 +147,7 @@ const PAGES = [
   ['/giveaways', 'giveaways'],
   ['/applications', 'applications'],
   ['/moderation', 'moderation'],
+  ['/notifications', 'notifications'],
   ['/roles', 'roles'],
   ['/rolepanels', 'rolepanels'],
   ['/commands', 'commands'],

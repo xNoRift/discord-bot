@@ -205,6 +205,9 @@ router.post(
   asyncHandler(async (req, res) => {
     try {
       const info = await backupService.create();
+      require('../../src/services/notificationService')
+        .notifyOwners('💾 Backup erstellt', `\`${info.name}\` (${Math.round(info.size / 1024)} KB) von ${req.session.user.username}`)
+        .catch(() => null);
       res.json({ ok: true, backup: info });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -234,13 +237,17 @@ router.post(
   requireOwner,
   actionLimiter,
   asyncHandler(async (req, res) => {
+    const filename = String(req.body.filename || '');
     try {
-      await backupService.restore(String(req.body.filename || ''), String(req.body.token || ''));
+      await backupService.restore(filename, String(req.body.token || ''));
     } catch (err) {
       return res.status(400).json({ error: err.message });
     }
+    await require('../../src/services/notificationService')
+      .notifyOwners('♻️ Backup wiederhergestellt', `\`${filename}\` von ${req.session.user.username}. Der Bot startet jetzt neu.`, { color: config.branding.warning })
+      .catch(() => null);
     res.json({ ok: true, restarting: true });
-    setTimeout(() => process.exit(0), 300);
+    setTimeout(() => process.exit(0), 500);
   }),
 );
 
@@ -737,6 +744,58 @@ router.delete(
     res.json({ ok: true });
   },
 );
+
+/* ----------------------------------------------------------------
+ *  Benachrichtigungen: Konfiguration + Dashboard-Postfach
+ * ---------------------------------------------------------------- */
+
+const notificationsModel = require('../../src/database/models/notifications');
+
+router.get('/guilds/:guildId/notifications/config', requireScope('settings'), (req, res) => {
+  res.json(notificationsModel.listConfig(req.guild.id));
+});
+
+router.put(
+  '/guilds/:guildId/notifications/config/:eventKey',
+  requireScope('settings'),
+  actionLimiter,
+  (req, res) => {
+    if (!notificationsModel.EVENT_KEYS.includes(req.params.eventKey)) {
+      return res.status(400).json({ error: 'Unbekannter Ereignistyp.' });
+    }
+    try {
+      const cfg = notificationsModel.setConfig(req.guild.id, req.params.eventKey, {
+        toChannel: req.body.toChannel,
+        channelId: req.body.channelId,
+        toDashboard: req.body.toDashboard,
+      });
+      res.json({ ok: true, config: cfg });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  },
+);
+
+router.get('/guilds/:guildId/notifications/inbox', requireScope('settings'), (req, res) => {
+  res.json({
+    items: notificationsModel.listInbox(req.guild.id, num(req.query.limit, 50)),
+    unread: notificationsModel.unreadCount(req.guild.id),
+  });
+});
+
+router.get('/guilds/:guildId/notifications/unread-count', requireScope('settings'), (req, res) => {
+  res.json({ unread: notificationsModel.unreadCount(req.guild.id) });
+});
+
+router.post('/guilds/:guildId/notifications/inbox/read-all', requireScope('settings'), (req, res) => {
+  notificationsModel.markAllRead(req.guild.id);
+  res.json({ ok: true });
+});
+
+router.post('/guilds/:guildId/notifications/inbox/:id/read', requireScope('settings'), (req, res) => {
+  notificationsModel.markRead(req.guild.id, num(req.params.id));
+  res.json({ ok: true });
+});
 
 /* ----------------------------------------------------------------
  *  Über den Bot in einen Kanal schreiben (auch: bestehende Bot-Nachricht bearbeiten)

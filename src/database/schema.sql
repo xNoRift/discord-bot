@@ -503,3 +503,27 @@ CREATE TABLE IF NOT EXISTS custom_commands (
   updated_at          INTEGER
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_custom_commands_guild_name ON custom_commands(guild_id, name);
+
+-- ---------- Benachrichtigungs-Konfiguration (pro Server, pro Ereignistyp) ----------
+-- event_key: ticket_new | application_new | giveaway_ended | security_alert |
+--            automod | antiraid | antinuke | backup
+CREATE TABLE IF NOT EXISTS guild_notifications (
+  guild_id     TEXT NOT NULL,
+  event_key    TEXT NOT NULL,
+  to_channel   INTEGER DEFAULT 0,
+  channel_id   TEXT,              -- NULL + to_channel=1 -> Kategorie-Standardkanal
+  to_dashboard INTEGER DEFAULT 0,
+  PRIMARY KEY (guild_id, event_key)
+);
+
+-- ---------- Dashboard-Postfach ----------
+CREATE TABLE IF NOT EXISTS notifications (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id   TEXT NOT NULL,
+  event_key  TEXT,
+  title      TEXT,
+  body       TEXT,
+  read       INTEGER DEFAULT 0,
+  created_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_guild ON notifications(guild_id, read, id);

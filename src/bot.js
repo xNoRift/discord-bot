@@ -33,8 +33,15 @@ async function startBot() {
   loadCommands(client);
   loadComponents(client);
 
-  process.on('unhandledRejection', (reason) => logger.error('[unhandledRejection]', reason));
-  process.on('uncaughtException', (err) => logger.error('[uncaughtException]', err));
+  const notificationService = require('./services/notificationService');
+  process.on('unhandledRejection', (reason) => {
+    logger.error('[unhandledRejection]', reason);
+    notificationService.notifyError('unhandledRejection', reason instanceof Error ? reason : new Error(String(reason))).catch(() => null);
+  });
+  process.on('uncaughtException', (err) => {
+    logger.error('[uncaughtException]', err);
+    notificationService.notifyError('uncaughtException', err).catch(() => null);
+  });
 
   try {
     await client.login(config.discord.token);
