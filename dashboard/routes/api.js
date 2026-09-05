@@ -543,6 +543,104 @@ router.delete(
 );
 
 /* ----------------------------------------------------------------
+ *  Rollen-Panels (Button-/Select-Rollen) – mehrere pro Server
+ * ---------------------------------------------------------------- */
+
+const rolePanelsModel = require('../../src/database/models/rolePanels');
+const rolePanelService = require('../../src/services/rolePanelService');
+
+function ownedRolePanel(req) {
+  const p = rolePanelsModel.getPanel(num(req.params.panelId));
+  return p && p.guild_id === req.params.guildId ? p : null;
+}
+
+router.get('/guilds/:guildId/role-panels', requireScope('settings'), (req, res) => {
+  const panels = rolePanelsModel.listPanels(req.guild.id).map((p) => ({
+    ...p,
+    roles: rolePanelsModel.listRoles(p.id),
+  }));
+  res.json(panels);
+});
+
+router.post(
+  '/guilds/:guildId/role-panels',
+  requireScope('settings'),
+  actionLimiter,
+  (req, res) => {
+    const name = String(req.body.name || '').trim().slice(0, 80);
+    if (!name) return res.status(400).json({ error: 'Name erforderlich.' });
+    const panel = rolePanelsModel.createPanel({
+      guildId: req.guild.id,
+      name,
+      title: req.body.title ? String(req.body.title).slice(0, 240) : '🎭 Rollen',
+      description: req.body.description ? String(req.body.description).slice(0, 2000) : 'Wähle eine Rolle:',
+      color: req.body.color || null,
+      style: req.body.style === 'select' ? 'select' : 'buttons',
+      mode: req.body.mode === 'single' ? 'single' : 'multi',
+    });
+    res.json({ ...panel, roles: [] });
+  },
+);
+
+router.patch(
+  '/guilds/:guildId/role-panels/:panelId',
+  requireScope('settings'),
+  actionLimiter,
+  (req, res) => {
+    if (!ownedRolePanel(req)) return res.status(404).json({ error: 'Panel nicht gefunden.' });
+    const b = req.body;
+    const patch = {};
+    for (const k of ['name', 'title', 'description', 'color', 'image_url', 'thumbnail_url']) {
+      if (b[k] !== undefined) patch[k] = b[k];
+    }
+    if (b.style !== undefined) patch.style = b.style === 'select' ? 'select' : 'buttons';
+    if (b.mode !== undefined) patch.mode = b.mode === 'single' ? 'single' : 'multi';
+    const updated = rolePanelsModel.updatePanel(num(req.params.panelId), patch);
+    res.json({ ...updated, roles: rolePanelsModel.listRoles(updated.id) });
+  },
+);
+
+router.delete(
+  '/guilds/:guildId/role-panels/:panelId',
+  requireScope('settings'),
+  actionLimiter,
+  (req, res) => {
+    if (!ownedRolePanel(req)) return res.status(404).json({ error: 'Panel nicht gefunden.' });
+    rolePanelsModel.deletePanel(num(req.params.panelId));
+    res.json({ ok: true });
+  },
+);
+
+router.put(
+  '/guilds/:guildId/role-panels/:panelId/roles',
+  requireScope('settings'),
+  actionLimiter,
+  (req, res) => {
+    if (!ownedRolePanel(req)) return res.status(404).json({ error: 'Panel nicht gefunden.' });
+    if (!Array.isArray(req.body.roles)) return res.status(400).json({ error: 'roles muss ein Array sein.' });
+    const roles = rolePanelsModel.setRoles(num(req.params.panelId), req.body.roles);
+    res.json({ ok: true, roles });
+  },
+);
+
+router.post(
+  '/guilds/:guildId/role-panels/:panelId/publish',
+  requireScope('settings'),
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    if (!ownedRolePanel(req)) return res.status(404).json({ error: 'Panel nicht gefunden.' });
+    const channelId = req.body.channelId ? String(req.body.channelId) : undefined;
+    if (channelId && !/^\d{5,25}$/.test(channelId)) return res.status(400).json({ error: 'Ungültiger Kanal.' });
+    try {
+      const msg = await rolePanelService.postOrUpdatePanel(req.guild, num(req.params.panelId), channelId);
+      res.json({ ok: true, messageId: msg.id, url: msg.url });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
+/* ----------------------------------------------------------------
  *  Über den Bot in einen Kanal schreiben (auch: bestehende Bot-Nachricht bearbeiten)
  * ---------------------------------------------------------------- */
 

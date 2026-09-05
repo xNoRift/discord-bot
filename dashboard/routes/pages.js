@@ -42,6 +42,7 @@ const NAV = [
     items: [
       { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
       { key: 'roles', label: 'Rollen', icon: 'shield', path: '/roles' },
+      { key: 'rolepanels', label: 'Rollen-Panels', icon: 'sparkles', path: '/rolepanels' },
       { key: 'statistics', label: 'Statistiken', icon: 'chart', path: '/statistics' },
       { key: 'settings', label: 'Einstellungen', icon: 'settings', path: '/settings' },
     ],
@@ -66,6 +67,7 @@ const CRUMB = {
   applications: { crumb: 'Bewerbungen', crumbIcon: 'clipboard' },
   moderation: { crumb: 'Moderation', crumbIcon: 'shield' },
   roles: { crumb: 'Rollen', crumbIcon: 'shield' },
+  rolepanels: { crumb: 'Rollen-Panels', crumbIcon: 'sparkles' },
   statistics: { crumb: 'Statistiken', crumbIcon: 'chart' },
   team: { crumb: 'Teamverwaltung', crumbIcon: 'users' },
   settings: { crumb: 'Einstellungen', crumbIcon: 'settings' },
@@ -142,6 +144,7 @@ const PAGES = [
   ['/applications', 'applications'],
   ['/moderation', 'moderation'],
   ['/roles', 'roles'],
+  ['/rolepanels', 'rolepanels'],
   ['/statistics', 'statistics'],
   ['/team', 'team'],
   ['/settings', 'settings'],

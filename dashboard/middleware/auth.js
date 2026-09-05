@@ -160,6 +160,12 @@ const SCOPED_ALLOWLIST = [
   { method: 'DELETE', path: /^\/roles\/\d+$/, scope: 'settings' },
   { method: 'POST', path: /^\/roles\/\d+\/members\/\d+$/, scope: 'settings' },
   { method: 'DELETE', path: /^\/roles\/\d+\/members\/\d+$/, scope: 'settings' },
+  { method: 'GET', path: /^\/role-panels$/, scope: 'settings' },
+  { method: 'POST', path: /^\/role-panels$/, scope: 'settings' },
+  { method: 'PATCH', path: /^\/role-panels\/\d+$/, scope: 'settings' },
+  { method: 'DELETE', path: /^\/role-panels\/\d+$/, scope: 'settings' },
+  { method: 'PUT', path: /^\/role-panels\/\d+\/roles$/, scope: 'settings' },
+  { method: 'POST', path: /^\/role-panels\/\d+\/publish$/, scope: 'settings' },
 ];
 
 function enforceDashboardScope(req, res, next) {

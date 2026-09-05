@@ -453,3 +453,33 @@ CREATE TABLE IF NOT EXISTS activity_log (
   created_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_activity_guild ON activity_log(guild_id, created_at);
+
+-- ---------- Rollen-Panels (Button-/Select-Rollen), mehrere pro Server ----------
+CREATE TABLE IF NOT EXISTS role_panels (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id      TEXT NOT NULL,
+  name          TEXT NOT NULL,   -- interner Name im Dashboard
+  title         TEXT,
+  description   TEXT,
+  color         TEXT,
+  image_url     TEXT,
+  thumbnail_url TEXT,
+  style         TEXT NOT NULL DEFAULT 'buttons', -- 'buttons' | 'select'
+  mode          TEXT NOT NULL DEFAULT 'multi',   -- 'multi' | 'single' (nur eine Rolle aus diesem Panel gleichzeitig)
+  channel_id    TEXT,
+  message_id    TEXT,
+  created_at    INTEGER,
+  updated_at    INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_role_panels_guild ON role_panels(guild_id);
+
+CREATE TABLE IF NOT EXISTS role_panel_roles (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  panel_id     INTEGER NOT NULL,
+  role_id      TEXT NOT NULL,
+  label        TEXT,             -- Anzeigename (Default: Rollenname zur Laufzeit)
+  emoji        TEXT,
+  button_style TEXT DEFAULT 'secondary', -- primary | secondary | success | danger (nur style='buttons')
+  position     INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_role_panel_roles_panel ON role_panel_roles(panel_id);
