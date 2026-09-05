@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS guild_settings (
   bot_language   TEXT DEFAULT 'de',
   mod_log_channel_id TEXT,
   security_log_channel_id TEXT,
+  automod_enabled    INTEGER DEFAULT 0,
   suggestions_enabled     INTEGER DEFAULT 0,
   suggestions_channel_id  TEXT,
   team_role_ids  TEXT,

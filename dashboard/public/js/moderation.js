@@ -10,6 +10,8 @@ async function loadModForm() {
   await fillSelectors(s);
   const el = document.querySelector('#modForm [name=mod_log_channel_id]');
   if (el) el.value = s.mod_log_channel_id || '';
+  const ae = document.getElementById('automodEnabled');
+  if (ae) ae.checked = Boolean(s.automod_enabled);
 }
 
 async function saveModForm() {
@@ -394,6 +396,17 @@ function automodRow(type) {
   syncMinutes();
   return row;
 }
+
+const automodEnabled = document.getElementById('automodEnabled');
+automodEnabled.addEventListener('change', async () => {
+  try {
+    await apiFor('PATCH', '/moderation/settings', { automod_enabled: automodEnabled.checked });
+    toast(automodEnabled.checked ? 'AutoMod aktiviert.' : 'AutoMod deaktiviert.', 'success');
+  } catch (err) {
+    toast(err.message, 'error');
+    automodEnabled.checked = !automodEnabled.checked;
+  }
+});
 
 async function loadAutomod() {
   const wrap = document.getElementById('automodRows');

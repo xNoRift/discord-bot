@@ -1081,12 +1081,18 @@ router.patch(
   requireScope('moderation'),
   asyncHandler(async (req, res) => {
     const before = req.settings;
-    const updated = settingsModel.update(req.params.guildId, {
+    const patch = {
       mod_log_channel_id: req.body.mod_log_channel_id,
       security_log_channel_id: req.body.security_log_channel_id,
+    };
+    if (req.body.automod_enabled !== undefined) patch.automod_enabled = req.body.automod_enabled ? 1 : 0;
+    const updated = settingsModel.update(req.params.guildId, patch);
+    await logSettingsChange(req, before, updated, Object.keys(patch));
+    res.json({
+      mod_log_channel_id: updated.mod_log_channel_id,
+      security_log_channel_id: updated.security_log_channel_id,
+      automod_enabled: updated.automod_enabled,
     });
-    await logSettingsChange(req, before, updated, ['mod_log_channel_id', 'security_log_channel_id']);
-    res.json({ mod_log_channel_id: updated.mod_log_channel_id, security_log_channel_id: updated.security_log_channel_id });
   }),
 );
 

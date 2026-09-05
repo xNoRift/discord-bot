@@ -94,10 +94,10 @@
   <div class="card__head"><h2><%- icon('shield') %> Anti-Nuke</h2></div>
   <p class="card__sub">Überwacht gefährliche Server-Aktionen (Kanäle/Rollen löschen/erstellen, gefährliche Rechteänderungen, Massenban/-kick, Webhooks, Bot-Additions). Reagiert erst, wenn ein Limit pro Person überschritten wird – nicht bei jeder einzelnen Aktion. Serverbesitzer und der Bot selbst sind immer geschützt.</p>
   <form id="antiNukeForm" class="form">
-    <label class="setting-row" style="cursor:pointer;padding:8px 0;">
-      <input type="checkbox" name="enabled" style="width:17px;height:17px;accent-color:var(--accent);">
-      <span class="setting-row__text"><b>Anti-Nuke aktivieren</b></span>
-    </label>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Anti-Nuke aktivieren</b><span>Schaltet die gesamte Anti-Nuke-Überwachung an/aus.</span></div>
+      <label class="toggle"><input type="checkbox" name="enabled"><span class="toggle__track"></span></label>
+    </div>
     <div class="col-2">
       <div class="field"><label>Aktion gegen den Täter</label>
         <select name="action">
@@ -139,10 +139,10 @@
   <p class="card__sub">Erkennt ungewöhnlich viele Beitritte in kurzer Zeit und optional zu junge Accounts. Reagiert immer mit Alarm + Log, optional zusätzlich mit Kick/Bann und einem temporären Lockdown (angehobene Verifizierungsstufe).</p>
   <p class="muted" id="antiRaidStatus">Lädt…</p>
   <form id="antiRaidForm" class="form">
-    <label class="setting-row" style="cursor:pointer;padding:8px 0;">
-      <input type="checkbox" name="enabled" style="width:17px;height:17px;accent-color:var(--accent);">
-      <span class="setting-row__text"><b>Anti-Raid aktivieren</b></span>
-    </label>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Anti-Raid aktivieren</b><span>Schaltet die Join-Spike-Erkennung an/aus.</span></div>
+      <label class="toggle"><input type="checkbox" name="enabled"><span class="toggle__track"></span></label>
+    </div>
     <div class="col-2">
       <div class="field"><label>Zeitfenster (Sekunden)</label><input name="windowSeconds" type="number" min="2" max="600" placeholder="10" /></div>
       <div class="field"><label>Max. Beitritte im Zeitfenster</label><input name="maxJoins" type="number" min="2" max="1000" placeholder="10" /></div>
@@ -183,6 +183,10 @@
 <div class="card">
   <div class="card__head"><h2><%- icon('shield') %> AutoMod</h2></div>
   <p class="card__sub">Löscht automatisch Nachrichten, die einen aktivierten Filter treffen, und protokolliert das im Moderations-Log. Optional zusätzlich eine Aktion gegen den Nutzer (Verwarnen/Timeout/Kick/Bann). Administratoren, Server-Manager und Personen mit Zugriff auf „Moderation" (siehe oben) sind immer ausgenommen.</p>
+  <div class="setting-row">
+    <div class="setting-row__text"><b>AutoMod aktivieren</b><span>Hauptschalter. Ist er aus, greift kein Filter – egal wie die einzelnen Filter unten stehen.</span></div>
+    <label class="toggle"><input type="checkbox" id="automodEnabled"><span class="toggle__track"></span></label>
+  </div>
   <div id="automodRows"><div class="loading">Lädt…</div></div>
   <div class="row-inline" style="margin-top:12px;">
     <button class="btn btn--primary btn--sm" type="button" id="automodSave">Speichern</button>

@@ -1,6 +1,7 @@
 'use strict';
 
 const automodModel = require('../database/models/automodRules');
+const settingsModel = require('../database/models/settings');
 const moderationService = require('./moderationService');
 const logService = require('./logService');
 const logger = require('../utils/logger');
@@ -173,6 +174,8 @@ async function applyAction(message, rule, reasonText) {
  */
 async function handleMessage(message) {
   if (!message.guildId || message.author?.bot) return false;
+
+  if (!settingsModel.get(message.guildId).automod_enabled) return false; // Hauptschalter
 
   const rules = automodModel.listEnabled(message.guildId);
   if (!rules.length) return false;

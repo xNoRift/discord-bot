@@ -116,6 +116,9 @@ ensureColumn('guild_settings', 'security_log_channel_id', 'TEXT');
 ensureColumn('activity_log', 'old_value', 'TEXT');
 ensureColumn('activity_log', 'new_value', 'TEXT');
 
+// AutoMod-Hauptschalter (gilt zusätzlich zu den einzelnen Filter-Schaltern)
+ensureColumn('guild_settings', 'automod_enabled', 'INTEGER DEFAULT 0');
+
 logger.info(`[db] Datenbank verbunden: ${config.database.path}`);
 
 process.on('exit', () => {
