@@ -23,25 +23,6 @@
   </div>
 
   <div class="card">
-    <div class="card__head"><h2><%- icon('chat') %> ModMail – Bot per DM anschreiben</h2></div>
-    <p class="card__sub">Schreibt jemand dem Bot eine Direktnachricht, wird daraus automatisch ein Ticket auf diesem Server. Antworten des Teams im Ticket-Kanal gehen als DM zurück. Interne Notiz: Nachricht mit <code>//</code> beginnen – wird nicht weitergeleitet.</p>
-    <form id="modmailForm">
-      <div class="setting-row">
-        <div class="setting-row__text"><b>ModMail aktivieren</b><span>DMs an den Bot als Ticket auf diesem Server annehmen</span></div>
-        <label class="toggle"><input type="checkbox" name="modmail_enabled" id="mm_enabled"><span class="toggle__track"></span></label>
-      </div>
-      <div class="col-2">
-        <div class="field"><label>ModMail-Kategorie</label><select name="modmail_category_id" id="mm_category"></select><small>Leer = Standard-Ticket-Kategorie</small></div>
-        <div class="field"><label>ModMail-Support-Rolle</label><select name="modmail_support_role_id" id="mm_role"></select><small>Leer = Standard-Support-Rolle</small></div>
-      </div>
-      <div class="col-2">
-        <div class="field"><label>ModMail-Log-Kanal</label><select name="modmail_log_channel_id" id="mm_log"></select><small>Leer = Ticket-Log-Kanal</small></div>
-      </div>
-      <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" type="submit"><%- icon('check', 'icon--sm') %> Speichern</button> <span class="muted" id="mmStatus"></span></div>
-    </form>
-  </div>
-
-  <div class="card">
     <div class="card__head"><h2><%- icon('settings') %> Standard-Einstellungen</h2></div>
     <p class="card__sub">Gelten für Panels/Kategorien, die keine eigene Kategorie oder Support-Rolle gesetzt haben.</p>
     <form id="ticketDefaults">

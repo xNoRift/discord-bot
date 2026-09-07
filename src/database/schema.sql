@@ -63,10 +63,6 @@ CREATE TABLE IF NOT EXISTS guild_settings (
   ticket_team_ping        INTEGER DEFAULT 1,
   ticket_close_restricted INTEGER DEFAULT 0,
   ticket_on_leave         TEXT DEFAULT 'nothing',
-  modmail_enabled          INTEGER DEFAULT 0,
-  modmail_category_id      TEXT,
-  modmail_support_role_id  TEXT,
-  modmail_log_channel_id   TEXT,
   ticket_category_id     TEXT,
   ticket_support_role_id TEXT,
   ticket_log_channel_id  TEXT,
@@ -300,6 +296,12 @@ CREATE TABLE IF NOT EXISTS bot_config (
   activity_type   TEXT DEFAULT 'watching', -- playing | watching | listening | competing | streaming | custom | none
   activity_text   TEXT DEFAULT '/help • Dashboard',
   activity_url    TEXT,                     -- nur für "streaming"
+  -- ModMail (Bot-Support per DM) – bot-weit, nur ein Support-Server
+  modmail_enabled         INTEGER DEFAULT 0,
+  modmail_guild_id        TEXT,
+  modmail_category_id     TEXT,
+  modmail_support_role_id TEXT,
+  modmail_log_channel_id  TEXT,
   updated_at      INTEGER
 );
 

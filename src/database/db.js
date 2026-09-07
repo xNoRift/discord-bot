@@ -50,6 +50,13 @@ ensureColumn('tickets', 'category_label', 'TEXT');
 ensureColumn('tickets', 'last_activity_at', 'INTEGER');
 ensureColumn('tickets', 'is_modmail', 'INTEGER DEFAULT 0');
 ensureColumn('tickets', 'dm_channel_id', 'TEXT');
+
+// ModMail (Bot-Support per DM) – bot-weit in bot_config
+ensureColumn('bot_config', 'modmail_enabled', 'INTEGER DEFAULT 0');
+ensureColumn('bot_config', 'modmail_guild_id', 'TEXT');
+ensureColumn('bot_config', 'modmail_category_id', 'TEXT');
+ensureColumn('bot_config', 'modmail_support_role_id', 'TEXT');
+ensureColumn('bot_config', 'modmail_log_channel_id', 'TEXT');
 ensureColumn('ticket_panels', 'button_label', 'TEXT');
 ensureColumn('ticket_categories', 'enabled', 'INTEGER DEFAULT 1');
 ensureColumn('ticket_categories', 'prefix', 'TEXT');
@@ -69,12 +76,6 @@ ensureColumn('guild_settings', 'giveaways_enabled', 'INTEGER DEFAULT 1');
 ensureColumn('guild_settings', 'ticket_team_ping', 'INTEGER DEFAULT 1');
 ensureColumn('guild_settings', 'ticket_close_restricted', 'INTEGER DEFAULT 0');
 ensureColumn('guild_settings', 'ticket_on_leave', "TEXT DEFAULT 'nothing'");
-
-// ModMail: DM an den Bot -> Ticket auf diesem Server
-ensureColumn('guild_settings', 'modmail_enabled', 'INTEGER DEFAULT 0');
-ensureColumn('guild_settings', 'modmail_category_id', 'TEXT');
-ensureColumn('guild_settings', 'modmail_support_role_id', 'TEXT');
-ensureColumn('guild_settings', 'modmail_log_channel_id', 'TEXT');
 ensureColumn('guild_settings', 'embed_color', 'TEXT');
 ensureColumn('guild_settings', 'timezone', "TEXT DEFAULT 'Europe/Berlin'");
 ensureColumn('guild_settings', 'bot_language', "TEXT DEFAULT 'de'");

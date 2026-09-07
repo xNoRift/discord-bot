@@ -139,6 +139,50 @@ router.post(
 );
 
 /* ----------------------------------------------------------------
+ *  ModMail / Bot-Support per DM (bot-weit, NUR Bot-Besitzer)
+ * ---------------------------------------------------------------- */
+
+router.get('/bot/modmail', requireOwner, (req, res) => {
+  const c = botConfig.get();
+  res.json({
+    enabled: c.modmail_enabled === 1,
+    guildId: c.modmail_guild_id || null,
+    categoryId: c.modmail_category_id || null,
+    supportRoleId: c.modmail_support_role_id || null,
+    logChannelId: c.modmail_log_channel_id || null,
+  });
+});
+
+router.post(
+  '/bot/modmail',
+  requireOwner,
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const enabled = req.body.enabled === true || req.body.enabled === 'true' || req.body.enabled === 1;
+    const patch = {
+      modmail_enabled: enabled ? 1 : 0,
+      modmail_category_id: req.body.categoryId ? String(req.body.categoryId) : null,
+      modmail_support_role_id: req.body.supportRoleId ? String(req.body.supportRoleId) : null,
+      modmail_log_channel_id: req.body.logChannelId ? String(req.body.logChannelId) : null,
+    };
+
+    if (enabled) {
+      const guildId = String(req.body.guildId || '');
+      if (!client.guilds.cache.has(guildId)) {
+        return res.status(400).json({ error: 'Der Bot ist nicht auf diesem Server.' });
+      }
+      if (!patch.modmail_category_id) {
+        return res.status(400).json({ error: 'Bitte eine Kategorie für die DM-Tickets wählen.' });
+      }
+      patch.modmail_guild_id = guildId;
+    }
+
+    botConfig.update(patch);
+    res.json({ ok: true });
+  }),
+);
+
+/* ----------------------------------------------------------------
  *  Sicherheit – Login-Protokoll (NUR Bot-Besitzer)
  * ---------------------------------------------------------------- */
 

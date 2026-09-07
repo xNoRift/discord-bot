@@ -72,6 +72,25 @@
 </div>
 
 <div class="card">
+  <div class="card__head"><h2><%- icon('chat') %> Bot-Support per DM (ModMail) <span class="muted">(gilt bot-weit · nur Besitzer)</span></h2></div>
+  <p class="card__sub">Schreibt jemand dem Bot eine Direktnachricht, wird daraus automatisch ein Ticket auf <strong>einem</strong> Support-Server. Antworten des Teams im Ticket-Kanal gehen als DM zurück. Interne Notiz: Nachricht mit <code>//</code> beginnen – wird nicht weitergeleitet.</p>
+  <div class="form">
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Diesen Server als Bot-Support verwenden</b><span id="mmState">…</span></div>
+      <label class="toggle"><input type="checkbox" id="mmEnabled"><span class="toggle__track"></span></label>
+    </div>
+    <div class="col-2">
+      <div class="field"><label>Kategorie für DM-Tickets</label><select id="mmCategory" data-type="category"></select><small>Pflicht. Discord-Kategorie, in der die <code>modmail-…</code>-Kanäle entstehen.</small></div>
+      <div class="field"><label>Support-Rolle</label><select id="mmRole" data-type="role"></select><small>Leer = Standard-Support-Rolle dieses Servers.</small></div>
+    </div>
+    <div class="col-2">
+      <div class="field"><label>Log-Kanal</label><select id="mmLog" data-type="text"></select><small>Leer = kein eigener Log.</small></div>
+    </div>
+    <div><button class="btn btn--primary btn--sm" id="mmSave" type="button">Speichern</button> <span class="muted" id="mmMsg"></span></div>
+  </div>
+</div>
+
+<div class="card">
   <div class="card__head"><h2><%- icon('lock') %> Sicherheit <span class="muted">(nur Besitzer)</span></h2></div>
   <p class="card__sub">Wer sich zuletzt am Dashboard angemeldet hat. Fällt dir hier eine fremde Anmeldung auf, ändere sofort dein <code>SESSION_SECRET</code> in der <code>.env</code> und starte den Bot neu.</p>
   <div id="secOwnerOnly" class="setting-row">

@@ -138,6 +138,52 @@ document.getElementById('psSave').addEventListener('click', async () => {
 
 loadBotPresence();
 
+/* ---------------- Bot-Support per DM / ModMail (bot-weit, nur Besitzer) ---------------- */
+
+async function loadModmail() {
+  if (!document.getElementById('mmSave')) return; // Karte nur für Besitzer im DOM
+  try {
+    await fillSelectors();
+    const m = await api('GET', '/api/bot/modmail');
+    document.getElementById('mmEnabled').checked = !!m.enabled;
+    document.getElementById('mmCategory').value = m.categoryId || '';
+    document.getElementById('mmRole').value = m.supportRoleId || '';
+    document.getElementById('mmLog').value = m.logChannelId || '';
+    const st = document.getElementById('mmState');
+    if (!m.enabled) {
+      st.textContent = 'Aus. Aktiviere, um DMs an den Bot hier als Ticket zu empfangen.';
+    } else if (m.guildId === Dash.GUILD_ID) {
+      st.textContent = 'AN – dieser Server ist der Bot-Support.';
+    } else {
+      st.textContent = 'Aktuell ist ein anderer Server der Bot-Support. Speichern schaltet auf diesen Server um.';
+    }
+  } catch (e) {
+    document.getElementById('mmMsg').textContent = e.message;
+  }
+}
+
+document.getElementById('mmSave')?.addEventListener('click', async () => {
+  const msg = document.getElementById('mmMsg');
+  const body = {
+    enabled: document.getElementById('mmEnabled').checked,
+    guildId: Dash.GUILD_ID,
+    categoryId: document.getElementById('mmCategory').value,
+    supportRoleId: document.getElementById('mmRole').value,
+    logChannelId: document.getElementById('mmLog').value,
+  };
+  try {
+    await api('POST', '/api/bot/modmail', body);
+    toast('Bot-Support gespeichert.', 'success');
+    msg.textContent = 'Gespeichert ✓';
+    await loadModmail();
+  } catch (e) {
+    toast(e.message, 'error');
+    msg.textContent = e.message;
+  }
+});
+
+loadModmail();
+
 /* ---------------- Sicherheit: Login-Protokoll (nur Besitzer) ---------------- */
 
 async function loadSecurity() {

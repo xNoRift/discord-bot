@@ -15,7 +15,17 @@ function get() {
   return db.prepare('SELECT * FROM bot_config WHERE id = 1').get();
 }
 
-const ALLOWED = ['presence_status', 'activity_type', 'activity_text', 'activity_url'];
+const ALLOWED = [
+  'presence_status',
+  'activity_type',
+  'activity_text',
+  'activity_url',
+  'modmail_enabled',
+  'modmail_guild_id',
+  'modmail_category_id',
+  'modmail_support_role_id',
+  'modmail_log_channel_id',
+];
 
 function update(patch) {
   const keys = Object.keys(patch).filter((k) => ALLOWED.includes(k));
