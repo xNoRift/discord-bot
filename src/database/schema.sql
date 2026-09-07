@@ -312,6 +312,7 @@ CREATE TABLE IF NOT EXISTS temp_voice_channels (
   owner_id   TEXT NOT NULL,
   locked     INTEGER DEFAULT 0,
   hidden     INTEGER DEFAULT 0,
+  panel_message_id TEXT,
   created_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_temp_voice_guild ON temp_voice_channels(guild_id);

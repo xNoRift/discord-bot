@@ -36,6 +36,11 @@ function setOwner(channelId, ownerId) {
   return get(channelId);
 }
 
+function setPanelMessage(channelId, messageId) {
+  db.prepare('UPDATE temp_voice_channels SET panel_message_id = ? WHERE channel_id = ?').run(messageId, channelId);
+  return get(channelId);
+}
+
 function setFlags(channelId, patch) {
   const cur = get(channelId);
   if (!cur) return null;
@@ -53,4 +58,4 @@ function remove(channelId) {
   db.prepare('DELETE FROM temp_voice_channels WHERE channel_id = ?').run(channelId);
 }
 
-module.exports = { add, get, isTemp, listByGuild, listAll, setOwner, setFlags, remove };
+module.exports = { add, get, isTemp, listByGuild, listAll, setOwner, setPanelMessage, setFlags, remove };
