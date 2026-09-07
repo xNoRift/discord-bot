@@ -3,6 +3,7 @@
 const { MessageFlags } = require('discord.js');
 const embeds = require('../../utils/embeds');
 const tempVoiceService = require('../../services/tempVoiceService');
+const tempVoice = require('../../database/models/tempVoice');
 
 /**
  * Auswahlmenüs des TempVoice-Interfaces:
@@ -13,7 +14,9 @@ module.exports = {
   prefix: 'tempvoice:sel',
   async execute(interaction) {
     const action = interaction.customId.split(':')[2];
-    const channel = interaction.channel;
+    const channel =
+      tempVoiceService.resolveUserChannel(interaction.member) ||
+      (tempVoice.get(interaction.channel?.id) ? interaction.channel : null);
 
     const check = tempVoiceService.assertControl(channel?.id, interaction.member);
     if (!check.ok) {

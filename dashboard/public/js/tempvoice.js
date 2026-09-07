@@ -20,6 +20,7 @@ async function saveTv() {
       tempvoice_category_id: a.tempvoice_category_id || null,
       tempvoice_name_format: a.tempvoice_name_format || null,
       tempvoice_user_limit: Math.max(0, Math.min(99, parseInt(a.tempvoice_user_limit, 10) || 0)),
+      tempvoice_interface_channel_id: a.tempvoice_interface_channel_id || null,
     });
     toast('Temp-Voice gespeichert.', 'success');
     statusEl.textContent = 'Gespeichert ✓';
@@ -51,6 +52,25 @@ document.getElementById('tvMakeHub').addEventListener('click', async () => {
   } catch (err) {
     toast(err.message, 'error');
     statusEl.textContent = err.message;
+  }
+});
+
+document.getElementById('tvPostInterface').addEventListener('click', async () => {
+  const st = document.getElementById('tvIfStatus');
+  const channelId = form.querySelector('[name="tempvoice_interface_channel_id"]').value || null;
+  if (!channelId) {
+    st.textContent = 'Bitte zuerst einen Kanal wählen.';
+    return;
+  }
+  try {
+    st.textContent = 'Wird gesendet…';
+    const r = await apiFor('POST', '/tempvoice/post-interface', { channelId });
+    toast('Interface gesendet.', 'success');
+    st.innerHTML = r.url ? `Aktiv – <a href="${r.url}" target="_blank" rel="noopener">zur Nachricht</a>` : 'Gesendet ✓';
+    await load();
+  } catch (err) {
+    toast(err.message, 'error');
+    st.textContent = err.message;
   }
 });
 

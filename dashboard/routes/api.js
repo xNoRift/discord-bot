@@ -104,6 +104,7 @@ function discordErr(err) {
 
 const botConfig = require('../../src/database/models/botConfig');
 const presenceService = require('../../src/services/presenceService');
+const tempVoiceService = require('../../src/services/tempVoiceService');
 
 const STATUS = ['online', 'idle', 'dnd', 'invisible'];
 const ACT_TYPES = ['none', 'playing', 'watching', 'listening', 'competing', 'streaming', 'custom'];
@@ -481,6 +482,32 @@ router.post(
       });
       settingsModel.update(req.guild.id, { tempvoice_hub_channel_id: channel.id });
       res.json({ ok: true, id: channel.id, name: channel.name });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
+// Interface-Nachricht in den konfigurierten Text-Kanal posten / aktualisieren
+router.post(
+  '/guilds/:guildId/tempvoice/post-interface',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const channelId = req.body.channelId ? String(req.body.channelId) : null;
+    if (channelId) {
+      settingsModel.update(req.guild.id, {
+        tempvoice_interface_channel_id: channelId,
+        tempvoice_interface_message_id: null,
+      });
+    }
+    const s = settingsModel.get(req.guild.id);
+    if (!s.tempvoice_interface_channel_id) {
+      return res.status(400).json({ error: 'Bitte zuerst einen Interface-Kanal wählen.' });
+    }
+    try {
+      const msg = await tempVoiceService.postOrUpdateInterface(req.guild);
+      if (!msg) return res.status(400).json({ error: 'Kanal nicht gefunden oder kein Textkanal.' });
+      res.json({ ok: true, url: msg.url });
     } catch (err) {
       res.status(400).json({ error: discordErr(err) });
     }

@@ -45,15 +45,27 @@
   </div>
 
   <div class="card">
+    <div class="card__head"><h2><%- icon('chat') %> Interface-Kanal</h2></div>
+    <p class="card__sub">Ein eigener Text-Kanal mit <b>einer</b> dauerhaften Steuer-Nachricht (Buttons). Die Buttons wirken immer auf den Temp-Voice-Kanal, in dem der Klickende gerade sitzt. Leer lassen = das Panel erscheint stattdessen im Chat jedes einzelnen Sprachkanals.</p>
+    <div class="field">
+      <label>Interface-Kanal</label>
+      <select name="tempvoice_interface_channel_id" data-type="text"></select>
+    </div>
+    <div class="row-inline" style="margin-top:6px;">
+      <button type="button" class="btn btn--primary btn--sm" id="tvPostInterface"><%- icon('send', 'icon--sm') %> Interface senden / aktualisieren</button>
+      <span class="muted" id="tvIfStatus"></span>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card__head"><h2><%- icon('sparkles') %> Steuerung durch die Nutzer</h2></div>
-    <p class="card__sub">Im neuen Sprachkanal erscheint automatisch ein Panel mit Buttons. Der Besitzer (und Server-Admins) können damit:</p>
+    <p class="card__sub">Der Besitzer eines Kanals (und Server-Admins) kann über die Buttons:</p>
     <ul class="bullet-list">
-      <li>✏️ <b>Umbenennen</b> – Kanalname ändern</li>
-      <li>👥 <b>User-Limit</b> – maximale Teilnehmerzahl setzen</li>
-      <li>🔒 <b>Sperren / Freigeben</b> – nur zugelassene Mitglieder dürfen rein</li>
-      <li>👁️ <b>Verbergen / Zeigen</b> – Kanal für andere unsichtbar machen</li>
-      <li>👑 <b>Übernehmen</b> – Besitz übernehmen, wenn der Ersteller weg ist</li>
-      <li>🗑️ <b>Löschen</b> – Kanal sofort entfernen</li>
+      <li>✏️ <b>Umbenennen</b> · 👥 <b>Benutzerlimit</b></li>
+      <li>🔒 <b>Sperren / Entsperren</b> · 🙈 <b>Verstecken / Zeigen</b> · 🌍 <b>Region</b></li>
+      <li>➕ <b>Hinzufügen</b> / ➖ <b>Entfernen</b> – Zutritt geben oder nehmen</li>
+      <li>🚫 <b>Blockieren</b> / ♻️ <b>Entblockieren</b> · 🔌 <b>Trennen</b></li>
+      <li>👑 <b>Übernehmen</b> · 🗑️ <b>Löschen</b></li>
     </ul>
   </div>
 

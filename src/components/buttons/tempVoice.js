@@ -54,9 +54,13 @@ module.exports = {
   prefix: 'tempvoice:btn',
   async execute(interaction) {
     const action = interaction.customId.split(':')[2];
-    const channel = interaction.channel;
-    const row = tempVoice.get(channel?.id);
-    if (!row) return ephemeral(interaction, 'Dieser Kanal ist kein temporärer Sprachkanal (mehr).');
+    const channel =
+      tempVoiceService.resolveUserChannel(interaction.member) ||
+      (tempVoice.get(interaction.channel?.id) ? interaction.channel : null);
+    if (!channel) {
+      return ephemeral(interaction, 'Du sitzt in keinem eigenen Temp-Voice-Kanal. Betritt zuerst deinen Kanal.');
+    }
+    const row = tempVoice.get(channel.id);
 
     // "Übernehmen" hat eigene Logik – sonst Besitzer/Manager-Check.
     if (action !== 'claim') {

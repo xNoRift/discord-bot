@@ -30,8 +30,9 @@ module.exports = {
     // Scheduler starten (Giveaways + temporaere Rollen wiederherstellen)
     await scheduler.start();
 
-    // Verwaiste Temp-Voice-Kanäle aufräumen
+    // Verwaiste Temp-Voice-Kanäle aufräumen + Interface-Nachrichten sicherstellen
     await tempVoiceService.cleanup(client).catch((err) => logger.warn('[tempvoice] cleanup:', err.message));
+    await tempVoiceService.ensureInterfaces(client).catch((err) => logger.warn('[tempvoice] interface:', err.message));
 
     client.isReady && logger.success('[bot] Bereit.');
   },

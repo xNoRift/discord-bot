@@ -105,6 +105,8 @@ ensureColumn('guild_settings', 'tempvoice_hub_channel_id', 'TEXT');
 ensureColumn('guild_settings', 'tempvoice_category_id', 'TEXT');
 ensureColumn('guild_settings', 'tempvoice_name_format', "TEXT DEFAULT '{user} • Voice'");
 ensureColumn('guild_settings', 'tempvoice_user_limit', 'INTEGER DEFAULT 0');
+ensureColumn('guild_settings', 'tempvoice_interface_channel_id', 'TEXT');
+ensureColumn('guild_settings', 'tempvoice_interface_message_id', 'TEXT');
 ensureColumn('temp_voice_channels', 'panel_message_id', 'TEXT');
 
 // Zähl-Spiel: Info-Panel

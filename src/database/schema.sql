@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS guild_settings (
   tempvoice_category_id    TEXT,
   tempvoice_name_format    TEXT DEFAULT '{user} • Voice',
   tempvoice_user_limit     INTEGER DEFAULT 0,
+  tempvoice_interface_channel_id TEXT,
+  tempvoice_interface_message_id TEXT,
 
   -- Tickets
   tickets_enabled         INTEGER DEFAULT 1,

@@ -95,6 +95,65 @@ function panelEmbed(row, channel) {
     .setFooter({ text: 'Umbenennen · Limit · Sperren · Verstecken · Region · Hinzufügen/Entfernen · Blockieren · Trennen' });
 }
 
+/* ---- Fester Interface-Kanal (eine dauerhafte Nachricht, steuert den Kanal, in dem der Klickende gerade sitzt) ---- */
+
+function interfaceEmbed(guild) {
+  return new EmbedBuilder()
+    .setColor(config.branding.color)
+    .setTitle('🔊 TempVoice Interface')
+    .setDescription(
+      [
+        'Mit diesem Interface bearbeitest du **deinen eigenen** temporären Sprachkanal.',
+        'Voraussetzung: Du sitzt gerade in einem Kanal, den du über den Hub-Kanal erstellt hast.',
+        '',
+        '✏️ **Umbenennen** · 👥 **Benutzerlimit** · 🔒 **Sperren** · 🙈 **Verstecken** · 🌍 **Region**',
+        '➕ **Hinzufügen** · ➖ **Entfernen** · 🚫 **Blockieren** · ♻️ **Entblockieren** · 🔌 **Trennen**',
+        '👑 **Übernehmen** · 🗑️ **Löschen**',
+      ].join('\n'),
+    )
+    .setFooter({ text: guild.name });
+}
+
+/** Postet die dauerhafte Interface-Nachricht in den konfigurierten Kanal – oder aktualisiert sie. */
+async function postOrUpdateInterface(guild) {
+  const s = settingsModel.get(guild.id);
+  if (!s.tempvoice_interface_channel_id) return null;
+
+  const channel =
+    guild.channels.cache.get(s.tempvoice_interface_channel_id) ??
+    (await guild.channels.fetch(s.tempvoice_interface_channel_id).catch(() => null));
+  if (!channel || !channel.isTextBased()) return null;
+
+  const payload = { embeds: [interfaceEmbed(guild)], components: panelComponents({}) };
+
+  if (s.tempvoice_interface_message_id) {
+    const existing = await channel.messages.fetch(s.tempvoice_interface_message_id).catch(() => null);
+    if (existing) {
+      await existing.edit(payload).catch(() => null);
+      return existing;
+    }
+  }
+  const msg = await channel.send(payload);
+  settingsModel.update(guild.id, { tempvoice_interface_message_id: msg.id });
+  return msg;
+}
+
+/** Beim Start für alle Server die Interface-Nachricht sicherstellen. */
+async function ensureInterfaces(client) {
+  for (const guild of client.guilds.cache.values()) {
+    await postOrUpdateInterface(guild).catch((err) =>
+      logger.warn(`[tempvoice] Interface ${guild.id}: ${err.message}`),
+    );
+  }
+}
+
+/** Der temporäre Sprachkanal, in dem das Mitglied gerade sitzt – oder null. */
+function resolveUserChannel(member) {
+  const vc = member?.voice?.channel;
+  if (vc && tempVoice.isTemp(vc.id)) return vc;
+  return null;
+}
+
 /** Panel-Nachricht neu zeichnen (nach Statusänderungen). */
 async function refreshPanel(channel) {
   try {
@@ -184,6 +243,22 @@ async function createFor(member, settings) {
   } catch {
     await channel.delete('Temp-Voice: Ersteller nicht mehr im Voice').catch(() => null);
     tempVoice.remove(channel.id);
+    return;
+  }
+
+  // Ist ein fester Interface-Kanal konfiguriert, wird KEIN Panel je Kanal gepostet.
+  if (settings.tempvoice_interface_channel_id) {
+    channel
+      .send({
+        content: `<@${member.id}>`,
+        embeds: [
+          new EmbedBuilder()
+            .setColor(config.branding.color)
+            .setDescription(`Dein Kanal ist bereit. Steuere ihn über das **TempVoice Interface** in <#${settings.tempvoice_interface_channel_id}>.`),
+        ],
+        allowedMentions: { users: [member.id] },
+      })
+      .catch(() => null);
     return;
   }
 
@@ -350,6 +425,9 @@ module.exports = {
   refreshPanel,
   panelEmbed,
   panelComponents,
+  postOrUpdateInterface,
+  ensureInterfaces,
+  resolveUserChannel,
   rename,
   setLimit,
   toggleLock,
