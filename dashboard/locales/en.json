@@ -1,0 +1,112 @@
+{
+  "meta": { "lang_name": "English" },
+  "common": {
+    "save": "Save",
+    "saved": "Saved.",
+    "saved_check": "Saved ✓",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "add": "Add",
+    "edit": "Edit",
+    "back": "Back",
+    "loading": "Loading…",
+    "none": "— not set —",
+    "error": "Something went wrong.",
+    "not_found": "Not found.",
+    "confirm_delete": "Really delete?"
+  },
+  "shell": {
+    "control_panel": "Control Panel",
+    "switch_server": "Switch server",
+    "choose_server": "Choose a server",
+    "menu": "Menu",
+    "close_menu": "Close menu",
+    "logged_in": "Signed in",
+    "logout": "Sign out",
+    "dashboard": "Dashboard"
+  },
+  "theme": {
+    "change": "Change theme",
+    "accent": "Accent colour",
+    "custom": "Pick a custom colour",
+    "background": "Background",
+    "mode_standard": "Standard",
+    "mode_midnight": "Midnight",
+    "mode_slate": "Slate",
+    "reset": "Reset to default"
+  },
+  "nav": {
+    "sections": {
+      "community": "Community",
+      "support_team": "Support & Team",
+      "moderation": "Moderation",
+      "server": "Server"
+    },
+    "overview": "Overview",
+    "welcome": "Welcome",
+    "music": "Music",
+    "tempvoice": "Temp Voice",
+    "games": "Games",
+    "giveaways": "Giveaways",
+    "suggestions": "Suggestions",
+    "social": "Notifications",
+    "tickets": "Tickets",
+    "applications": "Applications",
+    "team": "Team management",
+    "logs": "Logs",
+    "messages": "Messages",
+    "statistics": "Statistics",
+    "settings": "Settings",
+    "impressum": "Legal notice",
+    "datenschutz": "Privacy",
+    "support": "Support",
+    "servers": "Choose a server"
+  },
+  "landing": {
+    "lead": "Manage your Discord server's tickets, giveaways and applications – in one place, in real time, connected directly to the bot.",
+    "f_tickets": "Ticket system",
+    "f_tickets_sub": "Panels, categories, logs",
+    "f_giveaways": "Giveaways",
+    "f_giveaways_sub": "Auto draw & winner role",
+    "f_applications": "Applications",
+    "f_applications_sub": "Custom questions & review",
+    "f_secure": "Secure",
+    "f_secure_sub": "OAuth2, CSRF, rate limit",
+    "login": "Sign in with Discord",
+    "hint": "Only your servers and your profile are read."
+  },
+  "login": {
+    "title": "Sign in",
+    "lead": "Sign in with your Discord account to open your dashboard.",
+    "continue": "Continue with Discord",
+    "back_home": "Back to the home page"
+  },
+  "servers": {
+    "title": "Choose a server",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "lead": "Choose a server to manage. Only servers where you have \"Manage Server\" or \"Administrator\" are shown.",
+    "search": "Search servers by name…",
+    "available": "Available",
+    "loading": "Loading servers…",
+    "bot_active": "Bot active",
+    "members": "{n} members",
+    "manage": "Manage",
+    "not_invited_title": "Bot not added yet",
+    "not_invited_sub": "You have the permissions here, but the bot isn't on the server yet.",
+    "invite": "Add bot",
+    "no_match": "No match for „{q}“",
+    "none_title": "No manageable servers",
+    "none_sub": "Add the bot to a server where you are an admin."
+  },
+  "savebar": {
+    "title": "Unsaved changes",
+    "hint": "Don't forget to save.",
+    "discard": "Discard changes"
+  },
+  "error_page": {
+    "404_title": "404",
+    "404_msg": "This page does not exist.",
+    "no_access": "No access"
+  }
+}

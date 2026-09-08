@@ -5,11 +5,11 @@
 <div class="savebar" id="saveBar" role="alert" hidden>
   <span class="savebar__icon">⚠️</span>
   <span class="savebar__text">
-    <b>Ungespeicherte Änderungen</b>
-    <span>Nicht vergessen zu speichern.</span>
+    <b><%= t('savebar.title') %></b>
+    <span><%= t('savebar.hint') %></span>
   </span>
-  <button class="savebar__cancel" id="saveBarCancel" type="button" title="Änderungen verwerfen" aria-label="Änderungen verwerfen"><%- icon('x', 'icon--sm') %></button>
-  <button class="savebar__save" id="saveBarSave" type="button" title="Speichern" aria-label="Speichern"><%- icon('check', 'icon--sm') %> Speichern</button>
+  <button class="savebar__cancel" id="saveBarCancel" type="button" title="<%= t('savebar.discard') %>" aria-label="<%= t('savebar.discard') %>"><%- icon('x', 'icon--sm') %></button>
+  <button class="savebar__save" id="saveBarSave" type="button" title="<%= t('common.save') %>" aria-label="<%= t('common.save') %>"><%- icon('check', 'icon--sm') %> <%= t('common.save') %></button>
   <span class="savebar__track"><span></span></span>
 </div>
 

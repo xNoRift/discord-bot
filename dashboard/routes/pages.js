@@ -9,72 +9,75 @@ const appModel = require('../../src/database/models/applications');
 
 const router = express.Router();
 
+// `label` / `sectionLabel` sind i18n-Schlüssel (siehe dashboard/locales/*.json),
+// die im App-Shell-Partial über t() übersetzt werden.
 const NAV = [
-  { items: [{ key: 'overview', label: 'Übersicht', icon: 'home', path: '' }] },
+  { items: [{ key: 'overview', label: 'nav.overview', icon: 'home', path: '' }] },
   {
-    label: 'Community',
+    sectionLabel: 'nav.sections.community',
     items: [
-      { key: 'welcome', label: 'Willkommen', icon: 'bell', path: '/welcome' },
-      { key: 'music', label: 'Musik', icon: 'sparkles', path: '/music' },
-      { key: 'tempvoice', label: 'Temp-Voice', icon: 'hash', path: '/tempvoice' },
-      { key: 'games', label: 'Spiele', icon: 'sparkles', path: '/games' },
-      { key: 'giveaways', label: 'Giveaways', icon: 'gift', path: '/giveaways' },
-      { key: 'suggestions', label: 'Vorschläge', icon: 'bulb', path: '/suggestions' },
-      { key: 'social', label: 'Benachrichtigungen', icon: 'bell', path: '/social' },
+      { key: 'welcome', label: 'nav.welcome', icon: 'bell', path: '/welcome' },
+      { key: 'music', label: 'nav.music', icon: 'sparkles', path: '/music' },
+      { key: 'tempvoice', label: 'nav.tempvoice', icon: 'hash', path: '/tempvoice' },
+      { key: 'games', label: 'nav.games', icon: 'sparkles', path: '/games' },
+      { key: 'giveaways', label: 'nav.giveaways', icon: 'gift', path: '/giveaways' },
+      { key: 'suggestions', label: 'nav.suggestions', icon: 'bulb', path: '/suggestions' },
+      { key: 'social', label: 'nav.social', icon: 'bell', path: '/social' },
     ],
   },
   {
-    label: 'Support & Team',
+    sectionLabel: 'nav.sections.support_team',
     items: [
-      { key: 'tickets', label: 'Tickets', icon: 'ticket', path: '/tickets' },
-      { key: 'applications', label: 'Bewerbungen', icon: 'clipboard', path: '/applications' },
-      { key: 'team', label: 'Teamverwaltung', icon: 'users', path: '/team' },
+      { key: 'tickets', label: 'nav.tickets', icon: 'ticket', path: '/tickets' },
+      { key: 'applications', label: 'nav.applications', icon: 'clipboard', path: '/applications' },
+      { key: 'team', label: 'nav.team', icon: 'users', path: '/team' },
     ],
   },
   {
-    label: 'Moderation',
+    sectionLabel: 'nav.sections.moderation',
     items: [
-      { key: 'moderation', label: 'Moderation', icon: 'shield', path: '/moderation' },
-      { key: 'logs', label: 'Logs', icon: 'file', path: '/logs' },
+      { key: 'moderation', label: 'nav.moderation', icon: 'shield', path: '/moderation' },
+      { key: 'logs', label: 'nav.logs', icon: 'file', path: '/logs' },
     ],
   },
   {
-    label: 'Server',
+    sectionLabel: 'nav.sections.server',
     items: [
-      { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
-      { key: 'statistics', label: 'Statistiken', icon: 'chart', path: '/statistics' },
-      { key: 'settings', label: 'Einstellungen', icon: 'settings', path: '/settings' },
+      { key: 'messages', label: 'nav.messages', icon: 'send', path: '/messages' },
+      { key: 'statistics', label: 'nav.statistics', icon: 'chart', path: '/statistics' },
+      { key: 'settings', label: 'nav.settings', icon: 'settings', path: '/settings' },
     ],
   },
 ];
 
 const FOOTER_NAV = [
-  { key: 'impressum', label: 'Impressum', icon: 'scale', path: '/impressum' },
-  { key: 'datenschutz', label: 'Datenschutz', icon: 'lock', path: '/datenschutz' },
-  { key: 'support', label: 'Support', icon: 'chat', path: '/support' },
+  { key: 'impressum', label: 'nav.impressum', icon: 'scale', path: '/impressum' },
+  { key: 'datenschutz', label: 'nav.datenschutz', icon: 'lock', path: '/datenschutz' },
+  { key: 'support', label: 'nav.support', icon: 'chat', path: '/support' },
 ];
 
+// `crumb` ist ein i18n-Schlüssel, im App-Shell-Partial über t() übersetzt.
 const CRUMB = {
-  overview: { crumb: 'Übersicht', crumbIcon: 'home' },
-  messages: { crumb: 'Nachrichten', crumbIcon: 'send' },
-  welcome: { crumb: 'Willkommen', crumbIcon: 'bell' },
-  music: { crumb: 'Musik', crumbIcon: 'music' },
-  tempvoice: { crumb: 'Temp-Voice', crumbIcon: 'hash' },
-  games: { crumb: 'Spiele', crumbIcon: 'sparkles' },
-  tickets: { crumb: 'Tickets', crumbIcon: 'ticket' },
-  giveaways: { crumb: 'Giveaways', crumbIcon: 'gift' },
-  applications: { crumb: 'Bewerbungen', crumbIcon: 'clipboard' },
-  moderation: { crumb: 'Moderation', crumbIcon: 'shield' },
-  statistics: { crumb: 'Statistiken', crumbIcon: 'chart' },
-  team: { crumb: 'Teamverwaltung', crumbIcon: 'users' },
-  settings: { crumb: 'Einstellungen', crumbIcon: 'settings' },
-  logs: { crumb: 'Logs', crumbIcon: 'file' },
-  suggestions: { crumb: 'Vorschläge', crumbIcon: 'bulb' },
-  social: { crumb: 'Benachrichtigungen', crumbIcon: 'bell' },
-  impressum: { crumb: 'Impressum', crumbIcon: 'scale' },
-  datenschutz: { crumb: 'Datenschutz', crumbIcon: 'lock' },
-  support: { crumb: 'Support', crumbIcon: 'chat' },
-  servers: { crumb: 'Server auswählen', crumbIcon: 'server' },
+  overview: { crumb: 'nav.overview', crumbIcon: 'home' },
+  messages: { crumb: 'nav.messages', crumbIcon: 'send' },
+  welcome: { crumb: 'nav.welcome', crumbIcon: 'bell' },
+  music: { crumb: 'nav.music', crumbIcon: 'music' },
+  tempvoice: { crumb: 'nav.tempvoice', crumbIcon: 'hash' },
+  games: { crumb: 'nav.games', crumbIcon: 'sparkles' },
+  tickets: { crumb: 'nav.tickets', crumbIcon: 'ticket' },
+  giveaways: { crumb: 'nav.giveaways', crumbIcon: 'gift' },
+  applications: { crumb: 'nav.applications', crumbIcon: 'clipboard' },
+  moderation: { crumb: 'nav.moderation', crumbIcon: 'shield' },
+  statistics: { crumb: 'nav.statistics', crumbIcon: 'chart' },
+  team: { crumb: 'nav.team', crumbIcon: 'users' },
+  settings: { crumb: 'nav.settings', crumbIcon: 'settings' },
+  logs: { crumb: 'nav.logs', crumbIcon: 'file' },
+  suggestions: { crumb: 'nav.suggestions', crumbIcon: 'bulb' },
+  social: { crumb: 'nav.social', crumbIcon: 'bell' },
+  impressum: { crumb: 'nav.impressum', crumbIcon: 'scale' },
+  datenschutz: { crumb: 'nav.datenschutz', crumbIcon: 'lock' },
+  support: { crumb: 'nav.support', crumbIcon: 'chat' },
+  servers: { crumb: 'nav.servers', crumbIcon: 'server' },
 };
 
 function pageLocals(req, active, extra = {}) {

@@ -12,6 +12,18 @@
 
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
+/* ---------------- i18n (Client) ---------------- */
+
+const I18N = (window.__I18N__ && window.__I18N__.strings) || {};
+const LANG = (window.__I18N__ && window.__I18N__.lang) || 'en';
+
+/** t('common.saved') / t('foo.bar', { n: 3 }) – fehlt der Schlüssel, wird er selbst zurückgegeben. */
+function t(key, vars) {
+  let str = String(key).split('.').reduce((o, k) => (o == null ? undefined : o[k]), I18N);
+  if (str == null) return key;
+  return String(str).replace(/\{(\w+)\}/g, (m, v) => (vars && vars[v] != null ? String(vars[v]) : m));
+}
+
 /** guildId aus dem Pfad /dashboard/<id>/... lesen. */
 const GUILD_ID = (() => {
   const m = window.location.pathname.match(/\/dashboard\/(\d{5,25})/);
@@ -717,6 +729,8 @@ window.Dash = {
   initModuleStatus,
   renderModuleStatus,
   icon,
+  t,
+  LANG,
   GUILD_ID,
   PAGE_DATA,
 };

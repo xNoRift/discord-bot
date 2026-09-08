@@ -331,6 +331,12 @@ code {
 .topbar__crumb .icon { color: var(--accent-2); }
 .topbar__right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
+/* ---------------- Sprach-Umschalter ---------------- */
+.lang-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 12px; font-weight: 600; }
+.lang-switch a { padding: 5px 9px; color: var(--muted); text-decoration: none; line-height: 1; }
+.lang-switch a:hover { background: var(--surface-2, rgba(127,127,127,.12)); color: var(--text); }
+.lang-switch a.is-active { background: var(--accent, #7c5cff); color: #fff; }
+
 /* ---------------- Theme-Umschalter (oben rechts) ---------------- */
 .theme-wrap { position: relative; }
 .theme-btn {

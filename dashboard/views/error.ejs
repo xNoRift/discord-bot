@@ -5,8 +5,8 @@
     <span class="auth__logo"><%- icon('x') %></span>
     <h1><%= typeof title !== 'undefined' ? title : 'Fehler' %></h1>
     <p class="auth__lead"><%= typeof message !== 'undefined' ? message : 'Es ist ein Fehler aufgetreten.' %></p>
-    <a class="btn btn--primary" href="/servers">Zu meinen Servern</a>
-    <p class="auth__hint"><a href="/">Startseite</a></p>
+    <a class="btn btn--primary" href="/servers"><%= typeof t !== 'undefined' ? t('shell.choose_server') : 'Zu meinen Servern' %></a>
+    <p class="auth__hint"><a href="/"><%= typeof t !== 'undefined' ? t('login.back_home') : 'Startseite' %></a></p>
   </div>
 </div>
 

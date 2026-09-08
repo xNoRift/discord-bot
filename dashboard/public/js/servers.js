@@ -1,7 +1,7 @@
 /* global window, document, Dash */
 'use strict';
 
-const { api, escapeHtml, icon, toast } = Dash;
+const { api, escapeHtml, icon, toast, t } = Dash;
 const CLIENT_ID = Dash.PAGE_DATA.clientId;
 const INVITE_PERMS = Dash.PAGE_DATA.invitePermissions || '8';
 
@@ -28,12 +28,12 @@ function render() {
         <a class="server-card" href="/dashboard/${g.id}">
           ${serverIcon(g)}
           <b>${escapeHtml(g.name)}</b>
-          <span class="server-meta">${g.memberCount ? g.memberCount + ' Mitglieder' : 'Verwalten'}</span>
-          <span class="badge badge--green">Bot aktiv</span>
+          <span class="server-meta">${g.memberCount ? t('servers.members', { n: g.memberCount }) : t('servers.manage')}</span>
+          <span class="badge badge--green">${t('servers.bot_active')}</span>
         </a>`).join('')
     : q
-      ? `<div class="empty">${icon('server')}<b>Kein Treffer für „${escapeHtml(q)}"</b></div>`
-      : `<div class="empty">${icon('server')}<b>Keine verwaltbaren Server</b>Lade den Bot auf einen Server ein, auf dem du Admin bist.</div>`;
+      ? `<div class="empty">${icon('server')}<b>${escapeHtml(t('servers.no_match', { q }))}</b></div>`
+      : `<div class="empty">${icon('server')}<b>${t('servers.none_title')}</b>${t('servers.none_sub')}</div>`;
 
   const invCard = document.getElementById('invitableCard');
   const invWrap = document.getElementById('invitableGuilds');
@@ -43,7 +43,7 @@ function render() {
         <div class="server-card">
           ${serverIcon(g)}
           <b>${escapeHtml(g.name)}</b>
-          <a class="btn btn--primary btn--sm" href="${inviteUrl(g.id)}" target="_blank" rel="noopener">${icon('plus', 'icon--sm')} Bot einladen</a>
+          <a class="btn btn--primary btn--sm" href="${inviteUrl(g.id)}" target="_blank" rel="noopener">${icon('plus', 'icon--sm')} ${t('servers.invite')}</a>
         </div>`).join('');
   } else {
     invCard.hidden = true;
@@ -51,7 +51,7 @@ function render() {
 }
 
 async function load(refresh) {
-  document.getElementById('managedGuilds').innerHTML = '<div class="loading">Server werden geladen…</div>';
+  document.getElementById('managedGuilds').innerHTML = `<div class="loading">${t('servers.loading')}</div>`;
   try {
     DATA = await api('GET', `/api/guilds${refresh ? '?refresh=1' : ''}`);
     render();
@@ -62,5 +62,5 @@ async function load(refresh) {
 }
 
 document.getElementById('guildSearch').addEventListener('input', render);
-document.getElementById('refreshGuilds').addEventListener('click', () => { toast('Aktualisiere…', 'info', 1200); load(true); });
+document.getElementById('refreshGuilds').addEventListener('click', () => { toast(t('servers.refreshing'), 'info', 1200); load(true); });
 load(false);
