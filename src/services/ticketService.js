@@ -84,8 +84,15 @@ function buildPanelMessage(panel, categories) {
           .setStyle(ButtonStyle.Primary),
       ),
     );
-  } else if (panel.use_select && categories.length > 1) {
-    // Auswahlmenü
+    return { embeds: [embed], components };
+  }
+
+  // Layout: 'buttons' | 'select' | 'both'  (Alt-Flag use_select wird noch berücksichtigt)
+  const layout = panel.panel_layout || (panel.use_select ? 'select' : 'buttons');
+  const wantSelect = (layout === 'select' || layout === 'both') && categories.length > 1;
+  const wantButtons = layout === 'buttons' || layout === 'both' || categories.length === 1;
+
+  if (wantSelect) {
     components.push(
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
@@ -101,10 +108,13 @@ function buildPanelMessage(panel, categories) {
           ),
       ),
     );
-  } else {
-    // Buttons (max. 5 pro Reihe, 5 Reihen)
+  }
+
+  if (wantButtons) {
+    // Bei "Menü + Buttons" bleibt eine Reihe fürs Menü reserviert -> max. 4 Button-Reihen
+    const maxRows = wantSelect ? 4 : 5;
     let row = new ActionRowBuilder();
-    categories.slice(0, 25).forEach((c, i) => {
+    categories.slice(0, maxRows * 5).forEach((c, i) => {
       if (i > 0 && i % 5 === 0) {
         components.push(row);
         row = new ActionRowBuilder();

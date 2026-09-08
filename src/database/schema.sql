@@ -107,7 +107,8 @@ CREATE TABLE IF NOT EXISTS ticket_panels (
   color       TEXT,                     -- optionaler Hex-Wert (#RRGGBB)
   channel_id  TEXT,                     -- wo das Panel gepostet wurde
   message_id  TEXT,
-  use_select  INTEGER NOT NULL DEFAULT 0, -- 0 = Buttons, 1 = Auswahlmenü
+  use_select  INTEGER NOT NULL DEFAULT 0, -- Alt-Flag (0/1), von panel_layout abgeloest
+  panel_layout TEXT DEFAULT 'buttons',   -- 'buttons' | 'select' | 'both'
   button_label TEXT,                    -- Label bei genau EINER Kategorie
   log_channel_id   TEXT,                -- eigener Log-Kanal für dieses Panel
   rating_enabled   INTEGER DEFAULT 0,   -- Bewertung nach Ticket-Schließung

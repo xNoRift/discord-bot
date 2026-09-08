@@ -68,6 +68,11 @@ ensureColumn('ticket_panels', 'claim_category_id', 'TEXT');
 ensureColumn('ticket_panels', 'autoclose_hours', 'INTEGER DEFAULT 0');
 ensureColumn('ticket_panels', 'image_url', 'TEXT');
 ensureColumn('ticket_panels', 'thumbnail_url', 'TEXT');
+ensureColumn('ticket_panels', 'panel_layout', "TEXT DEFAULT 'buttons'");
+// Einmal-Migration: altes use_select-Flag -> panel_layout (stabil, weil der Editor beide Spalten synchron hält)
+try {
+  db.exec("UPDATE ticket_panels SET panel_layout = 'select' WHERE use_select = 1 AND (panel_layout IS NULL OR panel_layout = 'buttons')");
+} catch { /* ignore */ }
 
 // Dashboard-Erweiterung (Redesign)
 ensureColumn('guild_settings', 'tickets_enabled', 'INTEGER DEFAULT 1');

@@ -294,15 +294,20 @@ function renderTab(tab) {
       <div class="card">
         <div class="card__head"><h2>${icon('ticket')} Anzeige</h2></div>
         <div class="field"><label>Button-Text (bei genau 1 Kategorie)</label><input id="f_btn" value="${escapeHtml(p.button_label || '')}" placeholder="Ticket erstellen" /></div>
-        <div class="setting-row">
-          <div class="setting-row__text"><b>Auswahlmenü statt Buttons</b><span>Bei mehreren Kategorien ein Dropdown anzeigen</span></div>
-          <label class="toggle"><input type="checkbox" id="f_select" ${p.use_select ? 'checked' : ''}><span class="toggle__track"></span></label>
+        <div class="field">
+          <label>Darstellung (bei mehreren Kategorien)</label>
+          <select id="f_layout">
+            <option value="buttons"${(p.panel_layout || (p.use_select ? 'select' : 'buttons')) === 'buttons' ? ' selected' : ''}>Nur Buttons</option>
+            <option value="select"${(p.panel_layout || (p.use_select ? 'select' : 'buttons')) === 'select' ? ' selected' : ''}>Nur Auswahlmenü</option>
+            <option value="both"${(p.panel_layout || (p.use_select ? 'select' : 'buttons')) === 'both' ? ' selected' : ''}>Buttons + Auswahlmenü</option>
+          </select>
+          <small>„Buttons + Auswahlmenü“ zeigt beides gleichzeitig – wie im Beispiel-Bild.</small>
         </div>
         <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" id="f_save">Speichern</button></div>
       </div>`;
     body.querySelector('#f_save').onclick = () => savePanel({
       buttonLabel: body.querySelector('#f_btn').value,
-      useSelect: body.querySelector('#f_select').checked,
+      layout: body.querySelector('#f_layout').value,
     });
     body.querySelector('#s_ping').onchange = (e) => saveSettings({ ticket_team_ping: e.target.checked ? 1 : 0 });
     body.querySelector('#s_restrict').onchange = (e) => saveSettings({ ticket_close_restricted: e.target.checked ? 1 : 0 });

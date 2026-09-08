@@ -925,7 +925,14 @@ router.patch(
       if (b[k] !== undefined) patch[k] = b[k];
     }
     if (b.buttonLabel !== undefined) patch.button_label = b.buttonLabel || null;
-    if (b.useSelect !== undefined) patch.use_select = b.useSelect ? 1 : 0;
+    if (b.layout !== undefined) {
+      const layout = ['buttons', 'select', 'both'].includes(b.layout) ? b.layout : 'buttons';
+      patch.panel_layout = layout;
+      patch.use_select = layout === 'buttons' ? 0 : 1; // Alt-Flag synchron halten
+    } else if (b.useSelect !== undefined) {
+      patch.use_select = b.useSelect ? 1 : 0;
+      patch.panel_layout = b.useSelect ? 'select' : 'buttons';
+    }
     if (b.log_channel_id !== undefined) patch.log_channel_id = b.log_channel_id || null;
     if (b.rating_enabled !== undefined || b.ratingEnabled !== undefined) {
       patch.rating_enabled = (b.rating_enabled ?? b.ratingEnabled) ? 1 : 0;
