@@ -9,6 +9,7 @@ const ticketService = require('./ticketService');
 const logService = require('./logService');
 const embeds = require('../utils/embeds');
 const config = require('../../config/config');
+const i18n = require('../utils/i18n');
 const { discordTimestamp } = require('../utils/time');
 
 /**
@@ -51,10 +52,16 @@ function supportGuild() {
   return client.guilds.cache.get(c.modmail_guild_id) || null;
 }
 
+/** Sprache des konfigurierten Support-Servers. */
+function tg() {
+  return i18n.forGuild(botConfig.get().modmail_guild_id);
+}
+
 function friendlyOpenError(err) {
-  if (err.message === 'kein-kanal') return 'Der Bot-Support ist noch nicht fertig eingerichtet (keine Kategorie hinterlegt).';
-  if (err.message === 'bot-rechte') return 'Dem Bot fehlt auf dem Support-Server die Berechtigung „Kanäle verwalten".';
-  return 'Beim Erstellen des Tickets ist etwas schiefgelaufen.';
+  const t = tg();
+  if (err.message === 'kein-kanal') return t('modmail.err_no_channel');
+  if (err.message === 'bot-rechte') return t('modmail.err_bot_perms');
+  return t('modmail.err_generic');
 }
 
 /** Erstellt einen ModMail-Ticket-Kanal auf dem Support-Server und leitet die erste Nachricht weiter. */
@@ -119,17 +126,15 @@ async function openThread(user, firstContent, files = []) {
   });
   ticketsModel.touch(ticket.id);
 
+  const t = i18n.forGuild(guild.id);
   const header = new EmbedBuilder()
     .setColor(config.branding.color)
     .setAuthor({ name: `${user.tag} (${user.id})`, iconURL: user.displayAvatarURL() })
-    .setTitle(`📨 ModMail #${number}`)
-    .setDescription(
-      'Dieser Kanal ist mit den **Direktnachrichten** dieser Person verbunden. Alles, was das Team hier schreibt, ' +
-        `bekommt sie als DM.\nInterne Notiz? Nachricht mit \`${NOTE_PREFIX}\` beginnen – die wird **nicht** weitergeleitet.`,
-    )
+    .setTitle(t('modmail.header_title', { number }))
+    .setDescription(t('modmail.header_desc', { prefix: NOTE_PREFIX }))
     .addFields(
-      { name: 'Nutzer', value: `<@${user.id}>`, inline: true },
-      { name: 'Erstellt', value: discordTimestamp(Date.now(), 'F'), inline: true },
+      { name: t('modmail.header_field_user'), value: `<@${user.id}>`, inline: true },
+      { name: t('modmail.header_field_created'), value: discordTimestamp(Date.now(), 'F'), inline: true },
     )
     .setTimestamp();
 
@@ -157,12 +162,7 @@ async function openThread(user, firstContent, files = []) {
   }
 
   await dmUser(dmChannel?.id, {
-    embeds: [
-      embeds.success(
-        '📨 Anfrage aufgenommen',
-        'Deine Nachricht ist beim Support-Team angekommen. Antworte einfach hier weiter – ich leite alles weiter, bis das Anliegen geschlossen wird.',
-      ),
-    ],
+    embeds: [embeds.success(t('modmail.received_title'), t('modmail.received_desc'))],
   });
 
   await logService.log({
@@ -225,15 +225,9 @@ async function relayDmToChannel(message) {
   // Kein aktives Ticket -> neues auf dem Support-Server öffnen
   const guild = supportGuild();
   if (!guild) {
+    const t = tg();
     await message.channel
-      .send({
-        embeds: [
-          embeds.warning(
-            'Support nicht erreichbar',
-            'Der Bot-Support ist aktuell nicht verfügbar. Bitte versuch es später noch einmal.',
-          ),
-        ],
-      })
+      .send({ embeds: [embeds.warning(t('modmail.unavailable_title'), t('modmail.unavailable_desc'))] })
       .catch(() => null);
     return;
   }
@@ -264,7 +258,7 @@ async function relayChannelToDm(message) {
   await dmUser(ticket.dm_channel_id, {
     embeds: [
       relayEmbed({
-        name: `${message.member?.displayName || message.author.username} • Team`,
+        name: `${message.member?.displayName || message.author.username} • ${i18n.forGuild(ticket.guild_id)('modmail.team_suffix')}`,
         iconURL: message.author.displayAvatarURL(),
         color: config.branding.success,
         content: message.content,
@@ -279,13 +273,11 @@ async function relayChannelToDm(message) {
 /** Vom ticketService aufgerufen, nachdem ein ModMail-Ticket geschlossen/geöffnet/gelöscht wurde. */
 async function notifyStateChange(ticket, action) {
   if (!ticket?.is_modmail || !ticket.dm_channel_id) return;
+  const t = i18n.forGuild(ticket.guild_id);
   const map = {
-    close: embeds.warning(
-      '🔒 Anliegen geschlossen',
-      'Dein Anliegen wurde geschlossen. Schreib mir einfach wieder, wenn du weiter Hilfe brauchst.',
-    ),
-    reopen: embeds.success('🔓 Anliegen wieder offen', 'Dein Anliegen ist wieder offen – du kannst hier weiterschreiben.'),
-    delete: embeds.error('🗑️ Anliegen abgeschlossen', 'Dein Anliegen wurde abgeschlossen. Bei Bedarf kannst du mir jederzeit neu schreiben.'),
+    close: embeds.warning(t('modmail.closed_title'), t('modmail.closed_desc')),
+    reopen: embeds.success(t('modmail.reopen_title'), t('modmail.reopen_desc')),
+    delete: embeds.error(t('modmail.deleted_title'), t('modmail.deleted_desc')),
   };
   if (map[action]) await dmUser(ticket.dm_channel_id, { embeds: [map[action]] });
 }

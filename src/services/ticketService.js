@@ -20,6 +20,7 @@ const logService = require('./logService');
 const embeds = require('../utils/embeds');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
+const i18n = require('../utils/i18n');
 const { discordTimestamp } = require('../utils/time');
 
 /**
@@ -54,10 +55,11 @@ function ticketLogOverride(ticket) {
  * @param {object[]} categories ticket_categories-Zeilen
  */
 function buildPanelMessage(panel, categories) {
+  const tg = i18n.forGuild(panel.guild_id);
   const embed = new EmbedBuilder()
     .setColor(parseColor(panel.color) ?? parseColor(settingsModel.get(panel.guild_id).embed_color) ?? config.branding.color)
-    .setTitle(panel.title || config.defaults.ticketPanelTitle)
-    .setDescription(panel.description || config.defaults.ticketPanelMessage);
+    .setTitle(panel.title || tg('tickets.panel.default_title'))
+    .setDescription(panel.description || tg('tickets.panel.default_message'));
 
   if (/^https?:\/\//i.test(panel.image_url || '')) embed.setImage(panel.image_url);
   if (/^https?:\/\//i.test(panel.thumbnail_url || '')) embed.setThumbnail(panel.thumbnail_url);
@@ -73,7 +75,7 @@ function buildPanelMessage(panel, categories) {
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('ticket:create')
-          .setLabel(panel.button_label || 'Ticket erstellen')
+          .setLabel(panel.button_label || tg('tickets.panel.default_button'))
           .setEmoji('🎫')
           .setStyle(ButtonStyle.Primary),
       ),
@@ -91,7 +93,7 @@ function buildPanelMessage(panel, categories) {
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId(`ticket:pick:${panel.id}`)
-          .setPlaceholder('Wähle eine Kategorie ...')
+          .setPlaceholder(tg('tickets.panel.placeholder'))
           .addOptions(
             categories.slice(0, 25).map((c) => ({
               label: c.label.slice(0, 100),
@@ -166,30 +168,31 @@ async function postOrUpdatePanel(guild, panelId, channelId) {
 /* ---------------- Ticket-Erstellung ---------------- */
 
 function buildManagementRow(ticket) {
+  const tg = i18n.forGuild(ticket.guild_id);
   const closed = ticket.status === 'closed';
   const claimed = Boolean(ticket.claimed_by);
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(claimed ? 'ticket:unclaim' : 'ticket:claim')
-      .setLabel(claimed ? 'Freigeben' : 'Übernehmen')
+      .setLabel(claimed ? tg('tickets.buttons.unclaim') : tg('tickets.buttons.claim'))
       .setEmoji('📌')
       .setStyle(claimed ? ButtonStyle.Primary : ButtonStyle.Secondary)
       .setDisabled(closed),
     new ButtonBuilder()
       .setCustomId('ticket:close')
-      .setLabel('Schließen')
+      .setLabel(tg('tickets.buttons.close'))
       .setEmoji('🔒')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(closed),
     new ButtonBuilder()
       .setCustomId('ticket:reopen')
-      .setLabel('Wieder öffnen')
+      .setLabel(tg('tickets.buttons.reopen'))
       .setEmoji('🔓')
       .setStyle(ButtonStyle.Success)
       .setDisabled(!closed),
     new ButtonBuilder()
       .setCustomId('ticket:delete')
-      .setLabel('Löschen')
+      .setLabel(tg('tickets.buttons.delete'))
       .setEmoji('🗑️')
       .setStyle(ButtonStyle.Danger),
   );
@@ -251,17 +254,18 @@ function renderWelcome(template, { member, guild, ticketNumber, category }) {
  */
 async function createTicket(guild, member, opts = {}) {
   const settings = settingsModel.get(guild.id);
+  const tg = i18n.forGuild(guild.id);
 
   if (settings.tickets_enabled === 0) {
-    throw new Error('Das Ticket-Modul ist derzeit deaktiviert.');
+    throw new Error(tg('tickets.errors.module_disabled'));
   }
 
   const cat = opts.categoryId ? ticketPanels.getCategory(opts.categoryId) : null;
   if (opts.categoryId && (!cat || cat.guild_id !== guild.id)) {
-    throw new Error('Diese Ticket-Kategorie existiert nicht mehr.');
+    throw new Error(tg('tickets.errors.category_gone'));
   }
   if (cat && cat.enabled === 0) {
-    throw new Error('Diese Kategorie ist derzeit deaktiviert.');
+    throw new Error(tg('tickets.errors.category_disabled'));
   }
   const panel = cat ? ticketPanels.getPanel(cat.panel_id) : null;
 
@@ -274,26 +278,26 @@ async function createTicket(guild, member, opts = {}) {
     : cat?.name_format || settings.ticket_name_format || 'ticket-{user}';
 
   if (!discordCategoryId) {
-    throw new Error('Für diese Kategorie wurde keine Discord-Kategorie festgelegt (weder in der Kategorie noch als Standard).');
+    throw new Error(tg('tickets.errors.no_discord_category'));
   }
 
   const discordCategory =
     guild.channels.cache.get(discordCategoryId) ??
     (await guild.channels.fetch(discordCategoryId).catch(() => null));
   if (!discordCategory || discordCategory.type !== ChannelType.GuildCategory) {
-    throw new Error('Die hinterlegte Discord-Kategorie existiert nicht mehr.');
+    throw new Error(tg('tickets.errors.discord_category_gone'));
   }
 
   const me = guild.members.me;
   if (!me?.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
-    throw new Error('Dem Bot fehlt die Berechtigung "Kanäle verwalten".');
+    throw new Error(tg('tickets.errors.bot_missing_manage_channels'));
   }
 
   const max = settings.ticket_max_per_user ?? 1;
   if (max > 0) {
     const open = ticketsModel.countOpenByUser(guild.id, member.id);
     if (open >= max) {
-      throw new Error(`Du hast bereits ${open} offene(s) Ticket(s). Maximum: ${max}.`);
+      throw new Error(tg('tickets.errors.max_open', { open, max }));
     }
   }
 
@@ -357,12 +361,12 @@ async function createTicket(guild, member, opts = {}) {
 
   const welcomeEmbed = new EmbedBuilder()
     .setColor(panelColor(panel, settings))
-    .setTitle(`🎫 Ticket #${number}${cat ? ` – ${cat.label}` : ''}`)
+    .setTitle(cat ? tg('tickets.welcome.title_cat', { number, category: cat.label }) : tg('tickets.welcome.title', { number }))
     .setDescription(renderWelcome(welcomeTemplate, { member, guild, ticketNumber: number, category: cat?.label }))
     .addFields(
-      { name: 'Erstellt von', value: `<@${member.id}>`, inline: true },
-      { name: 'Erstellt am', value: discordTimestamp(Date.now(), 'F'), inline: true },
-      ...(cat ? [{ name: 'Kategorie', value: cat.label, inline: true }] : []),
+      { name: tg('tickets.welcome.field_opener'), value: `<@${member.id}>`, inline: true },
+      { name: tg('tickets.welcome.field_created'), value: discordTimestamp(Date.now(), 'F'), inline: true },
+      ...(cat ? [{ name: tg('tickets.welcome.field_category'), value: cat.label, inline: true }] : []),
     )
     .setTimestamp();
 
@@ -382,11 +386,11 @@ async function createTicket(guild, member, opts = {}) {
   if (Array.isArray(opts.answers) && opts.answers.length) {
     const answerEmbed = new EmbedBuilder()
       .setColor(panelColor(panel, settings))
-      .setTitle('📝 Angaben aus dem Formular')
+      .setTitle(tg('tickets.form.title'))
       .addFields(
         opts.answers.slice(0, 24).map((a) => ({
-          name: String(a.question || 'Frage').slice(0, 256),
-          value: (a.answer && a.answer.trim() ? a.answer : '*(keine Angabe)*').slice(0, 1024),
+          name: String(a.question || tg('common.question')).slice(0, 256),
+          value: (a.answer && a.answer.trim() ? a.answer : tg('common.no_answer')).slice(0, 1024),
         })),
       );
     await channel.send({ embeds: [answerEmbed] }).catch(() => null);
@@ -427,9 +431,10 @@ async function updateManagementMessage(channel, ticket) {
 }
 
 async function claimTicket(channel, member) {
+  const tg = i18n.forGuild(channel.guild.id);
   const ticket = ticketsModel.getByChannel(channel.id);
-  if (!ticket) throw new Error('Kein Ticket zu diesem Kanal gefunden.');
-  if (ticket.claimed_by) throw new Error(`Bereits übernommen von <@${ticket.claimed_by}>.`);
+  if (!ticket) throw new Error(tg('tickets.errors.not_a_ticket'));
+  if (ticket.claimed_by) throw new Error(tg('tickets.errors.already_claimed', { user: ticket.claimed_by }));
 
   const updated = ticketsModel.claim(ticket.id, member.id);
   await updateManagementMessage(channel, updated);
@@ -441,7 +446,7 @@ async function claimTicket(channel, member) {
   }
 
   await channel
-    .send({ embeds: [embeds.info('📌 Ticket übernommen', `<@${member.id}> kümmert sich um dieses Ticket.`)] })
+    .send({ embeds: [embeds.info(tg('tickets.claim.channel_title'), tg('tickets.claim.channel_desc', { user: member.id }))] })
     .catch(() => null);
 
   await logService.log({
@@ -461,9 +466,10 @@ async function claimTicket(channel, member) {
 }
 
 async function unclaimTicket(channel, member) {
+  const tg = i18n.forGuild(channel.guild.id);
   const ticket = ticketsModel.getByChannel(channel.id);
-  if (!ticket) throw new Error('Kein Ticket zu diesem Kanal gefunden.');
-  if (!ticket.claimed_by) throw new Error('Dieses Ticket ist nicht übernommen.');
+  if (!ticket) throw new Error(tg('tickets.errors.not_a_ticket'));
+  if (!ticket.claimed_by) throw new Error(tg('tickets.errors.not_claimed'));
 
   const previousClaimer = ticket.claimed_by;
   const updated = ticketsModel.unclaim(ticket.id);
@@ -479,7 +485,7 @@ async function unclaimTicket(channel, member) {
   }
 
   await channel
-    .send({ embeds: [embeds.warning('📌 Ticket freigegeben', `<@${member.id}> hat das Ticket wieder freigegeben.`)] })
+    .send({ embeds: [embeds.warning(tg('tickets.unclaim.channel_title'), tg('tickets.unclaim.channel_desc', { user: member.id }))] })
     .catch(() => null);
 
   await logService.log({
@@ -501,8 +507,9 @@ async function unclaimTicket(channel, member) {
 
 /** Kanalname eines Tickets ändern (Support/Manager). */
 async function renameTicket(channel, member, rawName) {
+  const tg = i18n.forGuild(channel.guild.id);
   const ticket = ticketsModel.getByChannel(channel.id);
-  if (!ticket) throw new Error('Kein Ticket zu diesem Kanal gefunden.');
+  if (!ticket) throw new Error(tg('tickets.errors.not_a_ticket'));
 
   const clean = String(rawName || '')
     .toLowerCase()
@@ -511,11 +518,11 @@ async function renameTicket(channel, member, rawName) {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .slice(0, 90);
-  if (!clean) throw new Error('Bitte einen gültigen Namen angeben (a–z, 0–9, - und _).');
+  if (!clean) throw new Error(tg('tickets.errors.rename_invalid'));
 
   const oldName = channel.name;
   await channel.setName(clean).catch((err) => {
-    throw new Error(`Kanal konnte nicht umbenannt werden: ${err.message}`);
+    throw new Error(tg('tickets.errors.rename_failed', { msg: err.message }));
   });
 
   await logService.log({
@@ -538,8 +545,9 @@ async function renameTicket(channel, member, rawName) {
 
 /** Einen weiteren Nutzer zum Ticket hinzufügen (Support/Manager). */
 async function addMemberToTicket(channel, actor, targetUser) {
+  const tg = i18n.forGuild(channel.guild.id);
   const ticket = ticketsModel.getByChannel(channel.id);
-  if (!ticket) throw new Error('Kein Ticket zu diesem Kanal gefunden.');
+  if (!ticket) throw new Error(tg('tickets.errors.not_a_ticket'));
 
   await channel.permissionOverwrites
     .edit(targetUser.id, {
@@ -550,11 +558,11 @@ async function addMemberToTicket(channel, actor, targetUser) {
       EmbedLinks: true,
     })
     .catch((err) => {
-      throw new Error(`Konnte den Nutzer nicht hinzufügen: ${err.message}`);
+      throw new Error(tg('tickets.errors.add_failed', { msg: err.message }));
     });
 
   await channel
-    .send({ embeds: [embeds.success('➕ Nutzer hinzugefügt', `<@${targetUser.id}> wurde von <@${actor.id}> zum Ticket hinzugefügt.`)] })
+    .send({ embeds: [embeds.success(tg('tickets.member.added_title'), tg('tickets.member.added_desc', { target: targetUser.id, actor: actor.id }))] })
     .catch(() => null);
 
   await logService.log({
@@ -576,16 +584,17 @@ async function addMemberToTicket(channel, actor, targetUser) {
 
 /** Einen Nutzer wieder aus dem Ticket entfernen (Support/Manager). Der Ersteller kann nicht entfernt werden. */
 async function removeMemberFromTicket(channel, actor, targetUser) {
+  const tg = i18n.forGuild(channel.guild.id);
   const ticket = ticketsModel.getByChannel(channel.id);
-  if (!ticket) throw new Error('Kein Ticket zu diesem Kanal gefunden.');
-  if (targetUser.id === ticket.opener_id) throw new Error('Der Ersteller kann nicht aus seinem eigenen Ticket entfernt werden.');
+  if (!ticket) throw new Error(tg('tickets.errors.not_a_ticket'));
+  if (targetUser.id === ticket.opener_id) throw new Error(tg('tickets.errors.opener_not_removable'));
 
   await channel.permissionOverwrites.delete(targetUser.id, `Aus Ticket entfernt von ${actor.user.tag}`).catch((err) => {
-    throw new Error(`Konnte den Nutzer nicht entfernen: ${err.message}`);
+    throw new Error(tg('tickets.errors.remove_failed', { msg: err.message }));
   });
 
   await channel
-    .send({ embeds: [embeds.warning('➖ Nutzer entfernt', `<@${targetUser.id}> wurde von <@${actor.id}> aus dem Ticket entfernt.`)] })
+    .send({ embeds: [embeds.warning(tg('tickets.member.removed_title'), tg('tickets.member.removed_desc', { target: targetUser.id, actor: actor.id }))] })
     .catch(() => null);
 
   await logService.log({
@@ -606,9 +615,10 @@ async function removeMemberFromTicket(channel, actor, targetUser) {
 }
 
 async function closeTicket(channel, member) {
+  const tg = i18n.forGuild(channel.guild.id);
   const ticket = ticketsModel.getByChannel(channel.id);
-  if (!ticket) throw new Error('Kein Ticket zu diesem Kanal gefunden.');
-  if (ticket.status === 'closed') throw new Error('Das Ticket ist bereits geschlossen.');
+  if (!ticket) throw new Error(tg('tickets.errors.not_a_ticket'));
+  if (ticket.status === 'closed') throw new Error(tg('tickets.errors.already_closed'));
 
   const updated = ticketsModel.close(ticket.id, member.id);
 
@@ -621,12 +631,7 @@ async function closeTicket(channel, member) {
   await updateManagementMessage(channel, updated);
   await channel
     .send({
-      embeds: [
-        embeds.warning(
-          '🔒 Ticket geschlossen',
-          `Geschlossen von <@${member.id}>.\nEin Teammitglied kann es wieder öffnen oder endgültig löschen.`,
-        ),
-      ],
+      embeds: [embeds.warning(tg('tickets.close.channel_title'), tg('tickets.close.channel_desc', { user: member.id }))],
     })
     .catch(() => null);
 
@@ -656,9 +661,10 @@ async function closeTicket(channel, member) {
 }
 
 async function reopenTicket(channel, member) {
+  const tg = i18n.forGuild(channel.guild.id);
   const ticket = ticketsModel.getByChannel(channel.id);
-  if (!ticket) throw new Error('Kein Ticket zu diesem Kanal gefunden.');
-  if (ticket.status !== 'closed') throw new Error('Das Ticket ist nicht geschlossen.');
+  if (!ticket) throw new Error(tg('tickets.errors.not_a_ticket'));
+  if (ticket.status !== 'closed') throw new Error(tg('tickets.errors.not_closed'));
 
   const updated = ticketsModel.reopen(ticket.id);
   await channel.permissionOverwrites
@@ -668,7 +674,7 @@ async function reopenTicket(channel, member) {
 
   await updateManagementMessage(channel, updated);
   await channel
-    .send({ embeds: [embeds.success('🔓 Ticket wieder geöffnet', `Wieder geöffnet von <@${member.id}>.`)] })
+    .send({ embeds: [embeds.success(tg('tickets.reopen.channel_title'), tg('tickets.reopen.channel_desc', { user: member.id }))] })
     .catch(() => null);
 
   await logService.log({
@@ -692,8 +698,9 @@ async function reopenTicket(channel, member) {
 }
 
 async function deleteTicket(channel, member) {
+  const tg = i18n.forGuild(channel.guild.id);
   const ticket = ticketsModel.getByChannel(channel.id);
-  if (!ticket) throw new Error('Kein Ticket zu diesem Kanal gefunden.');
+  if (!ticket) throw new Error(tg('tickets.errors.not_a_ticket'));
 
   ticketsModel.markDeleted(ticket.id, member.id);
 
@@ -721,7 +728,7 @@ async function deleteTicket(channel, member) {
   }
 
   await channel
-    .send({ embeds: [embeds.error('🗑️ Ticket wird gelöscht', 'Dieser Kanal wird in 5 Sekunden entfernt…')] })
+    .send({ embeds: [embeds.error(tg('tickets.delete.channel_title'), tg('tickets.delete.channel_desc'))] })
     .catch(() => null);
 
   setTimeout(() => {
@@ -744,9 +751,10 @@ async function maybeRequestRating(channel, ticket) {
         .setStyle(ButtonStyle.Secondary),
     ),
   );
+  const tg = i18n.forGuild(channel.guild.id);
   await channel
     .send({
-      embeds: [embeds.info('⭐ Wie zufrieden warst du?', 'Bewerte den Support mit 1–5 Sternen.')],
+      embeds: [embeds.info(tg('tickets.rating.title'), tg('tickets.rating.desc'))],
       components: [row],
     })
     .catch(() => null);
@@ -756,8 +764,9 @@ async function maybeRequestRating(channel, ticket) {
  * Verarbeitet eine Bewertung (Button "ticket:rate:<ticketId>:<stars>").
  */
 async function submitRating(guild, ticketId, stars, member) {
+  const tg = i18n.forGuild(guild.id);
   const ticket = ticketsModel.get(ticketId);
-  if (!ticket) throw new Error('Ticket nicht gefunden.');
+  if (!ticket) throw new Error(tg('tickets.errors.no_ticket_found'));
   const panel = ticket.panel_id ? ticketPanels.getPanel(ticket.panel_id) : null;
   const targetId = panel?.rating_channel_id || panel?.log_channel_id;
   if (targetId) {
@@ -804,8 +813,9 @@ async function autoCloseSweep() {
     }
     const me = guild.members.me;
     await closeTicket(channel, me).catch((err) => logger.warn(`[ticket] autoclose #${ticket.id}: ${err.message}`));
+    const tg = i18n.forGuild(guild.id);
     await channel
-      .send({ embeds: [embeds.warning('🔒 Automatisch geschlossen', `Keine Aktivität seit ${hours} Stunden.`)] })
+      .send({ embeds: [embeds.warning(tg('tickets.close.auto_title'), tg('tickets.close.auto_desc', { hours }))] })
       .catch(() => null);
   }
 }

@@ -4,6 +4,7 @@ const { MessageFlags } = require('discord.js');
 
 const logger = require('../utils/logger');
 const embeds = require('../utils/embeds');
+const i18n = require('../utils/i18n');
 const { matchComponent } = require('../handlers/loaders');
 const settingsModel = require('../database/models/settings');
 
@@ -68,8 +69,9 @@ module.exports = {
       }
     } catch (err) {
       logger.error(`[interaction] Fehler bei ${interaction.type}/${interaction.customId ?? interaction.commandName}:`, err);
+      const tg = i18n.forGuild(interaction.guildId);
       await safeReply(interaction, {
-        embeds: [embeds.error('❌ Es ist ein Fehler aufgetreten', err.message?.slice(0, 500) || 'Unbekannter Fehler.')],
+        embeds: [embeds.error(tg('common.error_generic_title'), err.message?.slice(0, 500) || tg('common.error_generic_desc'))],
       });
     }
   },

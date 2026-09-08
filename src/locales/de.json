@@ -1,0 +1,145 @@
+{
+  "common": {
+    "error_generic_title": "❌ Es ist ein Fehler aufgetreten",
+    "error_generic_desc": "Unbekannter Fehler.",
+    "no_text": "*(kein Text)*",
+    "no_answer": "*(keine Angabe)*",
+    "question": "Frage"
+  },
+  "tickets": {
+    "panel": {
+      "placeholder": "Wähle eine Kategorie ...",
+      "default_button": "Ticket erstellen",
+      "default_title": "🎫 Support",
+      "default_message": "Brauchst du Hilfe?\nErstelle hier ein Ticket und unser Team wird dir helfen."
+    },
+    "buttons": {
+      "claim": "Übernehmen",
+      "unclaim": "Freigeben",
+      "close": "Schließen",
+      "reopen": "Wieder öffnen",
+      "delete": "Löschen"
+    },
+    "welcome": {
+      "title": "🎫 Ticket #{number}",
+      "title_cat": "🎫 Ticket #{number} – {category}",
+      "field_opener": "Erstellt von",
+      "field_created": "Erstellt am",
+      "field_category": "Kategorie"
+    },
+    "form": {
+      "title": "📝 Angaben aus dem Formular"
+    },
+    "created_reply_title": "🎫 Ticket erstellt",
+    "created_reply_desc": "Dein Ticket wurde erstellt: {channel}",
+    "claim": {
+      "channel_title": "📌 Ticket übernommen",
+      "channel_desc": "<@{user}> kümmert sich um dieses Ticket.",
+      "reply_title": "📌 Übernommen",
+      "reply_desc": "Du kümmerst dich jetzt um dieses Ticket."
+    },
+    "unclaim": {
+      "channel_title": "📌 Ticket freigegeben",
+      "channel_desc": "<@{user}> hat das Ticket wieder freigegeben.",
+      "reply_title": "📌 Freigegeben",
+      "reply_desc": "Das Ticket ist wieder frei."
+    },
+    "close": {
+      "channel_title": "🔒 Ticket geschlossen",
+      "channel_desc": "Geschlossen von <@{user}>.\nEin Teammitglied kann es wieder öffnen oder endgültig löschen.",
+      "reply_title": "🔒 Geschlossen",
+      "reply_desc": "Das Ticket wurde geschlossen.",
+      "auto_title": "🔒 Automatisch geschlossen",
+      "auto_desc": "Keine Aktivität seit {hours} Stunden."
+    },
+    "reopen": {
+      "channel_title": "🔓 Ticket wieder geöffnet",
+      "channel_desc": "Wieder geöffnet von <@{user}>.",
+      "reply_title": "🔓 Wieder geöffnet",
+      "reply_desc": "Das Ticket wurde wieder geöffnet."
+    },
+    "delete": {
+      "channel_title": "🗑️ Ticket wird gelöscht",
+      "channel_desc": "Dieser Kanal wird in 5 Sekunden entfernt…",
+      "reply_title": "🗑️ Wird gelöscht",
+      "reply_desc": "Der Kanal wird gleich entfernt."
+    },
+    "member": {
+      "added_title": "➕ Nutzer hinzugefügt",
+      "added_desc": "<@{target}> wurde von <@{actor}> zum Ticket hinzugefügt.",
+      "removed_title": "➖ Nutzer entfernt",
+      "removed_desc": "<@{target}> wurde von <@{actor}> aus dem Ticket entfernt."
+    },
+    "rating": {
+      "title": "⭐ Wie zufrieden warst du?",
+      "desc": "Bewerte den Support mit 1–5 Sternen.",
+      "thanks_title": "Danke!",
+      "thanks_desc": "Deine Bewertung ({stars}) wurde gespeichert."
+    },
+    "replies": {
+      "perm_reopen": "Nur das Support-Team kann Tickets wieder öffnen.",
+      "perm_delete": "Nur das Support-Team kann Tickets löschen.",
+      "perm_unclaim_full": "Nur das Support-Team (oder wer das Ticket übernommen hat) kann es freigeben.",
+      "unclaimed_title": "📌 Freigegeben",
+      "unclaimed_desc": "Das Ticket ist wieder frei.",
+      "reopened_title": "🔓 Wieder geöffnet",
+      "reopened_desc": "Das Ticket ist wieder offen."
+    },
+    "delete_confirm": {
+      "prompt_title": "⚠️ Ticket wirklich löschen?",
+      "prompt_desc": "Dies entfernt den Kanal **endgültig**. Das Ticket-Log bleibt erhalten.",
+      "confirm_label": "Endgültig löschen",
+      "cancel_label": "Abbrechen",
+      "cancelled_title": "Abgebrochen",
+      "cancelled_desc": "Das Ticket wird nicht gelöscht.",
+      "deleting_title": "🗑️ Ticket wird gelöscht",
+      "deleting_desc": "Der Kanal wird jetzt entfernt…"
+    },
+    "errors": {
+      "not_a_ticket": "Kein Ticket zu diesem Kanal gefunden.",
+      "no_ticket_found": "Kein Ticket gefunden.",
+      "module_disabled": "Das Ticket-Modul ist derzeit deaktiviert.",
+      "category_gone": "Diese Ticket-Kategorie existiert nicht mehr.",
+      "category_disabled": "Diese Kategorie ist derzeit deaktiviert.",
+      "no_discord_category": "Für diese Kategorie wurde keine Discord-Kategorie festgelegt (weder in der Kategorie noch als Standard).",
+      "discord_category_gone": "Die hinterlegte Discord-Kategorie existiert nicht mehr.",
+      "bot_missing_manage_channels": "Dem Bot fehlt die Berechtigung \"Kanäle verwalten\".",
+      "max_open": "Du hast bereits {open} offene(s) Ticket(s). Maximum: {max}.",
+      "already_claimed": "Bereits übernommen von <@{user}>.",
+      "not_claimed": "Dieses Ticket ist nicht übernommen.",
+      "already_closed": "Das Ticket ist bereits geschlossen.",
+      "not_closed": "Das Ticket ist nicht geschlossen.",
+      "opener_not_removable": "Der Ersteller kann nicht aus seinem eigenen Ticket entfernt werden.",
+      "rename_invalid": "Bitte einen gültigen Namen angeben (a–z, 0–9, - und _).",
+      "rename_failed": "Kanal konnte nicht umbenannt werden: {msg}",
+      "add_failed": "Konnte den Nutzer nicht hinzufügen: {msg}",
+      "remove_failed": "Konnte den Nutzer nicht entfernen: {msg}",
+      "perm_claim": "Nur das Support-Team kann Tickets übernehmen.",
+      "perm_close_restricted": "Nur Teammitglieder können Tickets schließen.",
+      "perm_close": "Nur das Support-Team oder der Ersteller kann das Ticket schließen.",
+      "perm_support_only": "Nur das Support-Team kann das.",
+      "perm_unclaim": "Nur wer das Ticket übernommen hat oder das Support-Team kann es freigeben.",
+      "category_no_longer": "Diese Kategorie existiert nicht mehr."
+    }
+  },
+  "modmail": {
+    "received_title": "📨 Anfrage aufgenommen",
+    "received_desc": "Deine Nachricht ist beim Support-Team angekommen. Antworte einfach hier weiter – ich leite alles weiter, bis das Anliegen geschlossen wird.",
+    "unavailable_title": "Support nicht erreichbar",
+    "unavailable_desc": "Der Bot-Support ist aktuell nicht verfügbar. Bitte versuch es später noch einmal.",
+    "header_title": "📨 ModMail #{number}",
+    "header_desc": "Dieser Kanal ist mit den **Direktnachrichten** dieser Person verbunden. Alles, was das Team hier schreibt, bekommt sie als DM.\nInterne Notiz? Nachricht mit `{prefix}` beginnen – die wird **nicht** weitergeleitet.",
+    "header_field_user": "Nutzer",
+    "header_field_created": "Erstellt",
+    "team_suffix": "Team",
+    "err_no_channel": "Der Bot-Support ist noch nicht fertig eingerichtet (keine Kategorie hinterlegt).",
+    "err_bot_perms": "Dem Bot fehlt auf dem Support-Server die Berechtigung „Kanäle verwalten\".",
+    "err_generic": "Beim Erstellen des Tickets ist etwas schiefgelaufen.",
+    "closed_title": "🔒 Anliegen geschlossen",
+    "closed_desc": "Dein Anliegen wurde geschlossen. Schreib mir einfach wieder, wenn du weiter Hilfe brauchst.",
+    "reopen_title": "🔓 Anliegen wieder offen",
+    "reopen_desc": "Dein Anliegen ist wieder offen – du kannst hier weiterschreiben.",
+    "deleted_title": "🗑️ Anliegen abgeschlossen",
+    "deleted_desc": "Dein Anliegen wurde abgeschlossen. Bei Bedarf kannst du mir jederzeit neu schreiben."
+  }
+}

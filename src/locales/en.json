@@ -1,0 +1,145 @@
+{
+  "common": {
+    "error_generic_title": "❌ Something went wrong",
+    "error_generic_desc": "Unknown error.",
+    "no_text": "*(no text)*",
+    "no_answer": "*(no answer)*",
+    "question": "Question"
+  },
+  "tickets": {
+    "panel": {
+      "placeholder": "Choose a category ...",
+      "default_button": "Create ticket",
+      "default_title": "🎫 Support",
+      "default_message": "Need help?\nOpen a ticket here and our team will assist you."
+    },
+    "buttons": {
+      "claim": "Claim",
+      "unclaim": "Unclaim",
+      "close": "Close",
+      "reopen": "Reopen",
+      "delete": "Delete"
+    },
+    "welcome": {
+      "title": "🎫 Ticket #{number}",
+      "title_cat": "🎫 Ticket #{number} – {category}",
+      "field_opener": "Opened by",
+      "field_created": "Opened at",
+      "field_category": "Category"
+    },
+    "form": {
+      "title": "📝 Form answers"
+    },
+    "created_reply_title": "🎫 Ticket created",
+    "created_reply_desc": "Your ticket has been created: {channel}",
+    "claim": {
+      "channel_title": "📌 Ticket claimed",
+      "channel_desc": "<@{user}> is now handling this ticket.",
+      "reply_title": "📌 Claimed",
+      "reply_desc": "You are now handling this ticket."
+    },
+    "unclaim": {
+      "channel_title": "📌 Ticket released",
+      "channel_desc": "<@{user}> released the ticket again.",
+      "reply_title": "📌 Released",
+      "reply_desc": "The ticket is available again."
+    },
+    "close": {
+      "channel_title": "🔒 Ticket closed",
+      "channel_desc": "Closed by <@{user}>.\nA team member can reopen it or delete it permanently.",
+      "reply_title": "🔒 Closed",
+      "reply_desc": "The ticket has been closed.",
+      "auto_title": "🔒 Closed automatically",
+      "auto_desc": "No activity for {hours} hours."
+    },
+    "reopen": {
+      "channel_title": "🔓 Ticket reopened",
+      "channel_desc": "Reopened by <@{user}>.",
+      "reply_title": "🔓 Reopened",
+      "reply_desc": "The ticket has been reopened."
+    },
+    "delete": {
+      "channel_title": "🗑️ Deleting ticket",
+      "channel_desc": "This channel will be removed in 5 seconds…",
+      "reply_title": "🗑️ Deleting",
+      "reply_desc": "The channel will be removed shortly."
+    },
+    "member": {
+      "added_title": "➕ Member added",
+      "added_desc": "<@{target}> was added to the ticket by <@{actor}>.",
+      "removed_title": "➖ Member removed",
+      "removed_desc": "<@{target}> was removed from the ticket by <@{actor}>."
+    },
+    "rating": {
+      "title": "⭐ How satisfied were you?",
+      "desc": "Rate the support with 1–5 stars.",
+      "thanks_title": "Thank you!",
+      "thanks_desc": "Your rating ({stars}) has been saved."
+    },
+    "replies": {
+      "perm_reopen": "Only the support team can reopen tickets.",
+      "perm_delete": "Only the support team can delete tickets.",
+      "perm_unclaim_full": "Only the support team (or whoever claimed the ticket) can release it.",
+      "unclaimed_title": "📌 Released",
+      "unclaimed_desc": "The ticket is available again.",
+      "reopened_title": "🔓 Reopened",
+      "reopened_desc": "The ticket is open again."
+    },
+    "delete_confirm": {
+      "prompt_title": "⚠️ Really delete this ticket?",
+      "prompt_desc": "This removes the channel **permanently**. The ticket log is kept.",
+      "confirm_label": "Delete permanently",
+      "cancel_label": "Cancel",
+      "cancelled_title": "Cancelled",
+      "cancelled_desc": "The ticket will not be deleted.",
+      "deleting_title": "🗑️ Deleting ticket",
+      "deleting_desc": "The channel is being removed now…"
+    },
+    "errors": {
+      "not_a_ticket": "No ticket found for this channel.",
+      "no_ticket_found": "No ticket found.",
+      "module_disabled": "The ticket module is currently disabled.",
+      "category_gone": "This ticket category no longer exists.",
+      "category_disabled": "This category is currently disabled.",
+      "no_discord_category": "No Discord category has been set for this category (neither on the category nor as a default).",
+      "discord_category_gone": "The configured Discord category no longer exists.",
+      "bot_missing_manage_channels": "The bot is missing the \"Manage Channels\" permission.",
+      "max_open": "You already have {open} open ticket(s). Maximum: {max}.",
+      "already_claimed": "Already claimed by <@{user}>.",
+      "not_claimed": "This ticket is not claimed.",
+      "already_closed": "The ticket is already closed.",
+      "not_closed": "The ticket is not closed.",
+      "opener_not_removable": "The opener cannot be removed from their own ticket.",
+      "rename_invalid": "Please provide a valid name (a–z, 0–9, - and _).",
+      "rename_failed": "Could not rename the channel: {msg}",
+      "add_failed": "Could not add the member: {msg}",
+      "remove_failed": "Could not remove the member: {msg}",
+      "perm_claim": "Only the support team can claim tickets.",
+      "perm_close_restricted": "Only team members can close tickets.",
+      "perm_close": "Only the support team or the opener can close the ticket.",
+      "perm_support_only": "Only the support team can do that.",
+      "perm_unclaim": "Only whoever claimed the ticket or the support team can release it.",
+      "category_no_longer": "This category no longer exists."
+    }
+  },
+  "modmail": {
+    "received_title": "📨 Message received",
+    "received_desc": "Your message reached the support team. Just keep replying here – I'll forward everything until the case is closed.",
+    "unavailable_title": "Support unavailable",
+    "unavailable_desc": "Bot support is currently unavailable. Please try again later.",
+    "header_title": "📨 ModMail #{number}",
+    "header_desc": "This channel is linked to this person's **direct messages**. Everything the team writes here is sent to them as a DM.\nInternal note? Start the message with `{prefix}` – it will **not** be forwarded.",
+    "header_field_user": "User",
+    "header_field_created": "Created",
+    "team_suffix": "Team",
+    "err_no_channel": "Bot support is not fully set up yet (no category configured).",
+    "err_bot_perms": "The bot is missing the \"Manage Channels\" permission on the support server.",
+    "err_generic": "Something went wrong while creating the ticket.",
+    "closed_title": "🔒 Case closed",
+    "closed_desc": "Your case has been closed. Just message me again if you need more help.",
+    "reopen_title": "🔓 Case reopened",
+    "reopen_desc": "Your case is open again – you can keep writing here.",
+    "deleted_title": "🗑️ Case finished",
+    "deleted_desc": "Your case has been finished. You can always message me again if needed."
+  }
+}

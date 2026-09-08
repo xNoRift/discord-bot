@@ -2,6 +2,7 @@
 
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const embeds = require('../../utils/embeds');
+const i18n = require('../../utils/i18n');
 const ticketService = require('../../services/ticketService');
 const ticketsModel = require('../../database/models/tickets');
 const { isSupport } = require('../../utils/permissions');
@@ -15,30 +16,31 @@ const { isSupport } = require('../../utils/permissions');
 module.exports = {
   prefix: 'ticket:delete',
   async execute(interaction) {
+    const tg = i18n.forGuild(interaction.guildId);
     if (!isSupport(interaction.member, interaction.settings)) {
       return interaction.reply({
-        embeds: [embeds.error(undefined, 'Nur das Support-Team kann Tickets löschen.')],
+        embeds: [embeds.error(undefined, tg('tickets.replies.perm_delete'))],
         flags: MessageFlags.Ephemeral,
       });
     }
 
     const ticket = ticketsModel.getByChannel(interaction.channelId);
     if (!ticket) {
-      return interaction.reply({ embeds: [embeds.error(undefined, 'Kein Ticket gefunden.')], flags: MessageFlags.Ephemeral });
+      return interaction.reply({ embeds: [embeds.error(undefined, tg('tickets.errors.no_ticket_found'))], flags: MessageFlags.Ephemeral });
     }
 
     const action = interaction.customId.split(':')[2]; // undefined | 'confirm' | 'cancel'
 
     if (action === 'cancel') {
       return interaction.update({
-        embeds: [embeds.info('Abgebrochen', 'Das Ticket wird nicht gelöscht.')],
+        embeds: [embeds.info(tg('tickets.delete_confirm.cancelled_title'), tg('tickets.delete_confirm.cancelled_desc'))],
         components: [],
       });
     }
 
     if (action === 'confirm') {
       await interaction.update({
-        embeds: [embeds.error('🗑️ Ticket wird gelöscht', 'Der Kanal wird jetzt entfernt…')],
+        embeds: [embeds.error(tg('tickets.delete_confirm.deleting_title'), tg('tickets.delete_confirm.deleting_desc'))],
         components: [],
       });
       await ticketService.deleteTicket(interaction.channel, interaction.member);
@@ -49,22 +51,17 @@ module.exports = {
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('ticket:delete:confirm')
-        .setLabel('Endgültig löschen')
+        .setLabel(tg('tickets.delete_confirm.confirm_label'))
         .setEmoji('🗑️')
         .setStyle(ButtonStyle.Danger),
       new ButtonBuilder()
         .setCustomId('ticket:delete:cancel')
-        .setLabel('Abbrechen')
+        .setLabel(tg('tickets.delete_confirm.cancel_label'))
         .setStyle(ButtonStyle.Secondary),
     );
 
     await interaction.reply({
-      embeds: [
-        embeds.warning(
-          '⚠️ Ticket wirklich löschen?',
-          'Dies entfernt den Kanal **endgültig**. Das Ticket-Log bleibt erhalten.',
-        ),
-      ],
+      embeds: [embeds.warning(tg('tickets.delete_confirm.prompt_title'), tg('tickets.delete_confirm.prompt_desc'))],
       components: [row],
       flags: MessageFlags.Ephemeral,
     });
