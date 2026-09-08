@@ -107,7 +107,7 @@ const config = {
   },
 
   defaults: {
-    ticketNameFormat: 'ticket-{number}',
+    ticketNameFormat: 'ticket-{user}',
     ticketMaxPerUser: 1,
     ticketWelcome:
       'Willkommen {user}! Ein Teammitglied wird sich in Kürze um dein Anliegen kümmern.\nBitte beschreibe dein Problem so genau wie möglich.',

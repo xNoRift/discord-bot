@@ -68,6 +68,11 @@ ensureColumn('ticket_panels', 'claim_category_id', 'TEXT');
 ensureColumn('ticket_panels', 'autoclose_hours', 'INTEGER DEFAULT 0');
 ensureColumn('ticket_panels', 'image_url', 'TEXT');
 ensureColumn('ticket_panels', 'thumbnail_url', 'TEXT');
+// Ticket-Kanalname: Standard von Nummer auf Benutzername umgestellt
+try {
+  db.exec("UPDATE guild_settings SET ticket_name_format = 'ticket-{user}' WHERE ticket_name_format = 'ticket-{number}' OR ticket_name_format IS NULL");
+} catch { /* ignore */ }
+
 ensureColumn('ticket_panels', 'panel_layout', "TEXT DEFAULT 'buttons'");
 // Einmal-Migration: altes use_select-Flag -> panel_layout (stabil, weil der Editor beide Spalten synchron hält)
 try {

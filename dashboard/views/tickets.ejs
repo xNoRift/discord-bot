@@ -30,6 +30,11 @@
         <div class="field"><label>Standard Discord-Kategorie</label><select name="ticket_category_id" data-type="category"></select></div>
         <div class="field"><label>Standard Support-Rolle</label><select name="ticket_support_role_id" data-type="role"></select></div>
       </div>
+      <div class="field">
+        <label>Kanalname</label>
+        <input name="ticket_name_format" placeholder="ticket-{user}" maxlength="90" />
+        <small>Platzhalter: <code>{user}</code> (Benutzername) · <code>{number}</code> (fortlaufende Nummer) · <code>{category}</code>. Kategorien mit eigenem „Prefix“ nutzen <code>prefix-{user}</code>.</small>
+      </div>
       <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" type="submit"><%- icon('check', 'icon--sm') %> Speichern</button> <span class="muted" id="tdStatus"></span></div>
     </form>
   </div>

@@ -270,8 +270,8 @@ async function createTicket(guild, member, opts = {}) {
   const supportRoleId = cat?.support_role_id || settings.ticket_support_role_id;
   const welcomeTemplate = cat?.welcome_message || settings.ticket_welcome_message;
   const nameFormat = cat?.prefix
-    ? `${cat.prefix}-{number}`
-    : cat?.name_format || settings.ticket_name_format || 'ticket-{number}';
+    ? `${cat.prefix}-{user}`
+    : cat?.name_format || settings.ticket_name_format || 'ticket-{user}';
 
   if (!discordCategoryId) {
     throw new Error('Für diese Kategorie wurde keine Discord-Kategorie festgelegt (weder in der Kategorie noch als Standard).');
@@ -298,14 +298,16 @@ async function createTicket(guild, member, opts = {}) {
   }
 
   const number = settingsModel.incrementTicketCounter(guild.id);
-  const name = nameFormat
-    .replaceAll('{number}', String(number).padStart(4, '0'))
-    .replaceAll('{user}', member.user.username)
-    .replaceAll('{category}', cat?.label || 'ticket')
-    .toLowerCase()
-    .replace(/[^a-z0-9\-_]/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 90);
+  const name =
+    nameFormat
+      .replaceAll('{number}', String(number).padStart(4, '0'))
+      .replaceAll('{user}', member.user.username)
+      .replaceAll('{category}', cat?.label || 'ticket')
+      .toLowerCase()
+      .replace(/[^a-z0-9\-_]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 90) || `ticket-${String(number).padStart(4, '0')}`;
 
   const supportPerms = [
     PermissionsBitField.Flags.ViewChannel,
