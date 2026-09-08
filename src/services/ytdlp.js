@@ -98,7 +98,13 @@ function stream(url) {
   if (!bin) throw new Error('YouTube ist nicht verfügbar – auf dem Server fehlt yt-dlp.');
   const p = spawn(
     bin,
-    ['-f', 'bestaudio[ext=webm]/bestaudio/best', '--no-playlist', '--no-warnings', '-o', '-', '--quiet', url],
+    [
+      // Opus-Audio bevorzugen (verlustärmer bei der Weitergabe an Discord)
+      '-f', 'bestaudio[acodec=opus]/bestaudio[ext=webm]/bestaudio/best',
+      '-N', '4', // 4 Fragmente parallel laden -> gleichmäßigerer Puffer, weniger Aussetzer
+      '--no-playlist', '--no-warnings', '--no-part', '--quiet',
+      '-o', '-', url,
+    ],
     { stdio: ['ignore', 'pipe', 'ignore'] },
   );
   p.on('error', () => p.stdout?.destroy());

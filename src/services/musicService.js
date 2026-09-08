@@ -179,6 +179,7 @@ class Session {
       this.resource = await this._createResource(this.current);
       this.resource.volume?.setVolume(this.volume);
       this.player.play(this.resource);
+      this._tuneEncoder();
       this._announce(
         `▶️ **${this.current.title}**` +
           (this.current.live ? ' _(Live)_' : ` \`${fmtDuration(this.current.duration)}\``) +
@@ -191,11 +192,24 @@ class Session {
     }
   }
 
+  // Lautheits-Normalisierung: leise/laute Tracks werden angeglichen (der hörbar größte Gewinn).
+  static AUDIO_FILTER = 'dynaudnorm=f=250:g=15:p=0.9:m=12';
+
   async _createResource(track) {
     if (track.source === 'youtube') {
       const src = ytdlp.stream(track.url);
       const ff = new prism.FFmpeg({
-        args: ['-i', '-', '-analyzeduration', '0', '-loglevel', '0', '-acodec', 'pcm_s16le', '-f', 's16le', '-ar', '48000', '-ac', '2'],
+        args: [
+          '-thread_queue_size', '4096',
+          '-i', '-',
+          '-vn',
+          '-loglevel', 'error',
+          '-af', Session.AUDIO_FILTER,
+          '-acodec', 'pcm_s16le',
+          '-f', 's16le',
+          '-ar', '48000',
+          '-ac', '2',
+        ],
       });
       src.on('error', () => ff.destroy());
       src.pipe(ff);
@@ -207,9 +221,11 @@ class Session {
         '-reconnect', '1',
         '-reconnect_streamed', '1',
         '-reconnect_delay_max', '5',
+        '-thread_queue_size', '4096',
         '-i', track.url,
-        '-analyzeduration', '0',
-        '-loglevel', '0',
+        '-vn',
+        '-loglevel', 'error',
+        '-af', Session.AUDIO_FILTER,
         '-acodec', 'pcm_s16le',
         '-f', 's16le',
         '-ar', '48000',
@@ -217,6 +233,21 @@ class Session {
       ],
     });
     return voice.createAudioResource(transcoder, { inputType: voice.StreamType.Raw, inlineVolume: true });
+  }
+
+  /** Opus-Encoder auf die Bitrate des Sprachkanals heben + Fehlerkorrektur gegen Paketverlust. */
+  _tuneEncoder() {
+    const enc = this.resource?.encoder;
+    if (!enc) return;
+    try {
+      const vc = this.guild.channels.cache.get(this.voiceChannelId);
+      const bitrate = Math.min(Math.max(Number(vc?.bitrate) || 96000, 64000), 256000);
+      enc.setBitrate(bitrate);
+      enc.setFEC?.(true);
+      enc.setPLP?.(0.02);
+    } catch (err) {
+      logger.warn(`[music] Encoder-Tuning: ${err.message}`);
+    }
   }
 
   _announce(text) {
