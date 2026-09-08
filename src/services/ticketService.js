@@ -91,7 +91,7 @@ function buildPanelMessage(panel, categories) {
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId(`ticket:pick:${panel.id}`)
-          .setPlaceholder('Wähle eine Kategorie…')
+          .setPlaceholder('Wähle eine Kategorie ...')
           .addOptions(
             categories.slice(0, 25).map((c) => ({
               label: c.label.slice(0, 100),
