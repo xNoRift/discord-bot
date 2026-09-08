@@ -1337,4 +1337,136 @@ router.post(
   }),
 );
 
+/* ---------------- Social-Media-Benachrichtigungen ---------------- */
+
+const socialModel = require('../../src/database/models/social');
+const socialService = require('../../src/services/socialService');
+
+function serializeSub(s) {
+  return {
+    id: s.id,
+    platform: s.platform,
+    account: s.account,
+    accountLabel: s.account_label,
+    channelId: s.channel_id,
+    mention: s.mention,
+    message: s.message,
+    embed: s.embed === 1,
+    enabled: s.enabled === 1,
+    isLive: s.is_live === 1,
+    lastAnnouncedAt: s.last_announced_at,
+    lastCheckedAt: s.last_checked_at,
+    failing: (s.fail_count || 0) >= 3,
+  };
+}
+
+router.get('/guilds/:guildId/social', (req, res) => {
+  res.json({
+    twitchReady: socialService.twitchConfigured(),
+    subscriptions: socialModel.list(req.params.guildId).map(serializeSub),
+  });
+});
+
+router.post(
+  '/guilds/:guildId/social',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const b = req.body;
+    const platform = String(b.platform || '').toLowerCase();
+    if (!socialModel.PLATFORMS.includes(platform)) {
+      return res.status(400).json({ error: 'Plattform muss twitch, youtube oder tiktok sein.' });
+    }
+    if (platform === 'twitch' && !socialService.twitchConfigured()) {
+      return res.status(400).json({ error: 'Twitch ist nicht eingerichtet (TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET in der .env fehlen).' });
+    }
+    const channelId = String(b.channelId || '');
+    if (!req.guild.channels.cache.has(channelId)) {
+      return res.status(400).json({ error: 'Bitte einen gültigen Kanal wählen.' });
+    }
+    if (socialModel.countByGuild(req.params.guildId) >= 40) {
+      return res.status(400).json({ error: 'Maximal 40 Benachrichtigungen pro Server.' });
+    }
+
+    let resolved;
+    try {
+      resolved = await socialService.resolveAccount(platform, b.account);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    const mention = normalizeMention(b.mention, req.guild);
+    try {
+      const created = socialModel.create({
+        guildId: req.params.guildId,
+        platform,
+        // YouTube-Kanal-IDs sind case-sensitive; Twitch/TikTok-Namen nicht.
+        account: platform === 'youtube' ? resolved.account : resolved.account.toLowerCase(),
+        accountLabel: resolved.label,
+        channelId,
+        mention,
+        message: b.message ? String(b.message).slice(0, 500) : null,
+        embed: b.embed === false || b.embed === 'false' ? 0 : 1,
+      });
+      res.json(serializeSub(created));
+    } catch (err) {
+      if (String(err.message).includes('UNIQUE')) {
+        return res.status(409).json({ error: 'Dieser Account wird in diesem Kanal schon überwacht.' });
+      }
+      throw err;
+    }
+  }),
+);
+
+router.patch(
+  '/guilds/:guildId/social/:id',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const sub = socialModel.get(num(req.params.id));
+    if (!sub || sub.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    const b = req.body;
+    const patch = {};
+    if (b.channelId !== undefined) {
+      if (!req.guild.channels.cache.has(String(b.channelId))) return res.status(400).json({ error: 'Ungültiger Kanal.' });
+      patch.channel_id = String(b.channelId);
+    }
+    if (b.mention !== undefined) patch.mention = normalizeMention(b.mention, req.guild);
+    if (b.message !== undefined) patch.message = b.message ? String(b.message).slice(0, 500) : null;
+    if (b.embed !== undefined) patch.embed = b.embed ? 1 : 0;
+    if (b.enabled !== undefined) patch.enabled = b.enabled ? 1 : 0;
+    res.json(serializeSub(socialModel.update(sub.id, patch)));
+  }),
+);
+
+router.post(
+  '/guilds/:guildId/social/:id/test',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const sub = socialModel.get(num(req.params.id));
+    if (!sub || sub.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    try {
+      await socialService.sendTest(sub);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  }),
+);
+
+router.delete('/guilds/:guildId/social/:id', (req, res) => {
+  const sub = socialModel.get(num(req.params.id));
+  if (!sub || sub.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+  socialModel.remove(sub.id);
+  res.json({ ok: true });
+});
+
+function normalizeMention(input, guild) {
+  const v = String(input || '').trim();
+  if (!v || v === 'none') return null;
+  if (v === '@everyone' || v === 'everyone') return '@everyone';
+  if (v === '@here' || v === 'here') return '@here';
+  const roleId = v.replace(/\D/g, '');
+  if (roleId && guild.roles.cache.has(roleId)) return `<@&${roleId}>`;
+  return null;
+}
+
 module.exports = router;

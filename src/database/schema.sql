@@ -373,6 +373,30 @@ CREATE TABLE IF NOT EXISTS login_audit (
 );
 CREATE INDEX IF NOT EXISTS idx_login_audit_time ON login_audit(created_at);
 
+-- ---------- Social-Media-Benachrichtigungen (Twitch / YouTube / TikTok) ----------
+CREATE TABLE IF NOT EXISTS social_subscriptions (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id      TEXT NOT NULL,
+  platform      TEXT NOT NULL,              -- 'twitch' | 'youtube' | 'tiktok'
+  account       TEXT NOT NULL,              -- twitch-login | yt channel-id | tiktok @name (normalisiert, klein)
+  account_label TEXT,                       -- Anzeigename (aufgeloest)
+  channel_id    TEXT NOT NULL,              -- Discord-Kanal fuer die Meldung
+  mention       TEXT,                       -- '@everyone' | '@here' | '<@&ID>' | NULL
+  message       TEXT,                       -- eigener Text ({name} {url} {title} {mention})
+  embed         INTEGER NOT NULL DEFAULT 1, -- 1 = huebsches Embed, 0 = nur Text + Link
+  enabled       INTEGER NOT NULL DEFAULT 1,
+  is_live       INTEGER NOT NULL DEFAULT 0, -- twitch: aktueller Stream-Status (Flankenerkennung)
+  last_item_id  TEXT,                       -- youtube/tiktok: zuletzt gemeldetes Video / twitch: Stream-ID
+  last_announced_at INTEGER,
+  last_checked_at   INTEGER,
+  fail_count    INTEGER NOT NULL DEFAULT 0, -- aufeinanderfolgende Abruf-Fehler
+  created_at    INTEGER,
+  updated_at    INTEGER,
+  UNIQUE(guild_id, platform, account, channel_id)
+);
+CREATE INDEX IF NOT EXISTS idx_social_guild ON social_subscriptions(guild_id);
+CREATE INDEX IF NOT EXISTS idx_social_platform ON social_subscriptions(platform, enabled);
+
 -- ---------- Allgemeines Aktivitaets-Log ----------
 CREATE TABLE IF NOT EXISTS activity_log (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,

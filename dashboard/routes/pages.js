@@ -20,6 +20,7 @@ const NAV = [
       { key: 'games', label: 'Spiele', icon: 'sparkles', path: '/games' },
       { key: 'giveaways', label: 'Giveaways', icon: 'gift', path: '/giveaways' },
       { key: 'suggestions', label: 'Vorschläge', icon: 'bulb', path: '/suggestions' },
+      { key: 'social', label: 'Benachrichtigungen', icon: 'bell', path: '/social' },
     ],
   },
   {
@@ -69,6 +70,7 @@ const CRUMB = {
   settings: { crumb: 'Einstellungen', crumbIcon: 'settings' },
   logs: { crumb: 'Logs', crumbIcon: 'file' },
   suggestions: { crumb: 'Vorschläge', crumbIcon: 'bulb' },
+  social: { crumb: 'Benachrichtigungen', crumbIcon: 'bell' },
   impressum: { crumb: 'Impressum', crumbIcon: 'scale' },
   datenschutz: { crumb: 'Datenschutz', crumbIcon: 'lock' },
   support: { crumb: 'Support', crumbIcon: 'chat' },
@@ -144,6 +146,7 @@ const PAGES = [
   ['/settings', 'settings'],
   ['/logs', 'logs'],
   ['/suggestions', 'suggestions'],
+  ['/social', 'social'],
   ['/impressum', 'impressum'],
   ['/datenschutz', 'datenschutz'],
   ['/support', 'support'],

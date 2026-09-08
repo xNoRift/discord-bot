@@ -1,0 +1,63 @@
+<%- include('partials/head', { title: guild.name + ' – Benachrichtigungen' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('bell') %> Social-Media-Benachrichtigungen</h1></div>
+  <p>Der Bot postet automatisch in einen Kanal, wenn ein Twitch-Kanal live geht oder ein neues YouTube-Video erscheint.</p>
+</div>
+
+<div class="card" id="twitchHint" hidden>
+  <div class="card__head"><h2><%- icon('bot') %> Twitch noch nicht eingerichtet</h2></div>
+  <p class="card__sub">
+    YouTube funktioniert sofort. Für <b>Twitch</b> brauchst du eine kostenlose App:
+    auf <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener">dev.twitch.tv/console/apps</a>
+    „Register Your Application“ → OAuth Redirect URL <code>https://localhost</code>, Category „Chat Bot“.
+    Dann <code>TWITCH_CLIENT_ID</code> und <code>TWITCH_CLIENT_SECRET</code> in die <code>.env</code> des Servers und Bot neu starten.
+  </p>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('plus') %> Neue Benachrichtigung</h2></div>
+  <form id="addForm" class="form">
+    <div class="col-2">
+      <div class="field">
+        <label>Plattform</label>
+        <select id="f_platform" name="platform">
+          <option value="youtube">YouTube</option>
+          <option value="twitch">Twitch</option>
+        </select>
+      </div>
+      <div class="field">
+        <label id="f_account_label">YouTube-Kanal</label>
+        <input id="f_account" name="account" autocomplete="off" placeholder="Kanal-ID (UC…), @handle oder Kanal-Link" />
+        <small id="f_account_hint">Am zuverlässigsten ist die Kanal-ID (beginnt mit <code>UC…</code>).</small>
+      </div>
+    </div>
+    <div class="col-2">
+      <div class="field"><label>Kanal für die Meldung</label><select id="f_channel" name="channelId" data-type="text"></select></div>
+      <div class="field">
+        <label>Erwähnung</label>
+        <select id="f_mention" name="mention"><option value="none">Keine</option><option value="@everyone">@everyone</option><option value="@here">@here</option></select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Eigener Text <span class="muted">(optional)</span></label>
+      <input id="f_message" name="message" maxlength="500" placeholder="{mention} {name} ist jetzt LIVE! {url}" />
+      <small>Platzhalter: <code>{name}</code> <code>{url}</code> <code>{title}</code> <code>{mention}</code>. Leer = Standardtext.</small>
+    </div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Als Embed posten</b><span>Hübsche Karte mit Vorschaubild statt reinem Text</span></div>
+      <label class="toggle"><input type="checkbox" id="f_embed" checked><span class="toggle__track"></span></label>
+    </div>
+    <div><button class="btn btn--primary btn--sm" type="submit"><%- icon('check', 'icon--sm') %> Hinzufügen</button> <span class="muted" id="addMsg"></span></div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('bell') %> Aktive Benachrichtigungen</h2></div>
+  <div id="subList"><div class="loading">Lädt…</div></div>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/social.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

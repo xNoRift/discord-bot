@@ -59,6 +59,14 @@ const config = {
     intentMessageContent: bool('INTENT_MESSAGE_CONTENT', true), // Zähl-Spiel / Spiele
   },
 
+  // Social-Media-Benachrichtigungen
+  social: {
+    // Twitch: kostenlose App unter https://dev.twitch.tv/console/apps registrieren.
+    // Ohne diese Werte werden Twitch-Abos einfach nicht abgefragt (YouTube/TikTok brauchen keinen Key).
+    twitchClientId: optional('TWITCH_CLIENT_ID'),
+    twitchClientSecret: optional('TWITCH_CLIENT_SECRET'),
+  },
+
   database: {
     // Für die Session-DB legen wir eine zweite Datei neben der Haupt-DB an.
     path: databasePath,
