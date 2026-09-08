@@ -1374,7 +1374,7 @@ router.post(
     const b = req.body;
     const platform = String(b.platform || '').toLowerCase();
     if (!socialModel.PLATFORMS.includes(platform)) {
-      return res.status(400).json({ error: 'Plattform muss twitch, youtube oder tiktok sein.' });
+      return res.status(400).json({ error: 'Plattform muss youtube, twitch, tiktok oder rss sein.' });
     }
     if (platform === 'twitch' && !socialService.twitchConfigured()) {
       return res.status(400).json({ error: 'Twitch ist nicht eingerichtet (TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET in der .env fehlen).' });
@@ -1399,8 +1399,9 @@ router.post(
       const created = socialModel.create({
         guildId: req.params.guildId,
         platform,
-        // YouTube-Kanal-IDs sind case-sensitive; Twitch/TikTok-Namen nicht.
-        account: platform === 'youtube' ? resolved.account : resolved.account.toLowerCase(),
+        // resolveAccount() normalisiert je Plattform selbst (Twitch/TikTok-Handle klein,
+        // YouTube-ID + Feed-URLs bleiben unveraendert).
+        account: resolved.account,
         accountLabel: resolved.label,
         channelId,
         mention,

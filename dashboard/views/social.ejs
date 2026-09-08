@@ -3,13 +3,13 @@
 
 <div class="page-head">
   <div class="page-head__row"><h1><%- icon('bell') %> Social-Media-Benachrichtigungen</h1></div>
-  <p>Der Bot postet automatisch in einen Kanal, wenn ein Twitch-Kanal live geht oder ein neues YouTube-Video erscheint.</p>
+  <p>Der Bot postet automatisch in einen Kanal, wenn ein Twitch-Kanal live geht, ein neues YouTube-Video erscheint oder ein Feed (TikTok, Instagram, X …) etwas Neues hat.</p>
 </div>
 
 <div class="card" id="twitchHint" hidden>
   <div class="card__head"><h2><%- icon('bot') %> Twitch noch nicht eingerichtet</h2></div>
   <p class="card__sub">
-    YouTube funktioniert sofort. Für <b>Twitch</b> brauchst du eine kostenlose App:
+    YouTube & Feeds gehen sofort. Für <b>Twitch</b> braucht der Bot eine kostenlose App:
     auf <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener">dev.twitch.tv/console/apps</a>
     „Register Your Application“ → OAuth Redirect URL <code>https://localhost</code>, Category „Chat Bot“.
     Dann <code>TWITCH_CLIENT_ID</code> und <code>TWITCH_CLIENT_SECRET</code> in die <code>.env</code> des Servers und Bot neu starten.
@@ -17,32 +17,52 @@
 </div>
 
 <div class="card">
-  <div class="card__head"><h2><%- icon('plus') %> Neue Benachrichtigung</h2></div>
+  <div class="card__head"><h2><%- icon('plus') %> Neue Benachrichtigung(en)</h2></div>
+  <p class="card__sub">Wähle eine oder mehrere Plattformen aus – für jede angehakte Plattform wird eine eigene Benachrichtigung angelegt (gleicher Kanal & Einstellungen).</p>
   <form id="addForm" class="form">
-    <div class="col-2">
-      <div class="field">
-        <label>Plattform</label>
-        <select id="f_platform" name="platform">
-          <option value="youtube">YouTube</option>
-          <option value="twitch">Twitch</option>
-        </select>
-      </div>
-      <div class="field">
-        <label id="f_account_label">YouTube-Kanal</label>
-        <input id="f_account" name="account" autocomplete="off" placeholder="Kanal-ID (UC…), @handle oder Kanal-Link" />
-        <small id="f_account_hint">Am zuverlässigsten ist die Kanal-ID (beginnt mit <code>UC…</code>).</small>
-      </div>
+    <div class="social-plats">
+      <label class="social-plat">
+        <input type="checkbox" data-plat="youtube" checked>
+        <div class="social-plat__body">
+          <b style="color:#ff0000">YouTube</b>
+          <input data-acc="youtube" placeholder="Kanal-ID (UC…), @handle oder Kanal-Link">
+        </div>
+      </label>
+      <label class="social-plat">
+        <input type="checkbox" data-plat="twitch">
+        <div class="social-plat__body">
+          <b style="color:#9146ff">Twitch</b>
+          <input data-acc="twitch" placeholder="Twitch-Name (z. B. ninja)">
+          <small data-plat-note="twitch" hidden>Erst Twitch in der <code>.env</code> einrichten (Kasten oben).</small>
+        </div>
+      </label>
+      <label class="social-plat">
+        <input type="checkbox" data-plat="tiktok">
+        <div class="social-plat__body">
+          <b>TikTok</b>
+          <input data-acc="tiktok" placeholder="@name  oder  RSS-Feed-Link">
+          <small>Direkt-Abruf über <code>@name</code> ist bei TikTok unzuverlässig – am besten einen RSS-Feed-Link (z. B. von <a href="https://rss.app" target="_blank" rel="noopener">rss.app</a>) einfügen.</small>
+        </div>
+      </label>
+      <label class="social-plat">
+        <input type="checkbox" data-plat="rss">
+        <div class="social-plat__body">
+          <b style="color:#f26522">RSS-Feed</b>
+          <input data-acc="rss" placeholder="https://… (Instagram / X / Blog über rss.app o. ä.)">
+        </div>
+      </label>
     </div>
-    <div class="col-2">
-      <div class="field"><label>Kanal für die Meldung</label><select id="f_channel" name="channelId" data-type="text"></select></div>
+
+    <div class="col-2" style="margin-top:14px;">
+      <div class="field"><label>Kanal für die Meldung</label><select id="f_channel" data-type="text"></select></div>
       <div class="field">
         <label>Erwähnung</label>
-        <select id="f_mention" name="mention"><option value="none">Keine</option><option value="@everyone">@everyone</option><option value="@here">@here</option></select>
+        <select id="f_mention"><option value="none">Keine</option><option value="@everyone">@everyone</option><option value="@here">@here</option></select>
       </div>
     </div>
     <div class="field">
       <label>Eigener Text <span class="muted">(optional)</span></label>
-      <input id="f_message" name="message" maxlength="500" placeholder="{mention} {name} ist jetzt LIVE! {url}" />
+      <input id="f_message" maxlength="500" placeholder="{mention} {name} ist jetzt LIVE! {url}">
       <small>Platzhalter: <code>{name}</code> <code>{url}</code> <code>{title}</code> <code>{mention}</code>. Leer = Standardtext.</small>
     </div>
     <div class="setting-row">
@@ -57,6 +77,16 @@
   <div class="card__head"><h2><%- icon('bell') %> Aktive Benachrichtigungen</h2></div>
   <div id="subList"><div class="loading">Lädt…</div></div>
 </div>
+
+<style>
+  .social-plats { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:640px){ .social-plats { grid-template-columns:1fr; } }
+  .social-plat { display:flex; gap:10px; align-items:flex-start; padding:12px; border:1px solid var(--line); border-radius:10px; cursor:pointer; }
+  .social-plat input[type=checkbox] { margin-top:3px; }
+  .social-plat__body { flex:1; display:flex; flex-direction:column; gap:6px; }
+  .social-plat__body input[data-acc] { width:100%; }
+  .social-plat.is-off .social-plat__body input[data-acc] { opacity:.5; pointer-events:none; }
+</style>
 
 <%- include('partials/app-shell-close') %>
 <script src="/static/js/social.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>

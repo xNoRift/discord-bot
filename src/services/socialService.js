@@ -7,20 +7,23 @@ const social = require('../database/models/social');
 const logger = require('../utils/logger');
 
 /**
- * Social-Media-Benachrichtigungen (Twitch live, neue YouTube-Videos).
+ * Social-Media-Benachrichtigungen: Twitch live, neue YouTube-Videos,
+ * TikTok-Posts und beliebige RSS/Atom-Feeds (z. B. Instagram/X über einen
+ * Feed-Dienst wie rss.app).
  * Läuft im 60-Sekunden-Sweep des schedulerService, jede Plattform mit eigenem
  * Intervall. Es werden KEINE Nutzerdaten gespeichert – nur der zuletzt gemeldete
- * Stream/Video pro Abo, damit nichts doppelt gepostet wird.
+ * Stream/Post pro Abo, damit nichts doppelt gepostet wird.
  */
 
 const INTERVALS = {
   twitch: 60_000, // Twitch-API verträgt das locker
   youtube: 300_000, // RSS – alle 5 Min reicht
   tiktok: 900_000,
+  rss: 600_000,
 };
-const lastRun = { twitch: 0, youtube: 0, tiktok: 0 };
+const lastRun = { twitch: 0, youtube: 0, tiktok: 0, rss: 0 };
 
-const UA = 'Mozilla/5.0 (compatible; NoRiftBot/1.0; +https://noriftbot.de)';
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 const MAX_FAILS = 8; // danach Abo automatisch pausieren
 
 /* ------------------------------------------------------------------ *
@@ -259,6 +262,134 @@ async function pollYouTube() {
 }
 
 /* ------------------------------------------------------------------ *
+ *  TikTok + beliebige RSS/Atom-Feeds
+ * ------------------------------------------------------------------ */
+
+function pickTag(block, tag) {
+  const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'i'));
+  if (!m) return null;
+  return decodeEntities(m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim());
+}
+
+/** Neuestes Element eines RSS-2.0- oder Atom-Feeds. */
+function parseLatestFeedItem(xml, feedUrl) {
+  const isAtom = /<feed[\s>]/i.test(xml) && !/<rss[\s>]/i.test(xml);
+  const itemRe = isAtom ? /<entry[\s>]([\s\S]*?)<\/entry>/i : /<item[\s>]([\s\S]*?)<\/item>/i;
+  const m = xml.match(itemRe);
+  if (!m) return null;
+  const block = '<x ' + m[1] + '</x>';
+
+  let link = null;
+  if (isAtom) {
+    link =
+      block.match(/<link[^>]*rel="alternate"[^>]*href="([^"]+)"/i)?.[1] ||
+      block.match(/<link[^>]*href="([^"]+)"/i)?.[1];
+  } else {
+    link = pickTag(block, 'link') || block.match(/<link[^>]*>([^<]+)</i)?.[1];
+  }
+  const title = pickTag(block, 'title') || 'Neuer Beitrag';
+  const guid = pickTag(block, 'guid') || pickTag(block, 'id') || link;
+  const dateStr = pickTag(block, 'pubDate') || pickTag(block, 'published') || pickTag(block, 'updated');
+  const img =
+    block.match(/<media:(?:content|thumbnail)[^>]*url="([^"]+)"/i)?.[1] ||
+    block.match(/<enclosure[^>]*url="([^"]+)"[^>]*type="image/i)?.[1] ||
+    block.match(/<img[^>]*src="([^"]+)"/i)?.[1] ||
+    null;
+
+  return {
+    id: (guid || link || title).slice(0, 300),
+    title,
+    url: link || feedUrl,
+    publishedAt: dateStr ? Date.parse(dateStr) : null,
+    image: img,
+  };
+}
+
+function feedTitle(xml) {
+  // erstes <title> auf Feed-Ebene (vor dem ersten <item>/<entry>)
+  const head = xml.split(/<item[\s>]|<entry[\s>]/i)[0];
+  return pickTag('<x ' + head + '</x>', 'title');
+}
+
+async function tiktokLatestFromPage(handle) {
+  const html = await httpText(`https://www.tiktok.com/@${handle}`, {
+    headers: { 'Accept-Language': 'en-US,en;q=0.9' },
+    timeout: 12000,
+  });
+  const m = html.match(/<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application\/json">([\s\S]*?)<\/script>/);
+  if (!m) throw new Error('TikTok-Seite nicht lesbar.');
+  let data;
+  try { data = JSON.parse(m[1]); } catch { throw new Error('TikTok-Daten nicht lesbar.'); }
+  const info = data?.['__DEFAULT_SCOPE__']?.['webapp.user-detail']?.userInfo;
+  const item = info?.itemList?.[0];
+  if (!item?.id) {
+    // TikTok liefert die Videoliste inzwischen meist nur per JS nach -> nicht abrufbar
+    const e = new Error('tiktok-no-items');
+    e.soft = true;
+    throw e;
+  }
+  return {
+    id: String(item.id),
+    title: (item.desc || 'Neues TikTok').slice(0, 200),
+    url: `https://www.tiktok.com/@${handle}/video/${item.id}`,
+    publishedAt: item.createTime ? Number(item.createTime) * 1000 : null,
+    image: item.video?.cover || null,
+    author: info?.user?.nickname || '@' + handle,
+  };
+}
+
+/** Gemeinsamer Poller für 'tiktok' (Feed-URL oder @handle) und 'rss' (Feed-URL). */
+async function pollFeedPlatform(platform) {
+  const subs = social.listActiveByPlatform(platform);
+  for (const sub of subs) {
+    const now = Date.now();
+    try {
+      let latest;
+      const isUrl = /^https?:\/\//i.test(sub.account);
+      if (platform === 'tiktok' && !isUrl) {
+        latest = await tiktokLatestFromPage(sub.account).catch((err) => {
+          if (err.soft) return null; // stiller No-Op, kein Fehlerzähler
+          throw err;
+        });
+        if (!latest) { social.setState(sub.id, { lastCheckedAt: now, failCount: 0 }); continue; }
+      } else {
+        const xml = await httpText(sub.account, { timeout: 12000 });
+        latest = parseLatestFeedItem(xml, sub.account);
+        if (!latest) { social.setState(sub.id, { lastCheckedAt: now, failCount: 0 }); continue; }
+      }
+
+      if (String(latest.id) === String(sub.last_item_id || '')) {
+        social.setState(sub.id, { lastCheckedAt: now, failCount: 0 });
+        continue;
+      }
+      const firstRun = !sub.last_item_id;
+      const fresh = latest.publishedAt ? now - latest.publishedAt < 72 * 3600_000 : true;
+      if (!firstRun && fresh) {
+        await announce(sub, {
+          kind: platform,
+          title: latest.title,
+          url: latest.url,
+          name: sub.account_label || latest.author || PLATFORM_META[platform].tag,
+          extra: null,
+          image: latest.image,
+        });
+        social.setState(sub.id, { lastItemId: latest.id, lastAnnouncedAt: now, lastCheckedAt: now, failCount: 0 });
+      } else {
+        social.setState(sub.id, { lastItemId: latest.id, lastCheckedAt: now, failCount: 0 });
+      }
+    } catch (err) {
+      const fails = (sub.fail_count || 0) + 1;
+      social.setState(sub.id, { lastCheckedAt: now, failCount: fails });
+      if (fails === 1 || fails % 4 === 0) logger.warn(`[social] ${platform} #${sub.id} (${sub.account}):`, err.message);
+      if (fails >= MAX_FAILS) {
+        social.update(sub.id, { enabled: 0 });
+        logger.warn(`[social] ${platform}-Abo #${sub.id} nach ${fails} Fehlern pausiert.`);
+      }
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ *
  *  Ausgabe
  * ------------------------------------------------------------------ */
 
@@ -266,6 +397,7 @@ const PLATFORM_META = {
   twitch: { color: 0x9146ff, tag: 'Twitch', verb: 'ist jetzt LIVE auf Twitch' },
   youtube: { color: 0xff0000, tag: 'YouTube', verb: 'hat ein neues Video hochgeladen' },
   tiktok: { color: 0x000000, tag: 'TikTok', verb: 'hat ein neues TikTok gepostet' },
+  rss: { color: 0xf26522, tag: 'Feed', verb: 'hat etwas Neues gepostet' },
 };
 
 function renderTemplate(tpl, sub, data, mentionText) {
@@ -332,26 +464,59 @@ async function resolveAccount(platform, input) {
     return twitchResolve(login);
   }
   if (platform === 'youtube') return youtubeResolve(value);
+
   if (platform === 'tiktok') {
-    const name = value.replace(/^https?:\/\/(www\.)?tiktok\.com\//i, '').replace(/^@/, '').replace(/[/?].*$/, '').toLowerCase();
+    if (/^https?:\/\//i.test(value)) {
+      // TikTok-RSS-Feed (z. B. von rss.app) – zuverlässiger als die Direkt-Abfrage
+      const info = await validateFeed(value);
+      return { account: value, label: info.label || 'TikTok-Feed' };
+    }
+    const name = value.replace(/^@/, '').replace(/[/?].*$/, '').toLowerCase();
     if (!/^[a-z0-9._]{2,30}$/.test(name)) throw new Error('Ungültiger TikTok-Name.');
     return { account: name, label: '@' + name };
   }
+
+  if (platform === 'rss') {
+    if (!/^https?:\/\//i.test(value)) throw new Error('Bitte einen vollständigen Feed-Link (https://…) angeben.');
+    const info = await validateFeed(value);
+    return { account: value, label: info.label || 'RSS-Feed' };
+  }
+
   throw new Error('Unbekannte Plattform.');
+}
+
+/** Feed testweise laden und den Feed-Titel als Label zurückgeben. */
+async function validateFeed(url) {
+  let xml;
+  try {
+    xml = await httpText(url, { timeout: 12000 });
+  } catch {
+    throw new Error('Der Feed-Link konnte nicht geladen werden.');
+  }
+  if (!/<rss[\s>]|<feed[\s>]|<rdf:RDF/i.test(xml)) {
+    throw new Error('Das ist kein gültiger RSS/Atom-Feed.');
+  }
+  if (!parseLatestFeedItem(xml, url)) {
+    throw new Error('Der Feed enthält (noch) keine Einträge.');
+  }
+  return { label: feedTitle(xml) };
 }
 
 /** Sofort-Test einer Meldung (Dashboard „Testen"-Button). */
 async function sendTest(sub) {
   const meta = PLATFORM_META[sub.platform];
+  const isUrl = /^https?:\/\//i.test(sub.account);
+  const url = isUrl
+    ? sub.account
+    : sub.platform === 'twitch'
+      ? `https://twitch.tv/${sub.account}`
+      : sub.platform === 'youtube'
+        ? `https://www.youtube.com/channel/${sub.account}`
+        : `https://www.tiktok.com/@${sub.account}`;
   await announce(sub, {
     kind: sub.platform,
     title: `Test – ${sub.account_label || sub.account}`,
-    url:
-      sub.platform === 'twitch'
-        ? `https://twitch.tv/${sub.account}`
-        : sub.platform === 'youtube'
-          ? `https://www.youtube.com/channel/${sub.account}`
-          : `https://www.tiktok.com/@${sub.account}`,
+    url,
     name: sub.account_label || sub.account,
     extra: `Dies ist eine Testmeldung für ${meta.tag}.`,
     image: null,
@@ -367,6 +532,14 @@ async function sweep() {
   if (now - lastRun.youtube >= INTERVALS.youtube) {
     lastRun.youtube = now;
     await pollYouTube().catch((err) => logger.error('[social] pollYouTube:', err.message));
+  }
+  if (now - lastRun.tiktok >= INTERVALS.tiktok) {
+    lastRun.tiktok = now;
+    await pollFeedPlatform('tiktok').catch((err) => logger.error('[social] pollTikTok:', err.message));
+  }
+  if (now - lastRun.rss >= INTERVALS.rss) {
+    lastRun.rss = now;
+    await pollFeedPlatform('rss').catch((err) => logger.error('[social] pollRss:', err.message));
   }
 }
 

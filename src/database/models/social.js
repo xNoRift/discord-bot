@@ -7,7 +7,7 @@ const db = require('../db');
  * Eine Zeile = "Wenn Account X auf Plattform P etwas Neues macht, poste in Kanal Y".
  */
 
-const PLATFORMS = ['twitch', 'youtube', 'tiktok'];
+const PLATFORMS = ['twitch', 'youtube', 'tiktok', 'rss'];
 
 function list(guildId) {
   return db

@@ -6,7 +6,8 @@ const { apiFor, escapeHtml, fmtDate, icon, getRoles, getChannels, fillSelectors,
 const PLAT = {
   youtube: { name: 'YouTube', color: '#ff0000' },
   twitch: { name: 'Twitch', color: '#9146ff' },
-  tiktok: { name: 'TikTok', color: '#888' },
+  tiktok: { name: 'TikTok', color: '#111' },
+  rss: { name: 'Feed', color: '#f26522' },
 };
 
 const form = document.getElementById('addForm');
@@ -20,24 +21,24 @@ function channelName(id) {
   return c ? '#' + c.name : '#gelöschter-kanal';
 }
 
-/* ---------- Formular ---------- */
+/* ---------- Plattform-Checkboxen ---------- */
 
-function syncAccountField() {
-  const p = document.getElementById('f_platform').value;
-  const label = document.getElementById('f_account_label');
-  const hint = document.getElementById('f_account_hint');
-  const input = document.getElementById('f_account');
-  if (p === 'twitch') {
-    label.textContent = 'Twitch-Kanal';
-    input.placeholder = 'z. B. ninja oder twitch.tv/ninja';
-    hint.textContent = 'Twitch-Benutzername oder Kanal-Link.';
-  } else {
-    label.textContent = 'YouTube-Kanal';
-    input.placeholder = 'Kanal-ID (UC…), @handle oder Kanal-Link';
-    hint.innerHTML = 'Am zuverlässigsten ist die Kanal-ID (beginnt mit <code>UC…</code>).';
-  }
+function syncPlatRows() {
+  form.querySelectorAll('.social-plat').forEach((row) => {
+    const cb = row.querySelector('input[type=checkbox]');
+    row.classList.toggle('is-off', !cb.checked);
+  });
 }
-document.getElementById('f_platform').addEventListener('change', syncAccountField);
+form.querySelectorAll('.social-plat input[type=checkbox]').forEach((cb) => {
+  cb.addEventListener('change', () => {
+    if (cb.dataset.plat === 'twitch' && cb.checked && !twitchReady) {
+      cb.checked = false;
+      toast('Twitch ist noch nicht eingerichtet (siehe Kasten oben).', 'error');
+    }
+    syncPlatRows();
+    if (cb.checked) form.querySelector(`input[data-acc="${cb.dataset.plat}"]`)?.focus();
+  });
+});
 
 function fillMentionOptions() {
   const sel = document.getElementById('f_mention');
@@ -52,30 +53,41 @@ function fillMentionOptions() {
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const msg = document.getElementById('addMsg');
-  msg.textContent = 'Prüfe…';
-  const body = {
-    platform: document.getElementById('f_platform').value,
-    account: document.getElementById('f_account').value.trim(),
-    channelId: document.getElementById('f_channel').value,
+  const channelId = document.getElementById('f_channel').value;
+  const shared = {
+    channelId,
     mention: document.getElementById('f_mention').value,
     message: document.getElementById('f_message').value.trim() || null,
     embed: document.getElementById('f_embed').checked,
   };
-  if (!body.account || !body.channelId) {
-    msg.textContent = 'Account und Kanal sind Pflicht.';
-    return;
+  if (!channelId) { msg.textContent = 'Bitte einen Kanal wählen.'; return; }
+
+  const jobs = [];
+  form.querySelectorAll('.social-plat input[type=checkbox]:checked').forEach((cb) => {
+    const acc = form.querySelector(`input[data-acc="${cb.dataset.plat}"]`).value.trim();
+    if (acc) jobs.push({ platform: cb.dataset.plat, account: acc });
+  });
+  if (!jobs.length) { msg.textContent = 'Mindestens eine Plattform anhaken und den Account/Link eintragen.'; return; }
+
+  msg.textContent = `Prüfe ${jobs.length} …`;
+  const errors = [];
+  let ok = 0;
+  for (const job of jobs) {
+    try {
+      await apiFor('POST', '/social', { ...shared, ...job });
+      ok++;
+    } catch (err) {
+      errors.push(`${PLAT[job.platform].name}: ${err.message}`);
+    }
   }
-  try {
-    await apiFor('POST', '/social', body);
-    msg.textContent = '';
-    document.getElementById('f_account').value = '';
+  msg.textContent = errors.join(' · ');
+  if (ok) {
+    toast(`${ok} Benachrichtigung${ok > 1 ? 'en' : ''} hinzugefügt.`, 'success');
+    form.querySelectorAll('input[data-acc]').forEach((i) => (i.value = ''));
     document.getElementById('f_message').value = '';
-    toast('Benachrichtigung hinzugefügt.', 'success');
     await load();
-  } catch (err) {
-    msg.textContent = err.message;
-    toast(err.message, 'error');
   }
+  if (errors.length) toast(errors.join('\n'), 'error');
 });
 
 /* ---------- Liste ---------- */
@@ -96,9 +108,10 @@ function statusBadge(s) {
 
 function row(s) {
   const p = PLAT[s.platform] || { name: s.platform, color: '#888' };
+  const acc = /^https?:\/\//i.test(s.account) ? s.account.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48) + '…' : s.account;
   return `<div class="qfield" data-id="${s.id}">
     <div class="qfield__head">
-      <b><span style="color:${p.color}">${p.name}</span> · ${escapeHtml(s.accountLabel || s.account)}</b>
+      <b><span style="color:${p.color}">${p.name}</span> · ${escapeHtml(s.accountLabel || acc)}</b>
       <span>${statusBadge(s)}</span>
     </div>
     <div class="muted" style="font-size:.85rem;margin:2px 0 8px;">
@@ -117,37 +130,27 @@ async function load() {
   const data = await apiFor('GET', '/social');
   twitchReady = data.twitchReady;
   document.getElementById('twitchHint').hidden = twitchReady;
-
-  // Twitch-Option nur zeigen, wenn eingerichtet
-  const psel = document.getElementById('f_platform');
-  if (!twitchReady && psel.querySelector('option[value="twitch"]')) {
-    psel.querySelector('option[value="twitch"]').remove();
-    syncAccountField();
-  }
+  const tn = form.querySelector('[data-plat-note="twitch"]');
+  if (tn) tn.hidden = twitchReady;
 
   const subs = data.subscriptions;
-  if (!subs.length) {
-    listEl.innerHTML = '<p class="muted">Noch keine Benachrichtigungen. Oben eine hinzufügen.</p>';
-    return;
-  }
-  listEl.innerHTML = subs.map(row).join('');
+  listEl.innerHTML = subs.length
+    ? subs.map(row).join('')
+    : '<p class="muted">Noch keine Benachrichtigungen. Oben eine hinzufügen.</p>';
 }
 
 listEl.addEventListener('click', async (e) => {
   const btn = e.target.closest('button[data-a]');
   if (!btn) return;
-  const box = btn.closest('[data-id]');
-  const id = box.dataset.id;
-  const action = btn.dataset.a;
+  const id = btn.closest('[data-id]').dataset.id;
   try {
-    if (action === 'test') {
+    if (btn.dataset.a === 'test') {
       await apiFor('POST', `/social/${id}/test`);
       toast('Testmeldung gesendet.', 'success');
-    } else if (action === 'toggle') {
-      const paused = btn.textContent.trim() === 'Aktivieren';
-      await apiFor('PATCH', `/social/${id}`, { enabled: paused });
+    } else if (btn.dataset.a === 'toggle') {
+      await apiFor('PATCH', `/social/${id}`, { enabled: btn.textContent.trim() === 'Aktivieren' });
       await load();
-    } else if (action === 'del') {
+    } else if (btn.dataset.a === 'del') {
       if (!(await confirmModal('Diese Benachrichtigung entfernen?', { danger: true, confirmLabel: 'Entfernen' }))) return;
       await apiFor('DELETE', `/social/${id}`);
       toast('Entfernt.', 'success');
@@ -165,7 +168,7 @@ listEl.addEventListener('click', async (e) => {
     [ROLES, CHAN] = await Promise.all([getRoles(), getChannels()]);
     await fillSelectors({});
     fillMentionOptions();
-    syncAccountField();
+    syncPlatRows();
     await load();
   } catch (e) {
     toast(e.message, 'error');
