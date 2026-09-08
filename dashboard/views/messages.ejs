@@ -19,6 +19,12 @@
       <label class="toggle"><input type="checkbox" id="msgAsEmbed" /><span class="toggle__track"></span></label>
     </div>
 
+    <div class="field">
+      <label>Erwähnung (optional)</label>
+      <select id="msgPing"><option value="none">Keine</option><option value="@everyone">@everyone</option><option value="@here">@here</option></select>
+      <div class="field-hint">Wird als Ping <b>über</b> dem Embed gepostet (Embeds selbst pingen nicht). Bei „nicht erwähnbaren" Rollen braucht der Bot das Recht „Alle erwähnen".</div>
+    </div>
+
     <div class="col-2" id="msgEmbedOpts" hidden>
       <div class="field">
         <label>Embed-Titel (optional)</label>

@@ -1,7 +1,7 @@
 /* global document, Dash */
 'use strict';
 
-const { apiFor, fillSelectors, toast, escapeHtml, fmtRelative } = Dash;
+const { apiFor, fillSelectors, getRoles, toast, escapeHtml, fmtRelative } = Dash;
 
 const form = document.getElementById('msgForm');
 const asEmbed = document.getElementById('msgAsEmbed');
@@ -16,7 +16,17 @@ const sendBtn = document.getElementById('msgSend');
 
 (async function init() {
   try {
-    await fillSelectors({});
+    const [, roles] = await Promise.all([fillSelectors({}), getRoles()]);
+    const sel = document.getElementById('msgPing');
+    if (sel && Array.isArray(roles)) {
+      sel.insertAdjacentHTML(
+        'beforeend',
+        roles
+          .filter((r) => !r.managed)
+          .map((r) => `<option value="${r.id}">@${escapeHtml(r.name)}</option>`)
+          .join(''),
+      );
+    }
   } catch (e) {
     toast(e.message, 'error');
   }
@@ -53,6 +63,7 @@ form.addEventListener('submit', async (e) => {
     asEmbed: asEmbed.checked,
     embedTitle: document.getElementById('msgEmbedTitle').value,
     embedColor: colorText.value,
+    pingMention: document.getElementById('msgPing').value,
     messageId: document.getElementById('msgEditId').value.trim(),
   };
   if (!body.channelId) return toast('Bitte einen Kanal wählen.', 'error');
@@ -67,6 +78,7 @@ form.addEventListener('submit', async (e) => {
     if (!r.edited) {
       content.value = '';
       document.getElementById('msgEmbedTitle').value = '';
+      document.getElementById('msgPing').value = 'none';
       updateCount();
     }
   } catch (err) {

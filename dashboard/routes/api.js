@@ -327,13 +327,14 @@ router.post(
     const asEmbed = Boolean(b.asEmbed);
     const embedTitle = String(b.embedTitle ?? '').slice(0, 256);
     const color = parseHexColor(b.embedColor);
+    const mention = normalizeMention(b.pingMention ?? b.pingRoleId, req.guild); // '@everyone' | '@here' | '<@&id>' | null
 
     if (asEmbed) {
       if (content.length > 4096) return res.status(400).json({ error: 'Embed-Text max. 4096 Zeichen.' });
     } else if (content.length > 2000) {
       return res.status(400).json({ error: 'Nachricht max. 2000 Zeichen.' });
     }
-    if (!content.trim() && !embedTitle.trim()) {
+    if (!content.trim() && !embedTitle.trim() && !mention) {
       return res.status(400).json({ error: 'Die Nachricht ist leer.' });
     }
 
@@ -346,19 +347,40 @@ router.post(
       return res.status(403).json({ error: 'Dem Bot fehlt das Recht „Links einbetten" in diesem Kanal.' });
     }
 
+    // Erwähnung: allowedMentions passend setzen + ggf. Berechtigung prüfen
+    const allowedMentions = { parse: [], roles: [], users: [] };
+    if (mention === '@everyone' || mention === '@here') {
+      if (!perms?.has(PermissionFlagsBits.MentionEveryone)) {
+        return res.status(403).json({ error: 'Dem Bot fehlt das Recht „Alle erwähnen" in diesem Kanal.' });
+      }
+      allowedMentions.parse = ['everyone'];
+    } else if (mention) {
+      const roleId = mention.replace(/\D/g, '');
+      const role = req.guild.roles.cache.get(roleId);
+      if (role && !role.mentionable && !perms?.has(PermissionFlagsBits.MentionEveryone)) {
+        return res.status(403).json({
+          error: `Die Rolle „${role.name}" ist nicht „erwähnbar" und dem Bot fehlt das Recht „Alle erwähnen".`,
+        });
+      }
+      allowedMentions.roles = [roleId];
+    }
+
+    const embedBuilt = asEmbed
+      ? (() => {
+          const e = new EmbedBuilder();
+          if (embedTitle.trim()) e.setTitle(embedTitle);
+          if (content.trim()) e.setDescription(content);
+          e.setColor(color ?? config.branding.color);
+          return e;
+        })()
+      : null;
+
     const payload = asEmbed
-      ? {
-          embeds: [
-            (() => {
-              const e = new EmbedBuilder();
-              if (embedTitle.trim()) e.setTitle(embedTitle);
-              if (content.trim()) e.setDescription(content);
-              e.setColor(color ?? config.branding.color);
-              return e;
-            })(),
-          ],
-        }
-      : { content, allowedMentions: { parse: [] } };
+      ? { content: mention || undefined, embeds: [embedBuilt], allowedMentions }
+      : {
+          content: mention ? (content.trim() ? `${mention}\n${content}` : mention) : content,
+          allowedMentions,
+        };
 
     try {
       const messageId = b.messageId ? String(b.messageId) : '';
