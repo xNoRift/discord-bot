@@ -1,26 +1,26 @@
-<%- include('partials/head', { title: t('servers.title') + ' – ' + brandName }) %>
+<%- include('partials/head', { title: 'Server auswählen – ' + brandName }) %>
 <%- include('partials/app-shell-open') %>
 
 <div class="page-head">
   <div class="page-head__row">
-    <h1><%- icon('server') %> <%= t('servers.title') %></h1>
-    <button class="btn btn--ghost btn--sm" id="refreshGuilds"><%- icon('refresh') %> <%= t('servers.refresh') %></button>
+    <h1><%- icon('server') %> Server auswählen</h1>
+    <button class="btn btn--ghost btn--sm" id="refreshGuilds"><%- icon('refresh') %> Aktualisieren</button>
   </div>
-  <p><%= t('servers.lead') %></p>
+  <p>Wähle einen Server, den du verwalten möchtest. Angezeigt werden nur Server, auf denen du „Server verwalten" oder „Administrator" bist.</p>
 </div>
 
 <div class="field" style="max-width:420px;margin-bottom:16px;">
-  <input id="guildSearch" type="search" placeholder="<%= t('servers.search') %>" autocomplete="off" />
+  <input id="guildSearch" type="search" placeholder="Server nach Namen suchen…" autocomplete="off" />
 </div>
 
 <div class="card">
-  <div class="card__head"><h2><%- icon('check') %> <%= t('servers.available') %></h2></div>
-  <div class="grid-cards" id="managedGuilds"><div class="loading"><%= t('servers.loading') %></div></div>
+  <div class="card__head"><h2><%- icon('check') %> Verfügbar</h2></div>
+  <div class="grid-cards" id="managedGuilds"><div class="loading">Server werden geladen…</div></div>
 </div>
 
 <div class="card" id="invitableCard" hidden>
-  <div class="card__head"><h2><%- icon('plus') %> <%= t('servers.not_invited_title') %></h2></div>
-  <p class="card__sub"><%= t('servers.not_invited_sub') %></p>
+  <div class="card__head"><h2><%- icon('plus') %> Bot noch nicht eingeladen</h2></div>
+  <p class="card__sub">Hier hast du die Rechte, aber der Bot ist noch nicht auf dem Server.</p>
   <div class="grid-cards" id="invitableGuilds"></div>
 </div>
 

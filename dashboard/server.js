@@ -19,7 +19,6 @@ const client = require('../src/core/client');
 const db = require('../src/database/db');
 
 const { csrfToken } = require('./middleware/auth');
-const i18n = require('./lib/i18n');
 const authRoutes = require('./routes/auth');
 const pageRoutes = require('./routes/pages');
 const apiRoutes = require('./routes/api');
@@ -112,22 +111,6 @@ function createApp() {
     next();
   });
 
-  // Sprache (Browser-Sprache -> sonst Englisch; manuell via /set-lang/:lang)
-  app.get('/set-lang/:lang', (req, res) => {
-    if (i18n.SUPPORTED.includes(req.params.lang) && req.session) {
-      req.session.lang = req.params.lang;
-    }
-    const back = req.get('referer');
-    res.redirect(back && back.startsWith(`${req.protocol}://${req.get('host')}`) ? back : '/');
-  });
-  app.use((req, res, next) => {
-    const lang = i18n.resolveLang(req);
-    res.locals.lang = lang;
-    res.locals.t = (key, vars) => i18n.t(lang, key, vars);
-    res.locals.i18nBundle = JSON.stringify({ lang, strings: i18n.bundle(lang) });
-    next();
-  });
-
   // Request-Logging (ohne statische Assets)
   app.use((req, res, next) => {
     if (req.path.startsWith('/static/') || req.path === '/health') return next();
@@ -151,8 +134,7 @@ function createApp() {
   // 404
   app.use((req, res) => {
     if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Nicht gefunden.' });
-    const tt = res.locals.t || ((k) => k);
-    res.status(404).render('error', { title: tt('error_page.404_title'), message: tt('error_page.404_msg') });
+    res.status(404).render('error', { title: '404', message: 'Diese Seite existiert nicht.' });
   });
 
   // Fehlerbehandlung

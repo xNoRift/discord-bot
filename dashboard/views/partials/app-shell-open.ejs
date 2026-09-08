@@ -5,25 +5,25 @@
       <span class="sidebar__badge"><%- icon('bot') %></span>
       <span class="sidebar__title">
         <b><%= (brand && brand.name) || 'Dashboard' %></b>
-        <span><%= t('shell.control_panel') %></span>
+        <span>Control Panel</span>
       </span>
-      <button class="sidebar__close" id="sidebarClose" aria-label="<%= t('shell.close_menu') %>"><%- icon('x') %></button>
+      <button class="sidebar__close" id="sidebarClose" aria-label="Menü schließen"><%- icon('x') %></button>
     </div>
 
     <nav class="sidebar__scroll">
       <% if (typeof guild !== 'undefined' && guild) { %>
         <div class="sidebar__section">
           <div class="sidebar__guildpick">
-            <a class="nav-item" href="/servers"><%- icon('server') %><span><%= t('shell.switch_server') %></span></a>
+            <a class="nav-item" href="/servers"><%- icon('server') %><span>Server wechseln</span></a>
           </div>
         </div>
 
         <% (nav || []).forEach(function (section) { %>
           <div class="sidebar__section">
-            <% if (section.sectionLabel) { %><div class="sidebar__label"><%= t(section.sectionLabel) %></div><% } %>
+            <% if (section.label) { %><div class="sidebar__label"><%= section.label %></div><% } %>
             <% section.items.forEach(function (item) { %>
               <a class="nav-item <%= active === item.key ? 'is-active' : '' %>" href="/dashboard/<%= guild.id %><%= item.path %>">
-                <%- icon(item.icon) %><span><%= t(item.label) %></span>
+                <%- icon(item.icon) %><span><%= item.label %></span>
                 <% var b = (navBadges || {})[item.key]; if (b) { %><span class="nav-item__badge"><%= b %></span><% } %>
               </a>
             <% }); %>
@@ -40,7 +40,7 @@
         </div>
       <% } else { %>
         <div class="sidebar__section">
-          <a class="nav-item is-active" href="/servers"><%- icon('server') %><span><%= t('shell.choose_server') %></span></a>
+          <a class="nav-item is-active" href="/servers"><%- icon('server') %><span>Server auswählen</span></a>
         </div>
       <% } %>
     </nav>
@@ -54,11 +54,11 @@
         <% } %>
         <span class="sidebar__user-info">
           <b><%= user.globalName || user.username %></b>
-          <span><%= t('shell.logged_in') %></span>
+          <span>Angemeldet</span>
         </span>
         <form method="post" action="/auth/logout">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-          <button class="btn btn--ghost btn--icon" type="submit" title="<%= t('shell.logout') %>"><%- icon('logout') %></button>
+          <button class="btn btn--ghost btn--icon" type="submit" title="Abmelden"><%- icon('logout') %></button>
         </form>
       <% } %>
     </div>
@@ -66,35 +66,31 @@
 
   <div class="main">
     <header class="topbar">
-      <button class="topbar__menu" id="sidebarOpen" aria-label="<%= t('shell.menu') %>"><%- icon('menu') %></button>
+      <button class="topbar__menu" id="sidebarOpen" aria-label="Menü"><%- icon('menu') %></button>
       <span class="topbar__crumb">
         <%- icon(typeof crumbIcon !== 'undefined' ? crumbIcon : 'grid') %>
-        <%= typeof crumb !== 'undefined' ? t(crumb) : (typeof title !== 'undefined' ? title : t('shell.dashboard')) %>
+        <%= typeof crumb !== 'undefined' ? crumb : (typeof title !== 'undefined' ? title : 'Dashboard') %>
       </span>
       <div class="topbar__right">
         <% if (typeof guild !== 'undefined' && guild) { %>
           <span class="badge badge--on"><%= guild.name %></span>
         <% } %>
-        <div class="lang-switch">
-          <a href="/set-lang/en" class="<%= lang === 'en' ? 'is-active' : '' %>">EN</a>
-          <a href="/set-lang/de" class="<%= lang === 'de' ? 'is-active' : '' %>">DE</a>
-        </div>
         <div class="theme-wrap">
-          <button class="theme-btn" id="themeBtn" type="button" aria-label="<%= t('theme.change') %>" title="<%= t('theme.change') %>"><%- icon('sparkles') %></button>
+          <button class="theme-btn" id="themeBtn" type="button" aria-label="Farbdesign ändern" title="Farbdesign ändern"><%- icon('sparkles') %></button>
           <div class="theme-pop" id="themePop" hidden>
-            <h4><%= t('theme.accent') %></h4>
+            <h4>Akzentfarbe</h4>
             <div class="swatch-grid" id="swatchGrid"></div>
             <label class="theme-custom">
               <input type="color" id="themeCustom" value="#7c5cff" />
-              <span><%= t('theme.custom') %></span>
+              <span>Eigene Farbe wählen</span>
             </label>
-            <h4><%= t('theme.background') %></h4>
+            <h4>Hintergrund</h4>
             <div class="theme-row" id="modeRow">
-              <button class="theme-mode" data-mode="standard" type="button"><%= t('theme.mode_standard') %></button>
-              <button class="theme-mode" data-mode="midnight" type="button"><%= t('theme.mode_midnight') %></button>
-              <button class="theme-mode" data-mode="slate" type="button"><%= t('theme.mode_slate') %></button>
+              <button class="theme-mode" data-mode="standard" type="button">Standard</button>
+              <button class="theme-mode" data-mode="midnight" type="button">Mitternacht</button>
+              <button class="theme-mode" data-mode="slate" type="button">Schiefer</button>
             </div>
-            <button class="theme-reset" id="themeReset" type="button"><%= t('theme.reset') %></button>
+            <button class="theme-reset" id="themeReset" type="button">Auf Standard zurücksetzen</button>
           </div>
         </div>
       </div>

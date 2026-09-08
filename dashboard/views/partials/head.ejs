@@ -1,8 +1,7 @@
 <!doctype html>
-<html lang="<%= typeof lang !== 'undefined' ? lang : 'en' %>">
+<html lang="de">
 <head>
   <meta charset="utf-8" />
-  <% if (typeof i18nBundle !== 'undefined') { %><script>window.__I18N__ = <%- i18nBundle %>;</script><% } %>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="csrf-token" content="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>" />
   <script src="/static/js/theme.js?v=<%= typeof assetVer !== 'undefined' ? assetVer : '1' %>"></script>
