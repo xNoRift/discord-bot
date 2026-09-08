@@ -196,6 +196,19 @@ function buildManagementRow(ticket) {
 }
 
 /**
+ * Zeichnet eine bereits gepostete Panel-Nachricht neu.
+ * Wird nach einer Auswahl im Dropdown aufgerufen, damit das Menü wieder
+ * „Wähle eine Kategorie ..." anzeigt statt der zuletzt gewählten Option.
+ */
+async function rerenderPanelMessage(message, panelId) {
+  if (!message) return;
+  const panel = ticketPanels.getPanel(panelId);
+  if (!panel) return;
+  const categories = ticketPanels.listCategories(panelId).filter((c) => c.enabled !== 0);
+  await message.edit(buildPanelMessage(panel, categories)).catch(() => null);
+}
+
+/**
  * Baut das Formular-Modal für eine Kategorie (max. 5 Felder – Discord-Limit).
  */
 function buildTicketModal(category, questions) {
@@ -811,4 +824,5 @@ module.exports = {
   buildTicketModal,
   submitRating,
   autoCloseSweep,
+  rerenderPanelMessage,
 };
