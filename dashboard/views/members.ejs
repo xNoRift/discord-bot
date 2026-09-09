@@ -1,0 +1,63 @@
+<%- include('partials/head', { title: guild.name + ' – Mitglieder' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('users') %> Mitglieder <span class="muted">(nur Besitzer)</span></h1></div>
+  <p>Nur für dich als Bot-Besitzer: einzelnen Mitgliedern einen Nicknamen geben und Rollen zuweisen oder entziehen.</p>
+</div>
+
+<div class="card" id="permWarn" hidden>
+  <div class="card__head"><h2><%- icon('shield') %> Eingeschränkt</h2></div>
+  <p class="card__sub" id="permWarnText"></p>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('server') %> Mitglied suchen</h2></div>
+  <div class="field">
+    <label>Name oder Benutzer-ID</label>
+    <input id="mSearch" type="search" placeholder="z. B. Max  oder  123456789012345678" autocomplete="off" />
+    <small>Tippe einen Namen (Anfang) oder füge eine Benutzer-ID ein.</small>
+  </div>
+  <div id="mResults"><p class="muted">Suche oben nach einem Mitglied.</p></div>
+</div>
+
+<div class="card" id="mEditor" hidden>
+  <div class="card__head"><h2><%- icon('edit') %> <span id="edName">Mitglied</span></h2></div>
+
+  <div class="mmember" id="edHeader"></div>
+
+  <div class="field" style="margin-top:14px;">
+    <label>Nickname</label>
+    <div class="row-inline">
+      <input id="edNick" maxlength="32" placeholder="(leer = kein Nickname)" />
+      <button class="btn btn--primary btn--sm" id="edNickSave"><%- icon('check', 'icon--sm') %> Speichern</button>
+    </div>
+    <small id="edNickHint"></small>
+  </div>
+
+  <div class="field" style="margin-top:8px;">
+    <label>Rollen</label>
+    <div id="edRoles"><div class="loading">Lädt…</div></div>
+    <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" id="edRolesSave"><%- icon('check', 'icon--sm') %> Rollen speichern</button> <span class="muted" id="edRolesMsg"></span></div>
+  </div>
+</div>
+
+<style>
+  .mmember { display:flex; align-items:center; gap:12px; }
+  .mmember img { width:52px; height:52px; border-radius:50%; }
+  .mmember b { font-size:1.05rem; }
+  .mrole { display:flex; align-items:center; gap:9px; padding:7px 4px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .mrole:last-child { border-bottom:0; }
+  .mrole input { width:17px; height:17px; accent-color:var(--accent); }
+  .mrole.is-locked { opacity:.5; cursor:not-allowed; }
+  .mrole__dot { width:10px; height:10px; border-radius:50%; flex:none; }
+  .mrole__lock { margin-left:auto; font-size:.75rem; color:var(--muted); }
+  .mres { display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--line); }
+  .mres:last-child { border-bottom:0; }
+  .mres img { width:36px; height:36px; border-radius:50%; }
+  .mres .spacer { flex:1; }
+</style>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/members.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

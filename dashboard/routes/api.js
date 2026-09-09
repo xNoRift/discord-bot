@@ -1499,4 +1499,131 @@ function normalizeMention(input, guild) {
   return null;
 }
 
+/* ----------------------------------------------------------------
+ *  Mitglieder-Verwaltung – NUR Bot-Besitzer
+ *  Nickname setzen + einzelnen Mitgliedern Rollen geben/entziehen.
+ * ---------------------------------------------------------------- */
+
+function serializeMember(m) {
+  return {
+    id: m.id,
+    tag: m.user.tag,
+    username: m.user.username,
+    displayName: m.displayName,
+    nickname: m.nickname ?? null,
+    avatarUrl: m.displayAvatarURL({ size: 128, extension: 'png' }),
+    bot: m.user.bot,
+    isGuildOwner: m.id === m.guild.ownerId,
+    roleIds: [...m.roles.cache.keys()].filter((id) => id !== m.guild.id),
+    joinedAt: m.joinedTimestamp || null,
+  };
+}
+
+router.get(
+  '/guilds/:guildId/member-tools',
+  requireOwner,
+  asyncHandler(async (req, res) => {
+    const me = req.guild.members.me ?? (await req.guild.members.fetchMe().catch(() => null));
+    res.json({
+      botTopRolePosition: me?.roles.highest.position ?? 0,
+      canNick: Boolean(me?.permissions.has(PermissionFlagsBits.ManageNicknames)),
+      canRoles: Boolean(me?.permissions.has(PermissionFlagsBits.ManageRoles)),
+      guildOwnerId: req.guild.ownerId,
+    });
+  }),
+);
+
+router.get(
+  '/guilds/:guildId/members',
+  requireOwner,
+  asyncHandler(async (req, res) => {
+    const q = String(req.query.q || '').trim();
+    if (!q) return res.json([]);
+    let members = [];
+    try {
+      if (/^\d{5,25}$/.test(q)) {
+        const m = await req.guild.members.fetch({ user: q, force: true }).catch(() => null);
+        if (m) members = [m];
+      } else {
+        const coll = await req.guild.members.fetch({ query: q, limit: 25 });
+        members = [...coll.values()];
+      }
+    } catch (err) {
+      return res.status(400).json({ error: discordErr(err) });
+    }
+    res.json(members.map(serializeMember));
+  }),
+);
+
+router.get(
+  '/guilds/:guildId/members/:userId',
+  requireOwner,
+  asyncHandler(async (req, res) => {
+    const m = await req.guild.members.fetch({ user: req.params.userId, force: true }).catch(() => null);
+    if (!m) return res.status(404).json({ error: 'Mitglied nicht gefunden.' });
+    res.json(serializeMember(m));
+  }),
+);
+
+router.patch(
+  '/guilds/:guildId/members/:userId',
+  requireOwner,
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const m = await req.guild.members.fetch({ user: req.params.userId, force: true }).catch(() => null);
+    if (!m) return res.status(404).json({ error: 'Mitglied nicht gefunden.' });
+    const me = req.guild.members.me ?? (await req.guild.members.fetchMe());
+    const b = req.body || {};
+    const reason = `Dashboard (Besitzer): ${req.session.user.username}`;
+    const out = { ok: true };
+
+    // ---- Nickname ----
+    if (b.nickname !== undefined) {
+      if (!me.permissions.has(PermissionFlagsBits.ManageNicknames)) {
+        return res.status(403).json({ error: 'Dem Bot fehlt die Berechtigung „Nicknamen verwalten".' });
+      }
+      if (m.id === req.guild.ownerId) {
+        return res.status(400).json({ error: 'Der Server-Inhaber kann von keinem Bot umbenannt werden.' });
+      }
+      if (m.id !== me.id && me.roles.highest.comparePositionTo(m.roles.highest) <= 0) {
+        return res.status(400).json({ error: 'Dieses Mitglied steht (durch seine Rollen) über dem Bot – Nickname nicht änderbar.' });
+      }
+      const nick = String(b.nickname ?? '').trim().slice(0, 32);
+      try {
+        await m.setNickname(nick || null, reason);
+        out.nickname = nick || null;
+      } catch (err) {
+        return res.status(400).json({ error: discordErr(err) });
+      }
+    }
+
+    // ---- Rollen ----
+    const addRoles = Array.isArray(b.addRoles) ? b.addRoles.map(String).filter(Boolean) : [];
+    const removeRoles = Array.isArray(b.removeRoles) ? b.removeRoles.map(String).filter(Boolean) : [];
+    if (addRoles.length || removeRoles.length) {
+      if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+        return res.status(403).json({ error: 'Dem Bot fehlt die Berechtigung „Rollen verwalten".' });
+      }
+      const botTop = me.roles.highest.position;
+      for (const id of new Set([...addRoles, ...removeRoles])) {
+        const role = req.guild.roles.cache.get(id);
+        if (!role) return res.status(400).json({ error: 'Unbekannte Rolle.' });
+        if (role.id === req.guild.id) return res.status(400).json({ error: '@everyone kann nicht vergeben werden.' });
+        if (role.managed) return res.status(400).json({ error: `„${role.name}" wird von einer Integration verwaltet und kann nicht manuell vergeben werden.` });
+        if (role.position >= botTop) return res.status(400).json({ error: `„${role.name}" steht über der höchsten Bot-Rolle – der Bot kann sie nicht vergeben/entziehen.` });
+      }
+      try {
+        if (addRoles.length) await m.roles.add(addRoles, reason);
+        if (removeRoles.length) await m.roles.remove(removeRoles, reason);
+      } catch (err) {
+        return res.status(400).json({ error: discordErr(err) });
+      }
+    }
+
+    const fresh = await req.guild.members.fetch({ user: m.id, force: true }).catch(() => m);
+    out.member = serializeMember(fresh);
+    res.json(out);
+  }),
+);
+
 module.exports = router;

@@ -22,10 +22,12 @@
           <div class="sidebar__section">
             <% if (section.label) { %><div class="sidebar__label"><%= section.label %></div><% } %>
             <% section.items.forEach(function (item) { %>
+              <% if (!item.ownerOnly || (typeof isOwner !== 'undefined' && isOwner)) { %>
               <a class="nav-item <%= active === item.key ? 'is-active' : '' %>" href="/dashboard/<%= guild.id %><%= item.path %>">
                 <%- icon(item.icon) %><span><%= item.label %></span>
                 <% var b = (navBadges || {})[item.key]; if (b) { %><span class="nav-item__badge"><%= b %></span><% } %>
               </a>
+              <% } %>
             <% }); %>
           </div>
         <% }); %>

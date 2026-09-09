@@ -1,7 +1,7 @@
 'use strict';
 
 const express = require('express');
-const { requireAuth, loadGuild } = require('../middleware/auth');
+const { requireAuth, requireOwner, loadGuild } = require('../middleware/auth');
 const config = require('../../config/config');
 const ticketsModel = require('../../src/database/models/tickets');
 const giveawaysModel = require('../../src/database/models/giveaways');
@@ -42,6 +42,7 @@ const NAV = [
     label: 'Server',
     items: [
       { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
+      { key: 'members', label: 'Mitglieder', icon: 'users', path: '/members', ownerOnly: true },
       { key: 'statistics', label: 'Statistiken', icon: 'chart', path: '/statistics' },
       { key: 'settings', label: 'Einstellungen', icon: 'settings', path: '/settings' },
     ],
@@ -57,6 +58,7 @@ const FOOTER_NAV = [
 const CRUMB = {
   overview: { crumb: 'Übersicht', crumbIcon: 'home' },
   messages: { crumb: 'Nachrichten', crumbIcon: 'send' },
+  members: { crumb: 'Mitglieder', crumbIcon: 'users' },
   welcome: { crumb: 'Willkommen', crumbIcon: 'bell' },
   music: { crumb: 'Musik', crumbIcon: 'music' },
   tempvoice: { crumb: 'Temp-Voice', crumbIcon: 'hash' },
@@ -155,6 +157,9 @@ const PAGES = [
 for (const [path, view] of PAGES) {
   g.get(path, (req, res) => res.render(view, pageLocals(req, view)));
 }
+
+// Mitglieder-Verwaltung: nur Bot-Besitzer
+g.get('/members', requireOwner, (req, res) => res.render('members', pageLocals(req, 'members')));
 
 router.use('/dashboard/:guildId', g);
 
