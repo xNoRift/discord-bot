@@ -3,7 +3,7 @@
 
 <div class="page-head">
   <div class="page-head__row"><h1><%- icon('users') %> Mitglieder <span class="muted">(nur Besitzer)</span></h1></div>
-  <p>Nur für dich als Bot-Besitzer: einzelnen Mitgliedern einen Nicknamen geben und Rollen zuweisen oder entziehen.</p>
+  <p>Nur für dich als Bot-Besitzer: einzelnen Mitgliedern einen Nicknamen geben, Rollen zuweisen/entziehen und Personen zwischen Sprachkanälen verschieben.</p>
 </div>
 
 <div class="card" id="permWarn" hidden>
@@ -39,6 +39,17 @@
     <label>Rollen</label>
     <div id="edRoles"><div class="loading">Lädt…</div></div>
     <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" id="edRolesSave"><%- icon('check', 'icon--sm') %> Rollen speichern</button> <span class="muted" id="edRolesMsg"></span></div>
+  </div>
+
+  <div class="field" style="margin-top:8px;">
+    <label>Sprachkanal</label>
+    <p class="muted" id="edVoiceState" style="margin:2px 0 8px;"></p>
+    <div class="row-inline">
+      <select id="edVoiceTarget"></select>
+      <button class="btn btn--primary btn--sm" id="edVoiceMove"><%- icon('send', 'icon--sm') %> Verschieben</button>
+      <button class="btn btn--outline btn--sm" id="edVoiceKick">Aus Voice trennen</button>
+    </div>
+    <small id="edVoiceHint"></small>
   </div>
 </div>
 

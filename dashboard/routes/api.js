@@ -1516,6 +1516,8 @@ function serializeMember(m) {
     isGuildOwner: m.id === m.guild.ownerId,
     roleIds: [...m.roles.cache.keys()].filter((id) => id !== m.guild.id),
     joinedAt: m.joinedTimestamp || null,
+    voiceChannelId: m.voice?.channelId ?? null,
+    voiceChannelName: m.voice?.channel?.name ?? null,
   };
 }
 
@@ -1528,6 +1530,7 @@ router.get(
       botTopRolePosition: me?.roles.highest.position ?? 0,
       canNick: Boolean(me?.permissions.has(PermissionFlagsBits.ManageNicknames)),
       canRoles: Boolean(me?.permissions.has(PermissionFlagsBits.ManageRoles)),
+      canMove: Boolean(me?.permissions.has(PermissionFlagsBits.MoveMembers)),
       guildOwnerId: req.guild.ownerId,
     });
   }),
@@ -1615,6 +1618,33 @@ router.patch(
       try {
         if (addRoles.length) await m.roles.add(addRoles, reason);
         if (removeRoles.length) await m.roles.remove(removeRoles, reason);
+      } catch (err) {
+        return res.status(400).json({ error: discordErr(err) });
+      }
+    }
+
+    // ---- In einen Sprachkanal verschieben / aus dem Voice trennen ----
+    if (b.moveTo !== undefined) {
+      if (!me.permissions.has(PermissionFlagsBits.MoveMembers)) {
+        return res.status(403).json({ error: 'Dem Bot fehlt die Berechtigung „Mitglieder verschieben".' });
+      }
+      if (!m.voice?.channelId) {
+        return res.status(400).json({ error: 'Dieses Mitglied ist gerade in keinem Sprachkanal.' });
+      }
+      const targetId = b.moveTo ? String(b.moveTo) : null;
+      if (targetId) {
+        const ch = req.guild.channels.cache.get(targetId);
+        if (!ch || !(ch.type === ChannelType.GuildVoice || ch.type === ChannelType.GuildStageVoice)) {
+          return res.status(400).json({ error: 'Der Zielkanal ist kein Sprachkanal.' });
+        }
+        const perms = ch.permissionsFor(me);
+        if (!perms?.has(PermissionFlagsBits.ViewChannel) || !perms?.has(PermissionFlagsBits.Connect)) {
+          return res.status(400).json({ error: `Der Bot hat auf „${ch.name}" keinen Zugriff – dorthin kann nicht verschoben werden.` });
+        }
+      }
+      try {
+        await m.voice.setChannel(targetId, reason); // null = aus dem Sprachkanal trennen
+        out.moved = true;
       } catch (err) {
         return res.status(400).json({ error: discordErr(err) });
       }

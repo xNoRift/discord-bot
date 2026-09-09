@@ -1,10 +1,11 @@
 /* global document, window, Dash */
 'use strict';
 
-const { apiFor, getRoles, escapeHtml, fmtDate, icon, toast, confirmModal } = Dash;
+const { apiFor, getRoles, getChannels, escapeHtml, fmtDate, icon, toast, confirmModal } = Dash;
 
 let ROLES = [];
-let META = { botTopRolePosition: 0, canNick: false, canRoles: false, guildOwnerId: null };
+let VOICE = []; // Sprachkanäle des Servers
+let META = { botTopRolePosition: 0, canNick: false, canRoles: false, canMove: false, guildOwnerId: null };
 let current = null; // aktuell bearbeitetes Mitglied
 
 const $ = (id) => document.getElementById(id);
@@ -99,7 +100,43 @@ function renderEditor() {
     }).join('');
   $('edRolesMsg').textContent = META.canRoles ? '' : 'Dem Bot fehlt die Berechtigung „Rollen verwalten".';
   $('edRolesSave').disabled = !META.canRoles;
+
+  // Sprachkanal / Verschieben
+  const inVoice = Boolean(m.voiceChannelId);
+  $('edVoiceState').textContent = inVoice
+    ? `Aktuell im Sprachkanal: 🔊 ${m.voiceChannelName || m.voiceChannelId}`
+    : 'Aktuell in keinem Sprachkanal.';
+  const moveBlocked = !META.canMove || !inVoice;
+  $('edVoiceTarget').innerHTML = VOICE
+    .map((c) => `<option value="${c.id}" ${String(c.id) === String(m.voiceChannelId) ? 'disabled' : ''}>🔊 ${escapeHtml(c.name)}</option>`)
+    .join('') || '<option value="">— keine Sprachkanäle —</option>';
+  $('edVoiceTarget').disabled = moveBlocked;
+  $('edVoiceMove').disabled = moveBlocked || !VOICE.length;
+  $('edVoiceKick').disabled = moveBlocked;
+  $('edVoiceHint').textContent = !META.canMove
+    ? 'Dem Bot fehlt die Berechtigung „Mitglieder verschieben".'
+    : !inVoice
+      ? 'Verschieben geht nur, während die Person in einem Sprachkanal ist.'
+      : '';
 }
+
+async function doVoice(body, okMsg) {
+  try {
+    const r = await apiFor('PATCH', `/members/${current.id}`, body);
+    current = r.member || current;
+    toast(okMsg, 'success');
+    renderEditor();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+$('edVoiceMove').addEventListener('click', () => {
+  const target = $('edVoiceTarget').value;
+  if (!target) return;
+  doVoice({ moveTo: target }, 'Verschoben.');
+});
+$('edVoiceKick').addEventListener('click', () => doVoice({ moveTo: null }, 'Aus dem Sprachkanal getrennt.'));
 
 $('edNickSave').addEventListener('click', async () => {
   try {
@@ -134,12 +171,16 @@ $('edRolesSave').addEventListener('click', async () => {
 
 (async function init() {
   try {
-    [ROLES, META] = await Promise.all([getRoles(), apiFor('GET', '/member-tools')]);
-    if (!META.canNick || !META.canRoles) {
+    const [roles, meta, chans] = await Promise.all([getRoles(), apiFor('GET', '/member-tools'), getChannels()]);
+    ROLES = roles;
+    META = meta;
+    VOICE = chans.voice || [];
+    if (!META.canNick || !META.canRoles || !META.canMove) {
       const miss = [];
       if (!META.canNick) miss.push('„Nicknamen verwalten"');
       if (!META.canRoles) miss.push('„Rollen verwalten"');
-      $('permWarnText').textContent = `Dem Bot fehlt auf diesem Server: ${miss.join(' und ')}. Gib dem Bot diese Rechte (und schiebe seine Rolle hoch genug), damit alles funktioniert.`;
+      if (!META.canMove) miss.push('„Mitglieder verschieben"');
+      $('permWarnText').textContent = `Dem Bot fehlt auf diesem Server: ${miss.join(', ')}. Gib dem Bot diese Rechte (und schiebe seine Rolle hoch genug), damit alles funktioniert.`;
       $('permWarn').hidden = false;
     }
   } catch (e) {
