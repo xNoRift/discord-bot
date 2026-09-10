@@ -36,6 +36,35 @@
 </div>
 
 <div class="card">
+  <div class="card__head"><h2><%- icon('plus') %> Rolle erstellen</h2></div>
+  <form id="roleCreateForm">
+    <div class="col-2">
+      <div class="field"><label>Name</label><input id="rcName" maxlength="100" placeholder="z. B. Event-Team" required /></div>
+      <div class="field">
+        <label>Farbe</label>
+        <div class="row-inline">
+          <input type="color" id="rcColor" value="#7c5cff" style="max-width:70px;" />
+          <input id="rcColorText" placeholder="#7c5cff (leer = keine)" maxlength="7" />
+        </div>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Getrennt anzeigen</b><span>Mitglieder mit dieser Rolle stehen in der Mitgliederliste separat oben</span></div>
+      <label class="toggle"><input type="checkbox" id="rcHoist"><span class="toggle__track"></span></label>
+    </div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Erwähnbar</b><span>Jeder darf die Rolle mit @ anpingen</span></div>
+      <label class="toggle"><input type="checkbox" id="rcMentionable"><span class="toggle__track"></span></label>
+    </div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Administrator-Rechte</b><span style="color:var(--danger,#f0616d)">⚠️ Volle Rechte auf dem Server – nur wenn du sicher bist</span></div>
+      <label class="toggle"><input type="checkbox" id="rcAdmin"><span class="toggle__track"></span></label>
+    </div>
+    <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" type="submit"><%- icon('plus', 'icon--sm') %> Rolle erstellen</button> <span class="muted" id="rcMsg"></span></div>
+  </form>
+</div>
+
+<div class="card">
   <div class="card__head"><h2><%- icon('lock') %> Rollen-Berechtigungen</h2></div>
   <div class="field">
     <label>Rolle</label>

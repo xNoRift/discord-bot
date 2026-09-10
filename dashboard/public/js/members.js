@@ -1,7 +1,7 @@
 /* global document, window, Dash */
 'use strict';
 
-const { apiFor, getRoles, getChannels, escapeHtml, fmtDate, icon, toast, confirmModal } = Dash;
+const { apiFor, getRoles, getChannels, escapeHtml, fmtDate, icon, toast } = Dash;
 
 let ROLES = [];
 let VOICE = []; // Sprachkanäle des Servers
@@ -16,42 +16,6 @@ function roleById(id) {
 function canManageRole(r) {
   return !r.managed && r.position < META.botTopRolePosition;
 }
-
-/* ---------------- Rolle erstellen ---------------- */
-
-$('rcColor').addEventListener('input', () => { $('rcColorText').value = $('rcColor').value; });
-$('rcColorText').addEventListener('input', () => {
-  const v = $('rcColorText').value.trim();
-  if (/^#?[0-9a-fA-F]{6}$/.test(v)) $('rcColor').value = v[0] === '#' ? v : '#' + v;
-});
-
-$('roleCreateForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = $('rcName').value.trim();
-  if (!name) return;
-  if ($('rcAdmin').checked && !(await confirmModal(
-    `Rolle „${name}" mit vollen Administrator-Rechten erstellen?`, { danger: true, confirmLabel: 'Ja, erstellen' },
-  ))) return;
-  $('rcMsg').textContent = 'Erstelle…';
-  try {
-    const r = await apiFor('POST', '/roles', {
-      name,
-      color: $('rcColorText').value.trim(),
-      hoist: $('rcHoist').checked,
-      mentionable: $('rcMentionable').checked,
-      admin: $('rcAdmin').checked,
-    });
-    toast(`Rolle „${r.role.name}" erstellt.`, 'success');
-    $('rcMsg').textContent = '';
-    $('roleCreateForm').reset();
-    $('rcColor').value = '#7c5cff';
-    ROLES = await apiFor('GET', '/roles');
-    if (current) renderEditor();
-  } catch (err) {
-    $('rcMsg').textContent = err.message;
-    toast(err.message, 'error');
-  }
-});
 
 /* ---------------- Suche ---------------- */
 
@@ -220,10 +184,6 @@ Dash.trackForm(document.getElementById('memberForm'), saveMember, { reset: () =>
       if (!META.canMove) miss.push('„Mitglieder verschieben"');
       $('permWarnText').textContent = `Dem Bot fehlt auf diesem Server: ${miss.join(', ')}. Gib dem Bot diese Rechte (und schiebe seine Rolle hoch genug), damit alles funktioniert.`;
       $('permWarn').hidden = false;
-    }
-    if (!META.canRoles) {
-      $('roleCreateForm').querySelectorAll('input, button').forEach((el) => (el.disabled = true));
-      $('rcMsg').textContent = 'Dem Bot fehlt „Rollen verwalten".';
     }
   } catch (e) {
     toast(e.message, 'error');

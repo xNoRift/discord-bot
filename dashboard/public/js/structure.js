@@ -43,6 +43,60 @@ async function loadParents() {
     (ch.categories || []).map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
 }
 
+/* ---------------- Rolle erstellen ---------------- */
+
+$('rcColor').addEventListener('input', () => { $('rcColorText').value = $('rcColor').value; });
+$('rcColorText').addEventListener('input', () => {
+  const v = $('rcColorText').value.trim();
+  if (/^#?[0-9a-fA-F]{6}$/.test(v)) $('rcColor').value = v[0] === '#' ? v : '#' + v;
+});
+
+$('roleCreateForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = $('rcName').value.trim();
+  if (!name) return;
+  if ($('rcAdmin').checked && !(await Dash.confirmModal(
+    `Rolle „${name}" mit vollen Administrator-Rechten erstellen?`, { danger: true, confirmLabel: 'Ja, erstellen' },
+  ))) return;
+  $('rcMsg').textContent = 'Erstelle…';
+  try {
+    const r = await apiFor('POST', '/roles', {
+      name,
+      color: $('rcColorText').value.trim(),
+      hoist: $('rcHoist').checked,
+      mentionable: $('rcMentionable').checked,
+      admin: $('rcAdmin').checked,
+    });
+    toast(`Rolle „${r.role.name}" erstellt.`, 'success');
+    $('rcMsg').textContent = '';
+    $('roleCreateForm').reset();
+    $('rcColor').value = '#7c5cff';
+    await refreshRoles();
+  } catch (err) {
+    $('rcMsg').textContent = err.message;
+    toast(err.message, 'error');
+  }
+});
+
+/** Rollen neu laden und die Rollen-Bereiche (Reihenfolge + Berechtigungs-Auswahl) aktualisieren. */
+async function refreshRoles() {
+  const roles = await apiFor('GET', '/roles');
+  window.__roles = roles;
+
+  orderIds = movableRoles(roles).map((r) => String(r.id));
+  savedOrder = [...orderIds];
+  renderOrder(roles);
+
+  const keep = $('permRole').value;
+  const editable = roles.filter((r) => !r.managed && r.position < META.botTopRolePosition);
+  $('permRole').innerHTML = '<option value="">— Rolle wählen —</option>' +
+    `<option value="${GUILD_ID}">@everyone</option>` +
+    editable.sort((a, b) => b.position - a.position)
+      .map((r) => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
+  if (keep && $('permRole').querySelector(`option[value="${keep}"]`)) $('permRole').value = keep;
+  else { $('permBody').hidden = true; permState = null; }
+}
+
 /* ---------------- Rollen-Berechtigungen ---------------- */
 
 // Vollständige Liste aller Discord-Berechtigungen (Flag-Name -> Label; true = heikel).
@@ -241,16 +295,8 @@ $('roleOrderSave').addEventListener('click', async () => {
       (chans.categories || []).map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
     syncParentField();
 
-    orderIds = movableRoles(roles).map((r) => String(r.id));
-    savedOrder = [...orderIds];
-    renderOrder(roles);
-
-    // Rollen-Auswahl für den Berechtigungs-Editor (verschiebbare Rollen + @everyone)
-    const editable = roles.filter((r) => !r.managed && r.position < META.botTopRolePosition);
-    $('permRole').innerHTML = '<option value="">— Rolle wählen —</option>' +
-      `<option value="${GUILD_ID}">@everyone</option>` +
-      editable.sort((a, b) => b.position - a.position)
-        .map((r) => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
+    window.__roles = roles;
+    await refreshRoles();
 
     if (!META.canChannels || !META.canRoles) {
       const miss = [];
@@ -260,6 +306,10 @@ $('roleOrderSave').addEventListener('click', async () => {
       $('permWarn').hidden = false;
     }
     if (!META.canChannels) $('chForm').querySelectorAll('input, select, button').forEach((el) => (el.disabled = true));
+    if (!META.canRoles) {
+      $('roleCreateForm').querySelectorAll('input, button').forEach((el) => (el.disabled = true));
+      $('rcMsg').textContent = 'Dem Bot fehlt „Rollen verwalten".';
+    }
   } catch (e) {
     toast(e.message, 'error');
   }
