@@ -1536,6 +1536,42 @@ router.get(
   }),
 );
 
+router.post(
+  '/guilds/:guildId/roles',
+  requireOwner,
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const me = req.guild.members.me ?? (await req.guild.members.fetchMe());
+    if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      return res.status(403).json({ error: 'Dem Bot fehlt die Berechtigung „Rollen verwalten".' });
+    }
+    const name = String(req.body.name || '').trim().slice(0, 100);
+    if (!name) return res.status(400).json({ error: 'Bitte einen Rollennamen angeben.' });
+    if (req.guild.roles.cache.size >= 250) {
+      return res.status(400).json({ error: 'Der Server hat das Rollen-Limit (250) erreicht.' });
+    }
+    const colorRaw = String(req.body.color || '').trim();
+    const color = /^#?[0-9a-fA-F]{6}$/.test(colorRaw) ? parseInt(colorRaw.replace('#', ''), 16) : 0;
+    const wantAdmin = req.body.admin === true || req.body.admin === 'true';
+    if (wantAdmin && !me.permissions.has(PermissionFlagsBits.Administrator)) {
+      return res.status(400).json({ error: 'Der Bot selbst hat keine Administrator-Rechte und kann daher keine Admin-Rolle erstellen.' });
+    }
+    try {
+      const role = await req.guild.roles.create({
+        name,
+        color: color || undefined,
+        hoist: req.body.hoist === true || req.body.hoist === 'true',
+        mentionable: req.body.mentionable === true || req.body.mentionable === 'true',
+        permissions: wantAdmin ? [PermissionFlagsBits.Administrator] : [],
+        reason: `Dashboard (Besitzer): ${req.session.user.username}`,
+      });
+      res.json({ ok: true, role: { id: role.id, name: role.name, color: role.hexColor, position: role.position, managed: false } });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
 router.get(
   '/guilds/:guildId/members',
   requireOwner,
