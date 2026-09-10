@@ -36,6 +36,18 @@
 </div>
 
 <div class="card">
+  <div class="card__head"><h2><%- icon('lock') %> Rollen-Berechtigungen</h2></div>
+  <div class="field">
+    <label>Rolle</label>
+    <select id="permRole"><option value="">— Rolle wählen —</option></select>
+  </div>
+  <div id="permBody" hidden>
+    <div id="permGroups"></div>
+    <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" id="permSave" disabled><%- icon('check', 'icon--sm') %> Berechtigungen speichern</button> <span class="muted" id="permMsg"></span></div>
+  </div>
+</div>
+
+<div class="card">
   <div class="card__head"><h2><%- icon('shield') %> Rollen-Reihenfolge</h2></div>
   <p class="card__sub">Oben = höher in der Rangordnung. Der Bot kann nur Rollen <strong>unter</strong> seiner eigenen höchsten Rolle verschieben – die anderen sind ausgegraut.</p>
   <div id="roleOrder"><div class="loading">Lädt…</div></div>
@@ -51,6 +63,15 @@
   .ro-item__btns { display:flex; gap:4px; }
   .ro-item__btns button { width:30px; height:28px; padding:0; }
   .ro-lockicon { font-size:.75rem; color:var(--muted); }
+  .perm-group { margin-top:14px; }
+  .perm-group > h4 { margin:0 0 4px; font-size:.8rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  .perm-row { display:flex; align-items:flex-start; gap:9px; padding:6px 4px; border-bottom:1px solid var(--line); }
+  .perm-row:last-child { border-bottom:0; }
+  .perm-row input { width:17px; height:17px; margin-top:2px; accent-color:var(--accent); flex:none; }
+  .perm-row.is-off { opacity:.45; }
+  .perm-row b { font-weight:600; }
+  .perm-row small { display:block; color:var(--muted); }
+  .perm-row--danger b { color:var(--danger,#f0616d); }
 </style>
 
 <%- include('partials/app-shell-close') %>

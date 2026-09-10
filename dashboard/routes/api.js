@@ -343,6 +343,69 @@ router.post(
   }),
 );
 
+router.get(
+  '/guilds/:guildId/roles/:roleId/permissions',
+  requireOwner,
+  asyncHandler(async (req, res) => {
+    const role = req.guild.roles.cache.get(req.params.roleId);
+    if (!role) return res.status(404).json({ error: 'Rolle nicht gefunden.' });
+    const me = req.guild.members.me ?? (await req.guild.members.fetchMe());
+    const meAdmin = me.permissions.has(PermissionFlagsBits.Administrator);
+    const canEdit =
+      me.permissions.has(PermissionFlagsBits.ManageRoles) &&
+      !role.managed &&
+      (role.id === req.guild.id || role.position < me.roles.highest.position);
+    res.json({
+      name: role.name,
+      isEveryone: role.id === req.guild.id,
+      canEdit,
+      permissions: role.permissions.toArray(),
+      botPermissions: meAdmin ? Object.keys(PermissionFlagsBits) : me.permissions.toArray(),
+    });
+  }),
+);
+
+router.patch(
+  '/guilds/:guildId/roles/:roleId/permissions',
+  requireOwner,
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const role = req.guild.roles.cache.get(req.params.roleId);
+    if (!role) return res.status(404).json({ error: 'Rolle nicht gefunden.' });
+    const me = req.guild.members.me ?? (await req.guild.members.fetchMe());
+    if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      return res.status(403).json({ error: 'Dem Bot fehlt die Berechtigung „Rollen verwalten".' });
+    }
+    if (role.managed) return res.status(400).json({ error: 'Diese Rolle wird von einer Integration verwaltet.' });
+    if (role.id !== req.guild.id && role.position >= me.roles.highest.position) {
+      return res.status(400).json({ error: 'Diese Rolle steht über der höchsten Bot-Rolle.' });
+    }
+
+    const wanted = (Array.isArray(req.body.permissions) ? req.body.permissions : [])
+      .map(String)
+      .filter((p) => Object.prototype.hasOwnProperty.call(PermissionFlagsBits, p));
+
+    let finalPerms = wanted;
+    if (!me.permissions.has(PermissionFlagsBits.Administrator)) {
+      const botSet = new Set(me.permissions.toArray());
+      const current = new Set(role.permissions.toArray());
+      // Berechtigungen, die der Bot selbst nicht hat, bleiben unverändert.
+      finalPerms = [
+        ...new Set([
+          ...wanted.filter((p) => botSet.has(p)),
+          ...[...current].filter((p) => !botSet.has(p)),
+        ]),
+      ];
+    }
+    try {
+      const updated = await role.setPermissions(finalPerms, `Dashboard (Besitzer): ${req.session.user.username}`);
+      res.json({ ok: true, permissions: updated.permissions.toArray() });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
 router.patch(
   '/guilds/:guildId/roles/order',
   requireOwner,
