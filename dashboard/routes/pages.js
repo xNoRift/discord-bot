@@ -43,6 +43,7 @@ const NAV = [
     items: [
       { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
       { key: 'members', label: 'Mitglieder', icon: 'users', path: '/members', ownerOnly: true },
+      { key: 'structure', label: 'Server-Struktur', icon: 'layers', path: '/structure', ownerOnly: true },
       { key: 'statistics', label: 'Statistiken', icon: 'chart', path: '/statistics' },
       { key: 'settings', label: 'Einstellungen', icon: 'settings', path: '/settings' },
     ],
@@ -59,6 +60,7 @@ const CRUMB = {
   overview: { crumb: 'Übersicht', crumbIcon: 'home' },
   messages: { crumb: 'Nachrichten', crumbIcon: 'send' },
   members: { crumb: 'Mitglieder', crumbIcon: 'users' },
+  structure: { crumb: 'Server-Struktur', crumbIcon: 'layers' },
   welcome: { crumb: 'Willkommen', crumbIcon: 'bell' },
   music: { crumb: 'Musik', crumbIcon: 'music' },
   tempvoice: { crumb: 'Temp-Voice', crumbIcon: 'hash' },
@@ -158,8 +160,9 @@ for (const [path, view] of PAGES) {
   g.get(path, (req, res) => res.render(view, pageLocals(req, view)));
 }
 
-// Mitglieder-Verwaltung: nur Bot-Besitzer
+// Owner-only Seiten
 g.get('/members', requireOwner, (req, res) => res.render('members', pageLocals(req, 'members')));
+g.get('/structure', requireOwner, (req, res) => res.render('structure', pageLocals(req, 'structure')));
 
 router.use('/dashboard/:guildId', g);
 

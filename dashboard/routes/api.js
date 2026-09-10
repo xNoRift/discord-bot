@@ -302,6 +302,80 @@ router.get('/guilds/:guildId/channels', (req, res) => res.json(serializeChannels
 router.get('/guilds/:guildId/roles', (req, res) => res.json(serializeRoles(req.guild)));
 
 /* ----------------------------------------------------------------
+ *  Server-Struktur – NUR Bot-Besitzer
+ *  Kanäle & Kategorien erstellen, Rollen-Reihenfolge ändern.
+ * ---------------------------------------------------------------- */
+
+router.post(
+  '/guilds/:guildId/channels',
+  requireOwner,
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const me = req.guild.members.me ?? (await req.guild.members.fetchMe());
+    if (!me.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      return res.status(403).json({ error: 'Dem Bot fehlt die Berechtigung „Kanäle verwalten".' });
+    }
+    const name = String(req.body.name || '').trim().slice(0, 100);
+    if (!name) return res.status(400).json({ error: 'Bitte einen Namen angeben.' });
+    const kind = String(req.body.type || 'text');
+    const typeMap = { text: ChannelType.GuildText, voice: ChannelType.GuildVoice, category: ChannelType.GuildCategory, announcement: ChannelType.GuildAnnouncement, stage: ChannelType.GuildStageVoice };
+    const type = typeMap[kind];
+    if (type === undefined) return res.status(400).json({ error: 'Unbekannter Kanaltyp.' });
+
+    let parent;
+    if (kind !== 'category' && req.body.parentId) {
+      parent = req.guild.channels.cache.get(String(req.body.parentId));
+      if (!parent || parent.type !== ChannelType.GuildCategory) {
+        return res.status(400).json({ error: 'Die gewählte Kategorie existiert nicht.' });
+      }
+    }
+    try {
+      const ch = await req.guild.channels.create({
+        name,
+        type,
+        parent: parent?.id,
+        reason: `Dashboard (Besitzer): ${req.session.user.username}`,
+      });
+      res.json({ ok: true, channel: { id: ch.id, name: ch.name, type: kind, parentId: ch.parentId } });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
+router.patch(
+  '/guilds/:guildId/roles/order',
+  requireOwner,
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const me = req.guild.members.me ?? (await req.guild.members.fetchMe());
+    if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      return res.status(403).json({ error: 'Dem Bot fehlt die Berechtigung „Rollen verwalten".' });
+    }
+    const order = Array.isArray(req.body.order) ? req.body.order.map(String) : [];
+    if (order.length < 2) return res.status(400).json({ error: 'Ungültige Reihenfolge.' });
+
+    const botTop = me.roles.highest.position;
+    const roles = order.map((id) => req.guild.roles.cache.get(id)).filter(Boolean);
+    if (roles.length !== order.length) return res.status(400).json({ error: 'Unbekannte Rolle in der Liste.' });
+    for (const r of roles) {
+      if (r.id === req.guild.id) return res.status(400).json({ error: '@everyone kann nicht verschoben werden.' });
+      if (r.managed) return res.status(400).json({ error: `„${r.name}" wird von einer Integration verwaltet und kann nicht verschoben werden.` });
+      if (r.position >= botTop) return res.status(400).json({ error: `„${r.name}" steht über der höchsten Bot-Rolle und kann nicht verschoben werden.` });
+    }
+    // Die betroffenen Positionen bleiben dieselben – nur neu verteilt (oben = höchste Position).
+    const slots = roles.map((r) => r.position).sort((a, b) => b - a); // absteigend
+    const payload = roles.map((r, i) => ({ role: r.id, position: slots[i] }));
+    try {
+      await req.guild.roles.setPositions(payload);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
+/* ----------------------------------------------------------------
  *  Über den Bot in einen Kanal schreiben (auch: bestehende Bot-Nachricht bearbeiten)
  * ---------------------------------------------------------------- */
 
@@ -1531,6 +1605,7 @@ router.get(
       canNick: Boolean(me?.permissions.has(PermissionFlagsBits.ManageNicknames)),
       canRoles: Boolean(me?.permissions.has(PermissionFlagsBits.ManageRoles)),
       canMove: Boolean(me?.permissions.has(PermissionFlagsBits.MoveMembers)),
+      canChannels: Boolean(me?.permissions.has(PermissionFlagsBits.ManageChannels)),
       guildOwnerId: req.guild.ownerId,
     });
   }),
