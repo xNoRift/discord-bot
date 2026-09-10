@@ -24,9 +24,8 @@ Dash.initModuleStatus('giveaways_enabled', {
   off: 'Giveaways sind deaktiviert. Aktiviere das Modul, um neue Giveaways zu erstellen.',
 });
 
-document.getElementById('gwSettings').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const a = readForm(e.target);
+async function saveGwSettings() {
+  const a = readForm(document.getElementById('gwSettings'));
   try {
     settings = await apiFor('PATCH', '/settings', {
       giveaway_channel_id: a.giveaway_channel_id,
@@ -36,8 +35,8 @@ document.getElementById('gwSettings').addEventListener('submit', async (e) => {
     });
     toast('Gespeichert.', 'success');
     await loadSettings();
-  } catch (err) { toast(err.message, 'error'); }
-});
+  } catch (err) { toast(err.message, 'error'); throw err; }
+}
 
 /* ---------- Liste ---------- */
 
@@ -236,6 +235,10 @@ async function winnersModal(id) {
 document.getElementById('newGiveawayBtn').addEventListener('click', () => newGiveawayModal().catch((e) => toast(e.message, 'error')));
 
 (async function init() {
-  try { await loadSettings(); await loadList(); await loadTempRoles(); }
-  catch (e) { toast(e.message, 'error'); }
+  try {
+    await loadSettings();
+    Dash.trackForm(document.getElementById('gwSettings'), saveGwSettings, { reset: loadSettings });
+    await loadList();
+    await loadTempRoles();
+  } catch (e) { toast(e.message, 'error'); }
 })();

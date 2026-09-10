@@ -41,9 +41,8 @@ async function loadSettings() {
   });
   if (settings.application_channel_id) document.getElementById('appPanelCh').value = settings.application_channel_id;
 }
-document.getElementById('appSettings').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const a = readForm(e.target);
+async function saveAppSettings() {
+  const a = readForm(document.getElementById('appSettings'));
   try {
     settings = await apiFor('PATCH', '/settings', {
       application_channel_id: a.application_channel_id, application_team_role_id: a.application_team_role_id,
@@ -51,8 +50,8 @@ document.getElementById('appSettings').addEventListener('submit', async (e) => {
       application_panel_message: a.application_panel_message,
     });
     toast('Gespeichert.', 'success');
-  } catch (err) { toast(err.message, 'error'); }
-});
+  } catch (err) { toast(err.message, 'error'); throw err; }
+}
 document.getElementById('appPanelSend').addEventListener('click', async () => {
   const channelId = document.getElementById('appPanelCh').value;
   if (!channelId) return toast('Bitte einen Kanal wählen.', 'warn');
@@ -271,6 +270,7 @@ document.getElementById('appList').addEventListener('click', async (e) => {
   try {
     [ROLES] = await Promise.all([getRoles()]);
     await loadSettings();
+    Dash.trackForm(document.getElementById('appSettings'), saveAppSettings, { reset: loadSettings });
     renderModule();
     await loadTypes();
     await loadApps();

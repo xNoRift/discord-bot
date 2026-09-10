@@ -32,20 +32,24 @@ document.getElementById('logTabs').addEventListener('click', (e) => {
 });
 document.getElementById('reload').addEventListener('click', loadLogs);
 
-document.getElementById('logChannels').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  try { await apiFor('PATCH', '/settings', readForm(e.target)); toast('Gespeichert.', 'success'); }
-  catch (err) { toast(err.message, 'error'); }
-});
+async function loadLogChannels() {
+  const s = await apiFor('GET', '/settings');
+  await fillSelectors(s);
+  ['log_channel_id', 'ticket_log_channel_id', 'giveaway_log_channel_id', 'application_log_channel_id'].forEach((k) => {
+    const el = document.querySelector(`#logChannels [name=${k}]`);
+    if (el) el.value = s[k] || '';
+  });
+}
+
+async function saveLogChannels() {
+  try { await apiFor('PATCH', '/settings', readForm(document.getElementById('logChannels'))); toast('Gespeichert.', 'success'); }
+  catch (err) { toast(err.message, 'error'); throw err; }
+}
 
 (async function init() {
   try {
-    const s = await apiFor('GET', '/settings');
-    await fillSelectors(s);
-    ['log_channel_id', 'ticket_log_channel_id', 'giveaway_log_channel_id', 'application_log_channel_id'].forEach((k) => {
-      const el = document.querySelector(`#logChannels [name=${k}]`);
-      if (el && s[k]) el.value = s[k];
-    });
+    await loadLogChannels();
+    Dash.trackForm(document.getElementById('logChannels'), saveLogChannels, { reset: loadLogChannels });
     await loadLogs();
   } catch (e) { toast(e.message, 'error'); }
 })();

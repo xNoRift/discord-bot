@@ -26,20 +26,20 @@
 
   <div class="mmember" id="edHeader"></div>
 
-  <div class="field" style="margin-top:14px;">
-    <label>Nickname</label>
-    <div class="row-inline">
-      <input id="edNick" maxlength="32" placeholder="(leer = kein Nickname)" />
-      <button class="btn btn--primary btn--sm" id="edNickSave"><%- icon('check', 'icon--sm') %> Speichern</button>
+  <form id="memberForm">
+    <div class="field" style="margin-top:14px;">
+      <label>Nickname</label>
+      <input id="edNick" name="nickname" maxlength="32" placeholder="(leer = kein Nickname)" />
+      <small id="edNickHint"></small>
     </div>
-    <small id="edNickHint"></small>
-  </div>
 
-  <div class="field" style="margin-top:8px;">
-    <label>Rollen</label>
-    <div id="edRoles"><div class="loading">Lädt…</div></div>
-    <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" id="edRolesSave"><%- icon('check', 'icon--sm') %> Rollen speichern</button> <span class="muted" id="edRolesMsg"></span></div>
-  </div>
+    <div class="field" style="margin-top:8px;">
+      <label>Rollen</label>
+      <div id="edRoles"><div class="loading">Lädt…</div></div>
+      <small class="muted" id="edRolesMsg"></small>
+    </div>
+    <p class="muted" style="margin-top:6px;">Änderungen an Nickname und Rollen speicherst du unten mit der Leiste.</p>
+  </form>
 
   <div class="field" style="margin-top:8px;">
     <label>Sprachkanal</label>

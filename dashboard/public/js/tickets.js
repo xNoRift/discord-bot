@@ -663,7 +663,7 @@ document.getElementById('ticketTabs').addEventListener('click', (e) => {
 
 /* ================= Init ================= */
 
-async function initDefaults() {
+async function loadDefaults() {
   const f = document.getElementById('ticketDefaults');
   if (!f) return;
   await fillSelectors({
@@ -671,18 +671,27 @@ async function initDefaults() {
     ticket_support_role_id: settings.ticket_support_role_id,
   });
   if (f.ticket_name_format) f.ticket_name_format.value = settings.ticket_name_format || 'ticket-{user}';
-  f.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const st = document.getElementById('tdStatus');
-    try {
-      settings = await apiFor('PATCH', '/settings', readForm(f));
-      toast('Standard-Einstellungen gespeichert.', 'success');
-      st.textContent = 'Gespeichert ✓';
-    } catch (err) {
-      toast(err.message, 'error');
-      st.textContent = err.message;
-    }
-  });
+}
+
+async function saveDefaults() {
+  const f = document.getElementById('ticketDefaults');
+  const st = document.getElementById('tdStatus');
+  try {
+    settings = await apiFor('PATCH', '/settings', readForm(f));
+    toast('Standard-Einstellungen gespeichert.', 'success');
+    st.textContent = 'Gespeichert ✓';
+  } catch (err) {
+    toast(err.message, 'error');
+    st.textContent = err.message;
+    throw err;
+  }
+}
+
+async function initDefaults() {
+  const f = document.getElementById('ticketDefaults');
+  if (!f) return;
+  await loadDefaults();
+  Dash.trackForm(f, saveDefaults, { reset: loadDefaults });
 }
 
 (async function init() {

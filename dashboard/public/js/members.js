@@ -63,6 +63,11 @@ async function openMember(id) {
   $('mEditor').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// Nach jedem Neu-Aufbau des Editors gilt der aktuelle Stand als "gespeichert".
+function markMemberClean() {
+  document.getElementById('memberForm').sbMarkClean?.();
+}
+
 function renderEditor() {
   const m = current;
   $('edName').textContent = m.displayName;
@@ -77,7 +82,6 @@ function renderEditor() {
   $('edNick').value = m.nickname || '';
   const nickBlocked = m.isGuildOwner || !META.canNick;
   $('edNick').disabled = nickBlocked;
-  $('edNickSave').disabled = nickBlocked;
   $('edNickHint').textContent = m.isGuildOwner
     ? 'Der Server-Inhaber kann von keinem Bot umbenannt werden.'
     : !META.canNick
@@ -92,14 +96,13 @@ function renderEditor() {
     .map((r) => {
       const locked = !canManageRole(r);
       return `<label class="mrole ${locked ? 'is-locked' : ''}">
-        <input type="checkbox" value="${r.id}" ${has.has(String(r.id)) ? 'checked' : ''} ${locked ? 'disabled' : ''} data-has="${has.has(String(r.id)) ? 1 : 0}">
+        <input type="checkbox" name="role_${r.id}" value="${r.id}" ${has.has(String(r.id)) ? 'checked' : ''} ${locked ? 'disabled' : ''} data-has="${has.has(String(r.id)) ? 1 : 0}">
         <span class="mrole__dot" style="background:${r.color && r.color !== '#000000' ? r.color : 'var(--line)'}"></span>
         <span>${escapeHtml(r.name)}</span>
         ${locked ? `<span class="mrole__lock">${r.managed ? 'Integration' : 'über dem Bot'}</span>` : ''}
       </label>`;
     }).join('');
   $('edRolesMsg').textContent = META.canRoles ? '' : 'Dem Bot fehlt die Berechtigung „Rollen verwalten".';
-  $('edRolesSave').disabled = !META.canRoles;
 
   // Sprachkanal / Verschieben
   const inVoice = Boolean(m.voiceChannelId);
@@ -118,6 +121,32 @@ function renderEditor() {
     : !inVoice
       ? 'Verschieben geht nur, während die Person in einem Sprachkanal ist.'
       : '';
+
+  markMemberClean();
+}
+
+async function saveMember() {
+  const m = current;
+  const body = {};
+  const nick = $('edNick').value.trim();
+  if (!$('edNick').disabled && nick !== (m.nickname || '')) body.nickname = nick;
+
+  const boxes = [...document.querySelectorAll('#edRoles input[type=checkbox]:not(:disabled)')];
+  const addRoles = boxes.filter((b) => b.checked && b.dataset.has === '0').map((b) => b.value);
+  const removeRoles = boxes.filter((b) => !b.checked && b.dataset.has === '1').map((b) => b.value);
+  if (addRoles.length) body.addRoles = addRoles;
+  if (removeRoles.length) body.removeRoles = removeRoles;
+
+  if (!Object.keys(body).length) return;
+  try {
+    const r = await apiFor('PATCH', `/members/${m.id}`, body);
+    current = r.member || current;
+    toast('Gespeichert.', 'success');
+    renderEditor();
+  } catch (e) {
+    toast(e.message, 'error');
+    throw e;
+  }
 }
 
 async function doVoice(body, okMsg) {
@@ -138,34 +167,7 @@ $('edVoiceMove').addEventListener('click', () => {
 });
 $('edVoiceKick').addEventListener('click', () => doVoice({ moveTo: null }, 'Aus dem Sprachkanal getrennt.'));
 
-$('edNickSave').addEventListener('click', async () => {
-  try {
-    const r = await apiFor('PATCH', `/members/${current.id}`, { nickname: $('edNick').value.trim() });
-    current = r.member || current;
-    toast('Nickname gespeichert.', 'success');
-    renderEditor();
-  } catch (e) { toast(e.message, 'error'); }
-});
-
-$('edRolesSave').addEventListener('click', async () => {
-  const boxes = [...document.querySelectorAll('#edRoles input[type=checkbox]:not(:disabled)')];
-  const addRoles = boxes.filter((b) => b.checked && b.dataset.has === '0').map((b) => b.value);
-  const removeRoles = boxes.filter((b) => !b.checked && b.dataset.has === '1').map((b) => b.value);
-  if (!addRoles.length && !removeRoles.length) { toast('Nichts geändert.', 'info'); return; }
-
-  const names = (ids) => ids.map((id) => roleById(id)?.name || id).join(', ');
-  const parts = [];
-  if (addRoles.length) parts.push(`+ ${names(addRoles)}`);
-  if (removeRoles.length) parts.push(`− ${names(removeRoles)}`);
-  if (!(await confirmModal(`Rollen für ${current.displayName} ändern?\n\n${parts.join('\n')}`, { confirmLabel: 'Übernehmen' }))) return;
-
-  try {
-    const r = await apiFor('PATCH', `/members/${current.id}`, { addRoles, removeRoles });
-    current = r.member || current;
-    toast('Rollen aktualisiert.', 'success');
-    renderEditor();
-  } catch (e) { toast(e.message, 'error'); }
-});
+Dash.trackForm(document.getElementById('memberForm'), saveMember, { reset: () => renderEditor() });
 
 /* ---------------- Init ---------------- */
 

@@ -398,37 +398,86 @@ async function fillSelectors(selected = {}) {
 
 /* ---------------- Speicher-Leiste (ungespeicherte Änderungen) ---------------- */
 
+/**
+ * Eine gemeinsame Speicher-Leiste für die ganze Seite.
+ * Beliebig viele Formulare können sich registrieren; die Leiste sammelt alle
+ * ungespeicherten Bereiche und speichert/verwirft sie zusammen.
+ */
 const saveBar = {
   el: null,
   saveBtn: null,
-  current: null,
+  cancelBtn: null,
+  hintEl: null,
+  wired: false,
+  trackers: new Set(),
   ensure() {
-    if (this.el) return this.el;
-    this.el = document.getElementById('saveBar');
-    if (!this.el) return null;
-    this.saveBtn = document.getElementById('saveBarSave');
-    this.saveBtn.addEventListener('click', () => this.current && this.current.onSave());
-    document.getElementById('saveBarCancel').addEventListener('click', () => this.current && this.current.onCancel());
+    if (!this.el) {
+      this.el = document.getElementById('saveBar');
+      if (!this.el) return null;
+      this.saveBtn = document.getElementById('saveBarSave');
+      this.cancelBtn = document.getElementById('saveBarCancel');
+      this.hintEl = this.el.querySelector('.savebar__text > span');
+    }
+    if (!this.wired && this.saveBtn) {
+      this.wired = true;
+      this.saveBtn.addEventListener('click', () => this.saveAll());
+      this.cancelBtn.addEventListener('click', () => this.cancelAll());
+    }
     return this.el;
   },
-  show(handlers) {
-    if (!this.ensure()) return;
-    this.current = handlers;
-    this.el.hidden = false;
+  register(tracker) {
+    this.trackers.add(tracker);
+    this.ensure();
   },
-  hide() {
+  dirty() {
+    return [...this.trackers].filter((t) => {
+      try { return t.isDirty(); } catch { return false; }
+    });
+  },
+  refresh() {
     if (!this.ensure()) return;
-    this.el.hidden = true;
-    this.current = null;
+    const n = this.dirty().length;
+    this.el.hidden = n === 0;
+    if (n && this.hintEl) {
+      this.hintEl.textContent = n === 1
+        ? 'Nicht vergessen zu speichern.'
+        : `${n} Bereiche mit ungespeicherten Änderungen.`;
+    }
   },
   busy(on) {
     if (this.saveBtn) this.saveBtn.disabled = !!on;
+    if (this.cancelBtn) this.cancelBtn.disabled = !!on;
     if (this.el) this.el.classList.toggle('is-busy', !!on);
+  },
+  async saveAll() {
+    const list = this.dirty();
+    if (!list.length) return;
+    this.busy(true);
+    try {
+      for (const t of list) {
+        try { await t.save(); } catch { /* Fehler-Toast kommt aus save() */ }
+      }
+    } finally {
+      this.busy(false);
+      this.refresh();
+    }
+  },
+  async cancelAll() {
+    const list = this.dirty();
+    this.busy(true);
+    try {
+      for (const t of list) {
+        try { await t.cancel(); } catch { /* ignore */ }
+      }
+    } finally {
+      this.busy(false);
+      this.refresh();
+    }
   },
 };
 
 /**
- * Beobachtet ein <form> auf Änderungen und blendet die Speicher-Leiste ein.
+ * Beobachtet ein <form> auf Änderungen und meldet sie an die Speicher-Leiste.
  * @param {HTMLFormElement} form
  * @param {() => Promise<void>} saveFn  wird beim Speichern aufgerufen (wirft bei Fehler)
  * @param {{extra?: () => string, reset?: () => (void|Promise)}} [o]
@@ -450,62 +499,33 @@ function trackForm(form, saveFn, o) {
     return JSON.stringify(m) + (extra ? '|' + extra() : '');
   };
   let clean = snapshot();
-  let open = false;
 
   const restore = async () => {
-    if (resetFn) {
-      await resetFn();
-    } else {
-      const m = JSON.parse(clean);
-      for (const el of form.elements) {
-        if (!el.name || !(el.name in m)) continue;
-        if (el.type === 'checkbox') el.checked = m[el.name];
-        else el.value = m[el.name];
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-      }
+    if (resetFn) { await resetFn(); return; }
+    const m = JSON.parse(clean.split('|')[0]);
+    for (const el of form.elements) {
+      if (!el.name || !(el.name in m)) continue;
+      if (el.type === 'checkbox') el.checked = m[el.name];
+      else el.value = m[el.name];
+      el.dispatchEvent(new Event('input', { bubbles: true }));
     }
   };
 
-  const doSave = async () => {
-    saveBar.busy(true);
-    try {
-      await saveFn();
-      clean = snapshot();
-      open = false;
-      saveBar.hide();
-    } catch (e) {
-      /* Fehler-Toast kommt aus saveFn */
-    } finally {
-      saveBar.busy(false);
-    }
+  const tracker = {
+    isDirty: () => snapshot() !== clean,
+    save: async () => { await saveFn(); clean = snapshot(); },
+    cancel: async () => { await restore(); clean = snapshot(); },
+    markClean: () => { clean = snapshot(); },
   };
+  saveBar.register(tracker);
 
-  const check = () => {
-    const dirty = snapshot() !== clean;
-    if (dirty && !open) {
-      open = true;
-      saveBar.show({
-        onSave: doSave,
-        onCancel: async () => {
-          saveBar.busy(true);
-          try { await restore(); } finally { saveBar.busy(false); }
-          clean = snapshot();
-          open = false;
-          saveBar.hide();
-        },
-      });
-    } else if (!dirty && open) {
-      open = false;
-      saveBar.hide();
-    }
-  };
-
+  const check = () => saveBar.refresh();
   form.addEventListener('input', check);
   form.addEventListener('change', check);
-  form.addEventListener('submit', (e) => { e.preventDefault(); doSave(); });
+  form.addEventListener('submit', (e) => { e.preventDefault(); saveBar.saveAll(); });
 
   // Von außen (nach eigenem Speichern der Seite) aufrufbar.
-  form.sbMarkClean = () => { clean = snapshot(); open = false; saveBar.hide(); };
+  form.sbMarkClean = () => { tracker.markClean(); saveBar.refresh(); };
 }
 
 /* ---------------- Sidebar (Mobile) ---------------- */
