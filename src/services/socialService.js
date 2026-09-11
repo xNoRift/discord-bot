@@ -132,6 +132,7 @@ async function pollTwitch() {
             url: `https://twitch.tv/${sub.account}`,
             name: sub.account_label || sub.account,
             authorIcon: user?.profile_image_url || null,
+            extra: `${sub.account_label || sub.account} ist jetzt live auf Twitch!`,
             field: stream.game_name ? { name: 'Playing', value: stream.game_name } : null,
             image: stream.thumbnail_url
               ? stream.thumbnail_url.replace('{width}', '1280').replace('{height}', '720') + `?t=${now}`
@@ -529,7 +530,9 @@ async function sendTest(sub) {
     url,
     name: sub.account_label || sub.account,
     authorIcon: user?.profile_image_url || null,
-    extra: `Dies ist eine Testmeldung für ${meta.tag}.`,
+    extra: sub.platform === 'twitch'
+      ? `${sub.account_label || sub.account} ist jetzt live auf Twitch! (Testmeldung)`
+      : `Dies ist eine Testmeldung für ${meta.tag}.`,
     field: sub.platform === 'twitch' ? { name: 'Playing', value: 'Testkategorie' } : null,
     image: null,
   });
