@@ -18,7 +18,7 @@
 
 <div class="card">
   <div class="card__head"><h2><%- icon('plus') %> Neue Benachrichtigung(en)</h2></div>
-  <p class="card__sub">Wähle eine oder mehrere Plattformen aus – für jede angehakte Plattform wird eine eigene Benachrichtigung angelegt (gleicher Kanal, aber <b>jede Plattform kann ihre eigene Erwähnung</b> haben, z. B. Twitch → @Streams-Rolle, YouTube → @Video-Rolle).</p>
+  <p class="card__sub">Wähle eine oder mehrere Plattformen aus – für jede angehakte Plattform wird eine eigene Benachrichtigung angelegt. <b>Kanal und Erwähnung sind pro Plattform einstellbar</b>, z. B. Twitch → #twitch-live + @Streams-Rolle, YouTube → #videos + @Video-Rolle.</p>
   <form id="addForm" class="form">
     <div class="social-plats">
       <div class="social-plat">
@@ -28,6 +28,7 @@
         </span>
         <div class="social-plat__body">
           <input data-acc="youtube" placeholder="Kanal-ID (UC…), @handle oder Kanal-Link">
+          <select data-channel="youtube" class="social-plat__channel"></select>
           <select data-mention="youtube" class="social-plat__mention"></select>
         </div>
       </div>
@@ -38,6 +39,7 @@
         </span>
         <div class="social-plat__body">
           <input data-acc="twitch" placeholder="Twitch-Name (z. B. ninja)">
+          <select data-channel="twitch" class="social-plat__channel"></select>
           <select data-mention="twitch" class="social-plat__mention"></select>
           <small data-plat-note="twitch" hidden>Erst Twitch in der <code>.env</code> einrichten (Kasten oben).</small>
         </div>
@@ -49,6 +51,7 @@
         </span>
         <div class="social-plat__body">
           <input data-acc="tiktok" placeholder="@name  oder  RSS-Feed-Link">
+          <select data-channel="tiktok" class="social-plat__channel"></select>
           <select data-mention="tiktok" class="social-plat__mention"></select>
           <small>Direkt-Abruf über <code>@name</code> ist bei TikTok unzuverlässig – am besten einen RSS-Feed-Link (z. B. von <a href="https://rss.app" target="_blank" rel="noopener">rss.app</a>) einfügen.</small>
         </div>
@@ -60,14 +63,12 @@
         </span>
         <div class="social-plat__body">
           <input data-acc="rss" placeholder="https://… (Instagram / X / Blog über rss.app o. ä.)">
+          <select data-channel="rss" class="social-plat__channel"></select>
           <select data-mention="rss" class="social-plat__mention"></select>
         </div>
       </div>
     </div>
 
-    <div class="field" style="margin-top:14px;max-width:340px;">
-      <label>Kanal für die Meldung</label><select id="f_channel" data-type="text"></select>
-    </div>
     <div class="field">
       <label>Eigener Text <span class="muted">(optional)</span></label>
       <input id="f_message" maxlength="500" placeholder="{mention} {name} ist jetzt LIVE! {url}">
@@ -92,9 +93,10 @@
   .social-plat { display:flex; flex-direction:column; gap:10px; align-items:flex-start; padding:12px; border:1px solid var(--line); border-radius:10px; }
   .social-plat .chip-check label { padding:8px 16px; font-size:.9rem; }
   .social-plat__body { width:100%; display:flex; flex-direction:column; gap:6px; }
-  .social-plat__body input[data-acc], .social-plat__body select.social-plat__mention { width:100%; }
+  .social-plat__body input[data-acc], .social-plat__body select.social-plat__mention, .social-plat__body select.social-plat__channel { width:100%; }
   .social-plat.is-off .social-plat__body input[data-acc],
-  .social-plat.is-off .social-plat__body select.social-plat__mention { opacity:.5; pointer-events:none; }
+  .social-plat.is-off .social-plat__body select.social-plat__mention,
+  .social-plat.is-off .social-plat__body select.social-plat__channel { opacity:.5; pointer-events:none; }
 </style>
 
 <%- include('partials/app-shell-close') %>

@@ -1,7 +1,7 @@
 /* global document, Dash */
 'use strict';
 
-const { apiFor, escapeHtml, fmtDate, icon, getRoles, getChannels, fillSelectors, confirmModal, toast } = Dash;
+const { apiFor, escapeHtml, fmtDate, icon, getRoles, getChannels, confirmModal, toast } = Dash;
 
 const PLAT = {
   youtube: { name: 'YouTube', color: '#ff0000' },
@@ -59,25 +59,33 @@ function fillMentionOptions() {
   });
 }
 
+function fillChannelOptions() {
+  form.querySelectorAll('select.social-plat__channel').forEach((sel) => {
+    sel.innerHTML = channelOptionsHtml('', true);
+  });
+}
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const msg = document.getElementById('addMsg');
-  const channelId = document.getElementById('f_channel').value;
   const shared = {
-    channelId,
     message: document.getElementById('f_message').value.trim() || null,
     embed: document.getElementById('f_embed').checked,
   };
-  if (!channelId) { msg.textContent = 'Bitte einen Kanal wählen.'; return; }
 
   const jobs = [];
+  const missingChannel = [];
   form.querySelectorAll('.social-plat input[type=checkbox]:checked').forEach((cb) => {
     const plat = cb.dataset.plat;
     const acc = form.querySelector(`input[data-acc="${plat}"]`).value.trim();
+    if (!acc) return;
+    const channelId = form.querySelector(`select[data-channel="${plat}"]`)?.value || '';
     const mention = form.querySelector(`select[data-mention="${plat}"]`)?.value || 'none';
-    if (acc) jobs.push({ platform: plat, account: acc, mention });
+    if (!channelId) { missingChannel.push(PLAT[plat].name); return; }
+    jobs.push({ platform: plat, account: acc, channelId, mention });
   });
-  if (!jobs.length) { msg.textContent = 'Mindestens eine Plattform anhaken und den Account/Link eintragen.'; return; }
+  if (missingChannel.length) { msg.textContent = `Bitte für ${missingChannel.join(', ')} einen Kanal wählen.`; return; }
+  if (!jobs.length) { msg.textContent = 'Mindestens eine Plattform anhaken, Account/Link und Kanal eintragen.'; return; }
 
   msg.textContent = `Prüfe ${jobs.length} …`;
   const errors = [];
@@ -116,10 +124,11 @@ function statusBadge(s) {
   return '<span class="badge badge--open">Aktiv</span>';
 }
 
-function channelOptionsHtml(selected) {
-  return (CHAN.text || [])
+function channelOptionsHtml(selected, withPlaceholder) {
+  const opts = (CHAN.text || [])
     .map((c) => `<option value="${c.id}" ${String(c.id) === String(selected) ? 'selected' : ''}>#${escapeHtml(c.name)}</option>`)
     .join('');
+  return (withPlaceholder ? '<option value="">— Kanal wählen —</option>' : '') + opts;
 }
 
 function row(s) {
@@ -201,8 +210,8 @@ listEl.addEventListener('click', async (e) => {
 (async function init() {
   try {
     [ROLES, CHAN] = await Promise.all([getRoles(), getChannels()]);
-    await fillSelectors({});
     fillMentionOptions();
+    fillChannelOptions();
     syncPlatRows();
     await load();
   } catch (e) {
