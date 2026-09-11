@@ -21,36 +21,44 @@
   <p class="card__sub">Wähle eine oder mehrere Plattformen aus – für jede angehakte Plattform wird eine eigene Benachrichtigung angelegt (gleicher Kanal & Einstellungen).</p>
   <form id="addForm" class="form">
     <div class="social-plats">
-      <label class="social-plat">
-        <input type="checkbox" data-plat="youtube" checked>
+      <div class="social-plat">
+        <span class="chip-check" style="--chip-c:#ff0000">
+          <input type="checkbox" id="plat-youtube" data-plat="youtube" checked>
+          <label for="plat-youtube">YouTube</label>
+        </span>
         <div class="social-plat__body">
-          <b style="color:#ff0000">YouTube</b>
           <input data-acc="youtube" placeholder="Kanal-ID (UC…), @handle oder Kanal-Link">
         </div>
-      </label>
-      <label class="social-plat">
-        <input type="checkbox" data-plat="twitch">
+      </div>
+      <div class="social-plat">
+        <span class="chip-check" style="--chip-c:#9146ff">
+          <input type="checkbox" id="plat-twitch" data-plat="twitch">
+          <label for="plat-twitch">Twitch</label>
+        </span>
         <div class="social-plat__body">
-          <b style="color:#9146ff">Twitch</b>
           <input data-acc="twitch" placeholder="Twitch-Name (z. B. ninja)">
           <small data-plat-note="twitch" hidden>Erst Twitch in der <code>.env</code> einrichten (Kasten oben).</small>
         </div>
-      </label>
-      <label class="social-plat">
-        <input type="checkbox" data-plat="tiktok">
+      </div>
+      <div class="social-plat">
+        <span class="chip-check">
+          <input type="checkbox" id="plat-tiktok" data-plat="tiktok">
+          <label for="plat-tiktok">TikTok</label>
+        </span>
         <div class="social-plat__body">
-          <b>TikTok</b>
           <input data-acc="tiktok" placeholder="@name  oder  RSS-Feed-Link">
           <small>Direkt-Abruf über <code>@name</code> ist bei TikTok unzuverlässig – am besten einen RSS-Feed-Link (z. B. von <a href="https://rss.app" target="_blank" rel="noopener">rss.app</a>) einfügen.</small>
         </div>
-      </label>
-      <label class="social-plat">
-        <input type="checkbox" data-plat="rss">
+      </div>
+      <div class="social-plat">
+        <span class="chip-check" style="--chip-c:#f26522">
+          <input type="checkbox" id="plat-rss" data-plat="rss">
+          <label for="plat-rss">RSS-Feed</label>
+        </span>
         <div class="social-plat__body">
-          <b style="color:#f26522">RSS-Feed</b>
           <input data-acc="rss" placeholder="https://… (Instagram / X / Blog über rss.app o. ä.)">
         </div>
-      </label>
+      </div>
     </div>
 
     <div class="col-2" style="margin-top:14px;">
@@ -81,9 +89,9 @@
 <style>
   .social-plats { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   @media (max-width:640px){ .social-plats { grid-template-columns:1fr; } }
-  .social-plat { display:flex; gap:10px; align-items:flex-start; padding:12px; border:1px solid var(--line); border-radius:10px; cursor:pointer; }
-  .social-plat input[type=checkbox] { margin-top:3px; }
-  .social-plat__body { flex:1; display:flex; flex-direction:column; gap:6px; }
+  .social-plat { display:flex; flex-direction:column; gap:10px; align-items:flex-start; padding:12px; border:1px solid var(--line); border-radius:10px; }
+  .social-plat .chip-check label { padding:8px 16px; font-size:.9rem; }
+  .social-plat__body { width:100%; display:flex; flex-direction:column; gap:6px; }
   .social-plat__body input[data-acc] { width:100%; }
   .social-plat.is-off .social-plat__body input[data-acc] { opacity:.5; pointer-events:none; }
 </style>

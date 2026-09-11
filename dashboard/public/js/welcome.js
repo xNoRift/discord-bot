@@ -9,13 +9,13 @@ const statusEl = document.getElementById('wcStatus');
 const colorPick = document.getElementById('wcColor');
 const colorText = document.getElementById('wcColorText');
 
-function roleChecklist(roles, selected) {
+function roleChecklist(roles, selected, prefix) {
   return roles
     .map(
-      (r) => `<label class="setting-row" style="cursor:pointer;padding:8px 0;">
-        <input type="checkbox" value="${r.id}" ${selected.has(r.id) ? 'checked' : ''} style="width:17px;height:17px;accent-color:var(--accent);">
-        <span class="setting-row__text"><b>${escapeHtml(r.name)}</b></span>
-      </label>`,
+      (r) => `<span class="chip-check" style="--chip-c:${r.color && r.color !== '#000000' ? r.color : ''}">
+        <input type="checkbox" id="${prefix}-${r.id}" value="${r.id}" ${selected.has(r.id) ? 'checked' : ''}>
+        <label for="${prefix}-${r.id}">${escapeHtml(r.name)}</label>
+      </span>`,
     )
     .join('');
 }
@@ -35,9 +35,9 @@ async function load() {
   const sel = new Set((s.autorole_ids || '').split(',').filter(Boolean));
   const selBot = new Set((s.autorole_bot_ids || '').split(',').filter(Boolean));
   document.getElementById('joinRoleChecks').innerHTML =
-    roles.length ? roleChecklist(roles, sel) : '<p class="muted">Keine Rollen gefunden.</p>';
+    roles.length ? roleChecklist(roles, sel, 'joinrole') : '<p class="muted">Keine Rollen gefunden.</p>';
   document.getElementById('joinRoleBotChecks').innerHTML =
-    roles.length ? roleChecklist(roles, selBot) : '';
+    roles.length ? roleChecklist(roles, selBot, 'joinrolebot') : '';
 }
 
 function collectRoles(id) {

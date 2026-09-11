@@ -16,10 +16,10 @@ async function loadTeam() {
   const selected = new Set((settings.team_role_ids || '').split(',').filter(Boolean));
 
   document.getElementById('roleChecks').innerHTML = roles.map((r) => `
-    <label class="setting-row" style="cursor:pointer;">
-      <input type="checkbox" name="role_${r.id}" value="${r.id}" ${selected.has(r.id) ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent);">
-      <span class="setting-row__text"><b>${escapeHtml(r.name)}</b></span>
-    </label>`).join('');
+    <span class="chip-check" style="--chip-c:${r.color && r.color !== '#000000' ? r.color : ''}">
+      <input type="checkbox" id="team-role-${r.id}" name="role_${r.id}" value="${r.id}" ${selected.has(r.id) ? 'checked' : ''}>
+      <label for="team-role-${r.id}">${escapeHtml(r.name)}</label>
+    </span>`).join('');
 
   document.getElementById('rSupport').textContent = nameOf(settings.ticket_support_role_id);
   document.getElementById('rApp').textContent = nameOf(settings.application_team_role_id);
