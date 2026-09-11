@@ -40,14 +40,23 @@ form.querySelectorAll('.social-plat input[type=checkbox]').forEach((cb) => {
   });
 });
 
-function fillMentionOptions() {
-  const sel = document.getElementById('f_mention');
+function mentionOptionsHtml(selected) {
   const roleOpts = ROLES.filter((r) => !r.managed)
-    .map((r) => `<option value="${r.id}">@${escapeHtml(r.name)}</option>`)
+    .map((r) => `<option value="${r.id}" ${selected === r.id ? 'selected' : ''}>Erwähnung: @${escapeHtml(r.name)}</option>`)
     .join('');
-  sel.innerHTML =
-    '<option value="none">Keine</option><option value="@everyone">@everyone</option><option value="@here">@here</option>' +
-    roleOpts;
+  const opt = (v, label) => `<option value="${v}" ${selected === v ? 'selected' : ''}>${label}</option>`;
+  return (
+    opt('none', 'Erwähnung: Keine') +
+    opt('@everyone', 'Erwähnung: @everyone') +
+    opt('@here', 'Erwähnung: @here') +
+    roleOpts
+  );
+}
+
+function fillMentionOptions() {
+  form.querySelectorAll('select.social-plat__mention').forEach((sel) => {
+    sel.innerHTML = mentionOptionsHtml('none');
+  });
 }
 
 form.addEventListener('submit', async (e) => {
@@ -56,7 +65,6 @@ form.addEventListener('submit', async (e) => {
   const channelId = document.getElementById('f_channel').value;
   const shared = {
     channelId,
-    mention: document.getElementById('f_mention').value,
     message: document.getElementById('f_message').value.trim() || null,
     embed: document.getElementById('f_embed').checked,
   };
@@ -64,8 +72,10 @@ form.addEventListener('submit', async (e) => {
 
   const jobs = [];
   form.querySelectorAll('.social-plat input[type=checkbox]:checked').forEach((cb) => {
-    const acc = form.querySelector(`input[data-acc="${cb.dataset.plat}"]`).value.trim();
-    if (acc) jobs.push({ platform: cb.dataset.plat, account: acc });
+    const plat = cb.dataset.plat;
+    const acc = form.querySelector(`input[data-acc="${plat}"]`).value.trim();
+    const mention = form.querySelector(`select[data-mention="${plat}"]`)?.value || 'none';
+    if (acc) jobs.push({ platform: plat, account: acc, mention });
   });
   if (!jobs.length) { msg.textContent = 'Mindestens eine Plattform anhaken und den Account/Link eintragen.'; return; }
 
@@ -106,6 +116,12 @@ function statusBadge(s) {
   return '<span class="badge badge--open">Aktiv</span>';
 }
 
+function channelOptionsHtml(selected) {
+  return (CHAN.text || [])
+    .map((c) => `<option value="${c.id}" ${String(c.id) === String(selected) ? 'selected' : ''}>#${escapeHtml(c.name)}</option>`)
+    .join('');
+}
+
 function row(s) {
   const p = PLAT[s.platform] || { name: s.platform, color: '#888' };
   const acc = /^https?:\/\//i.test(s.account) ? s.account.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48) + '…' : s.account;
@@ -118,10 +134,16 @@ function row(s) {
       → ${escapeHtml(channelName(s.channelId))} · Erwähnung: ${escapeHtml(mentionText(s.mention))}
       ${s.lastAnnouncedAt ? ' · zuletzt gepostet: ' + escapeHtml(fmtDate(s.lastAnnouncedAt)) : ''}
     </div>
-    <div class="row-inline">
+    <div class="row-inline" data-view>
       <button class="btn btn--outline btn--sm" data-a="test">${icon('send', 'icon--sm')} Testen</button>
+      <button class="btn btn--outline btn--sm" data-a="edit">${icon('edit', 'icon--sm')} Kanal/Erwähnung</button>
       <button class="btn btn--outline btn--sm" data-a="toggle">${s.enabled ? 'Pausieren' : 'Aktivieren'}</button>
       <button class="btn btn--danger btn--sm" data-a="del">${icon('trash', 'icon--sm')} Entfernen</button>
+    </div>
+    <div class="col-2" data-edit hidden style="margin-top:8px;">
+      <div class="field"><label>Kanal</label><select data-e-channel>${channelOptionsHtml(s.channelId)}</select></div>
+      <div class="field"><label>Erwähnung</label><select data-e-mention>${mentionOptionsHtml(s.mention || 'none')}</select></div>
+      <div style="grid-column:1/-1;"><button class="btn btn--primary btn--sm" data-a="save">${icon('check', 'icon--sm')} Speichern</button> <button class="btn btn--ghost btn--sm" data-a="cancel">Abbrechen</button></div>
     </div>
   </div>`;
 }
@@ -142,13 +164,26 @@ async function load() {
 listEl.addEventListener('click', async (e) => {
   const btn = e.target.closest('button[data-a]');
   if (!btn) return;
-  const id = btn.closest('[data-id]').dataset.id;
+  const box = btn.closest('[data-id]');
+  const id = box.dataset.id;
   try {
     if (btn.dataset.a === 'test') {
       await apiFor('POST', `/social/${id}/test`);
       toast('Testmeldung gesendet.', 'success');
     } else if (btn.dataset.a === 'toggle') {
       await apiFor('PATCH', `/social/${id}`, { enabled: btn.textContent.trim() === 'Aktivieren' });
+      await load();
+    } else if (btn.dataset.a === 'edit') {
+      box.querySelector('[data-edit]').hidden = false;
+      box.querySelector('[data-view]').hidden = true;
+    } else if (btn.dataset.a === 'cancel') {
+      box.querySelector('[data-edit]').hidden = true;
+      box.querySelector('[data-view]').hidden = false;
+    } else if (btn.dataset.a === 'save') {
+      const channelId = box.querySelector('[data-e-channel]').value;
+      const mention = box.querySelector('[data-e-mention]').value;
+      await apiFor('PATCH', `/social/${id}`, { channelId, mention });
+      toast('Gespeichert.', 'success');
       await load();
     } else if (btn.dataset.a === 'del') {
       if (!(await confirmModal('Diese Benachrichtigung entfernen?', { danger: true, confirmLabel: 'Entfernen' }))) return;
