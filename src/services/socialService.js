@@ -89,10 +89,15 @@ async function twitchApi(path, searchParams) {
 /** Prüft, ob es den Twitch-Kanal gibt, und liefert den Anzeigenamen. */
 async function twitchResolve(login) {
   if (!twitchConfigured()) return { account: login, label: login };
-  const json = await twitchApi('users', { login });
-  const u = json.data?.[0];
+  const u = await twitchUser(login);
   if (!u) throw new Error(`Twitch-Kanal „${login}" wurde nicht gefunden.`);
   return { account: u.login, label: u.display_name || u.login };
+}
+
+/** Twitch-Nutzerprofil (u. a. Profilbild) – für das Autor-Icon der Meldung. */
+async function twitchUser(login) {
+  const json = await twitchApi('users', { login }).catch(() => null);
+  return json?.data?.[0] || null;
 }
 
 async function pollTwitch() {
@@ -120,12 +125,14 @@ async function pollTwitch() {
       if (stream) {
         const newStream = String(stream.id) !== String(sub.last_item_id || '');
         if (!sub.is_live || newStream) {
+          const user = await twitchUser(sub.account);
           await announce(sub, {
             kind: 'twitch',
             title: stream.title || `${sub.account_label} ist LIVE`,
             url: `https://twitch.tv/${sub.account}`,
             name: sub.account_label || sub.account,
-            extra: stream.game_name ? `Spielt: ${stream.game_name}` : null,
+            authorIcon: user?.profile_image_url || null,
+            field: stream.game_name ? { name: 'Playing', value: stream.game_name } : null,
             image: stream.thumbnail_url
               ? stream.thumbnail_url.replace('{width}', '1280').replace('{height}', '720') + `?t=${now}`
               : null,
@@ -438,11 +445,13 @@ async function announce(sub, data) {
   if (sub.embed) {
     const embed = new EmbedBuilder()
       .setColor(meta.color)
-      .setAuthor({ name: `${data.name} • ${meta.tag}` })
+      .setAuthor({ name: `${data.name} • ${meta.tag}`, iconURL: data.authorIcon || undefined, url: data.authorUrl || data.url })
       .setTitle((data.title || meta.verb).slice(0, 256))
       .setURL(data.url)
+      .setFooter({ text: meta.tag })
       .setTimestamp();
     if (data.extra) embed.setDescription(data.extra);
+    if (data.field) embed.addFields({ name: data.field.name, value: String(data.field.value).slice(0, 1024), inline: true });
     if (data.image) embed.setImage(data.image);
     payload.embeds = [embed];
   }
@@ -513,12 +522,15 @@ async function sendTest(sub) {
       : sub.platform === 'youtube'
         ? `https://www.youtube.com/channel/${sub.account}`
         : `https://www.tiktok.com/@${sub.account}`;
+  const user = sub.platform === 'twitch' ? await twitchUser(sub.account) : null;
   await announce(sub, {
     kind: sub.platform,
     title: `Test – ${sub.account_label || sub.account}`,
     url,
     name: sub.account_label || sub.account,
+    authorIcon: user?.profile_image_url || null,
     extra: `Dies ist eine Testmeldung für ${meta.tag}.`,
+    field: sub.platform === 'twitch' ? { name: 'Playing', value: 'Testkategorie' } : null,
     image: null,
   });
 }
