@@ -288,6 +288,19 @@ async function announceWinners(giveaway, winnerIds) {
     : null;
 
   if (winnerIds.length) {
+    const settings = settingsModel.get(giveaway.guild_id);
+    const components = settings.giveaway_ticket_button
+      ? [
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`giveaway:ticket:${giveaway.id}`)
+              .setLabel('Ticket erstellen')
+              .setEmoji('🎫')
+              .setStyle(ButtonStyle.Primary),
+          ),
+        ]
+      : [];
+
     await found.channel
       .send({
         content: `🎉 Glückwunsch ${winnerIds.map((id) => `<@${id}>`).join(', ')}! Ihr habt **${giveaway.prize}** gewonnen!`,
@@ -298,11 +311,13 @@ async function announceWinners(giveaway, winnerIds) {
               `**Preis:** ${giveaway.prize}`,
               `**Gewinner:** ${winnerIds.map((id) => `<@${id}>`).join(', ')}`,
               link ? `[Zum Giveaway](${link})` : '',
+              settings.giveaway_ticket_button ? '\nErstellt euch über den Button unten ein Ticket, um euren Preis abzuholen.' : '',
             ]
               .filter(Boolean)
               .join('\n'),
           ),
         ],
+        components,
       })
       .catch(() => null);
   } else {

@@ -17,6 +17,7 @@ async function loadSettings() {
   f.giveaway_winner_role_id.value = settings.giveaway_winner_role_id || '';
   f.giveaway_log_channel_id.value = settings.giveaway_log_channel_id || '';
   f.giveaway_winner_role_duration_ms.value = fmtDuration(settings.giveaway_winner_role_duration_ms || 86400000);
+  f.giveaway_ticket_button.checked = Boolean(settings.giveaway_ticket_button);
 }
 
 Dash.initModuleStatus('giveaways_enabled', {
@@ -32,6 +33,7 @@ async function saveGwSettings() {
       giveaway_winner_role_id: a.giveaway_winner_role_id,
       giveaway_log_channel_id: a.giveaway_log_channel_id,
       giveaway_winner_role_duration_ms: a.giveaway_winner_role_duration_ms,
+      giveaway_ticket_button: a.giveaway_ticket_button,
     });
     toast('Gespeichert.', 'success');
     await loadSettings();

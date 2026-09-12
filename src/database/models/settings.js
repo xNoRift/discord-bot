@@ -26,6 +26,7 @@ const EDITABLE_FIELDS = [
   'giveaway_winner_role_id',
   'giveaway_winner_role_duration_ms',
   'giveaway_log_channel_id',
+  'giveaway_ticket_button',
   'application_enabled',
   'application_channel_id',
   'application_team_role_id',
