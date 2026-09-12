@@ -7,7 +7,12 @@
     <button class="btn btn--primary" id="newGiveawayBtn"><%- icon('plus') %> Giveaway erstellen</button>
   </div>
   <p>Erstelle Giveaways, lose neu aus und verwalte die Gewinnerrolle.</p>
+  <% if (typeof isOwner !== 'undefined' && isOwner) { %>
+  <p class="muted" style="font-size:.85rem;"><%- icon('bot', 'icon--sm') %> Als Bot-Besitzer umgehst du hier die üblichen Sperren (Mindestdauer, Modul-Deaktivierung, Bearbeiten nach Ende).</p>
+  <% } %>
 </div>
+
+<script>window.IS_OWNER = <%= (typeof isOwner !== 'undefined' && isOwner) ? 'true' : 'false' %>;</script>
 
 <div class="module-status" id="moduleStatus">
   <span class="module-status__dot"></span>

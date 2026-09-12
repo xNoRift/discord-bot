@@ -1293,6 +1293,7 @@ router.post(
           ? parseDuration(b.winnerRoleDuration)
           : num(b.winnerRoleDurationMs, undefined) || undefined,
       hostId: req.session.user.id,
+      bypass: config.isOwner(req.session.user.id),
     });
     res.json(giveaway);
   }),
@@ -1304,7 +1305,8 @@ router.patch(
   asyncHandler(async (req, res) => {
     const g = giveawaysModel.get(num(req.params.id));
     if (!g || g.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
-    if (g.ended) return res.status(400).json({ error: 'Beendete Giveaways können nicht bearbeitet werden.' });
+    const bypass = config.isOwner(req.session.user.id);
+    if (g.ended && !bypass) return res.status(400).json({ error: 'Beendete Giveaways können nicht bearbeitet werden.' });
 
     const patch = {};
     if (req.body.prize) patch.prize = String(req.body.prize).slice(0, 200);
@@ -1319,8 +1321,12 @@ router.patch(
     if (req.body.endsAt) patch.ends_at = num(req.body.endsAt);
 
     const updated = giveawaysModel.update(g.id, patch);
-    giveawayService.scheduleEnd(updated);
-    await giveawayService.refreshGiveawayMessage(g.id).catch(() => null);
+    if (updated.ended) {
+      await giveawayService.refreshEndedMessage(g.id).catch(() => null);
+    } else {
+      giveawayService.scheduleEnd(updated);
+      await giveawayService.refreshGiveawayMessage(g.id).catch(() => null);
+    }
     res.json(updated);
   }),
 );

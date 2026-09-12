@@ -50,7 +50,8 @@ function gwCard(g) {
        <button class="btn btn--primary btn--sm" data-a="end" data-id="${g.id}">Beenden</button>
        <button class="btn btn--danger btn--sm" data-a="cancel" data-id="${g.id}">Abbrechen</button>`
     : `<button class="btn btn--ghost btn--sm" data-a="winners" data-id="${g.id}">Gewinner</button>
-       <button class="btn btn--primary btn--sm" data-a="reroll" data-id="${g.id}">${icon('refresh', 'icon--sm')} Reroll</button>`;
+       <button class="btn btn--primary btn--sm" data-a="reroll" data-id="${g.id}">${icon('refresh', 'icon--sm')} Reroll</button>
+       ${window.IS_OWNER ? `<button class="btn btn--ghost btn--sm" data-a="edit" data-id="${g.id}">${icon('edit', 'icon--sm')} Bearbeiten</button>` : ''}`;
   return `
   <div class="list-row" data-id="${g.id}">
     <div class="list-row__head">
@@ -249,8 +250,8 @@ async function newGiveawayModal() {
       <div class="field"><label>Preis</label><input name="prize" required placeholder="z. B. Minecraft Rang" /></div>
       <div class="col-2">
         <div class="field"><label>Kanal</label><select name="channelId"><option value="">Standard</option>${chOpts}</select></div>
-        <div class="field"><label>Dauer</label><input name="duration" required placeholder="24h" /></div>
-        <div class="field"><label>Gewinner</label><input name="winnerCount" type="number" min="1" max="20" value="1" /></div>
+        <div class="field"><label>Dauer</label><input name="duration" required placeholder="24h" />${window.IS_OWNER ? '<small>Als Besitzer: auch unter 10 Sekunden möglich.</small>' : ''}</div>
+        <div class="field"><label>Gewinner</label><input name="winnerCount" type="number" min="1" ${window.IS_OWNER ? '' : 'max="20"'} value="1" /></div>
         <div class="field"><label>Erforderliche Rolle</label><select name="requiredRoleId"><option value="">Keine</option>${roleOpts}</select></div>
         <div class="field"><label>Gewinnerrolle</label><select name="winnerRoleId"><option value="">Standard</option>${roleOpts}</select></div>
         <div class="field"><label>Rollen-Dauer</label><input name="winnerRoleDuration" placeholder="${fmtDuration(settings.giveaway_winner_role_duration_ms || 86400000)}" /></div>
@@ -316,10 +317,11 @@ async function editModal(id) {
   const roleOpts = roles.map((r) => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
   const { modal, close } = openModal(`
     <h2>${icon('edit')} Bearbeiten – #${id}</h2>
+    ${g.ended ? '<p class="muted">Dieses Giveaway ist bereits beendet – als Besitzer kannst du es trotzdem noch bearbeiten.</p>' : ''}
     <form id="ef" class="form">
       <div class="field"><label>Preis</label><input name="prize" value="${escapeHtml(g.prize)}" /></div>
       <div class="field"><label>Beschreibung</label><textarea name="description" rows="2">${escapeHtml(g.description || '')}</textarea></div>
-      <div class="field"><label>Gewinner</label><input name="winnerCount" type="number" min="1" max="20" value="${g.winner_count}" /></div>
+      <div class="field"><label>Gewinner</label><input name="winnerCount" type="number" min="1" ${window.IS_OWNER ? '' : 'max="20"'} value="${g.winner_count}" /></div>
       <div class="field"><label>Erforderliche Rolle</label><select name="requiredRoleId"><option value="">Keine</option>${roleOpts}</select></div>
       <div class="field"><label>Gewinnerrolle</label><select name="winnerRoleId"><option value="">Keine</option>${roleOpts}</select></div>
       <div class="modal__actions"><button type="button" class="btn btn--ghost" data-x>Abbrechen</button><button class="btn btn--primary">Speichern</button></div>

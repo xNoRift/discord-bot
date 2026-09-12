@@ -142,6 +142,17 @@ async function refreshGiveawayMessage(giveawayId) {
   await found.message.edit(buildActiveMessage(giveaway, count)).catch(() => null);
 }
 
+/** Wie refreshGiveawayMessage(), aber fuer bereits beendete Giveaways (z. B. nach einer nachtraeglichen Besitzer-Bearbeitung). */
+async function refreshEndedMessage(giveawayId) {
+  const giveaway = giveaways.get(giveawayId);
+  if (!giveaway || !giveaway.ended) return;
+  const found = await fetchGiveawayMessage(giveaway);
+  if (!found || !found.message) return;
+  const winnerIds = JSON.parse(giveaway.winners_json || '[]');
+  const count = giveaways.countEntries(giveawayId);
+  await found.message.edit(buildEndedMessage(giveaway, winnerIds, count)).catch(() => null);
+}
+
 /* ---------------- Erstellen ---------------- */
 
 /**
@@ -157,10 +168,13 @@ async function refreshGiveawayMessage(giveawayId) {
  * @param {boolean} [data.useWinnerRole]  Gewinnerrolle vergeben? (Default true, wenn konfiguriert)
  * @param {string} [data.winnerRoleId]
  * @param {number} [data.winnerRoleDurationMs]
+ * @param {boolean} [data.bypass]  Bot-Besitzer: Modul-Sperre und Mindestdauer umgehen
  */
 async function createGiveaway(guild, data) {
   const settings = settingsModel.get(guild.id);
-  if (settings.giveaways_enabled === 0) throw new Error('Das Giveaway-Modul ist auf diesem Server deaktiviert.');
+  if (settings.giveaways_enabled === 0 && !data.bypass) {
+    throw new Error('Das Giveaway-Modul ist auf diesem Server deaktiviert.');
+  }
   const channelId = data.channelId || settings.giveaway_channel_id;
   if (!channelId) throw new Error('Kein Giveaway-Kanal angegeben oder konfiguriert.');
 
@@ -169,8 +183,9 @@ async function createGiveaway(guild, data) {
   if (!channel || !channel.isTextBased()) throw new Error('Giveaway-Kanal nicht gefunden oder kein Textkanal.');
 
   const durationMs = Number(data.durationMs);
-  if (!Number.isFinite(durationMs) || durationMs < 10_000) {
-    throw new Error('Ungültige Dauer (mindestens 10 Sekunden).');
+  const minDurationMs = data.bypass ? 1000 : 10_000;
+  if (!Number.isFinite(durationMs) || durationMs < minDurationMs) {
+    throw new Error(`Ungültige Dauer (mindestens ${minDurationMs / 1000} Sekunde${minDurationMs === 1000 ? '' : 'n'}).`);
   }
   const winnerCount = Math.max(1, Number.parseInt(data.winnerCount ?? 1, 10) || 1);
 
@@ -527,6 +542,7 @@ module.exports = {
   createGiveaway,
   endGiveaway,
   rerollGiveaway,
+  refreshEndedMessage,
   cancelGiveaway,
   refreshGiveawayMessage,
   restoreAll,
