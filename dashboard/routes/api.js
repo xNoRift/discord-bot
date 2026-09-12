@@ -14,6 +14,7 @@ const settingsModel = require('../../src/database/models/settings');
 const ticketsModel = require('../../src/database/models/tickets');
 const ticketPanels = require('../../src/database/models/ticketPanels');
 const giveawaysModel = require('../../src/database/models/giveaways');
+const giveawayTicketButtons = require('../../src/database/models/giveawayTicketButtons');
 const appModel = require('../../src/database/models/applications');
 const activity = require('../../src/database/models/activity');
 const tempRolesModel = require('../../src/database/models/temporaryRoles');
@@ -1361,6 +1362,62 @@ router.post(
     res.json(updated);
   }),
 );
+
+/* ---------------- Giveaway-Ticket-Buttons (Gewinner-Nachricht) ---------------- */
+
+router.get('/guilds/:guildId/giveaway-ticket-buttons', (req, res) => {
+  res.json(giveawayTicketButtons.list(req.params.guildId));
+});
+
+router.post(
+  '/guilds/:guildId/giveaway-ticket-buttons',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    if (giveawayTicketButtons.count(req.params.guildId) >= 5) {
+      return res.status(400).json({ error: 'Maximal 5 Ticket-Buttons.' });
+    }
+    const b = req.body;
+    const created = giveawayTicketButtons.create(req.params.guildId, {
+      label: b.label ? String(b.label).slice(0, 80) : 'Ticket erstellen',
+      emoji: b.emoji ? String(b.emoji).slice(0, 16) : null,
+      discordCategoryId: b.discordCategoryId || null,
+      supportRoleId: b.supportRoleId || null,
+      nameFormat: b.nameFormat ? String(b.nameFormat).slice(0, 90) : null,
+      welcomeMessage: b.welcomeMessage ? String(b.welcomeMessage).slice(0, 2000) : null,
+      showPrize: b.showPrize !== false && b.showPrize !== 'false',
+    });
+    res.json(created);
+  }),
+);
+
+router.patch(
+  '/guilds/:guildId/giveaway-ticket-buttons/:id',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const btn = giveawayTicketButtons.get(num(req.params.id));
+    if (!btn || btn.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    const b = req.body;
+    const patch = {};
+    if (b.label !== undefined) {
+      const label = String(b.label).trim().slice(0, 80);
+      if (label) patch.label = label;
+    }
+    if (b.emoji !== undefined) patch.emoji = b.emoji ? String(b.emoji).slice(0, 16) : null;
+    if (b.discordCategoryId !== undefined) patch.discord_category_id = b.discordCategoryId || null;
+    if (b.supportRoleId !== undefined) patch.support_role_id = b.supportRoleId || null;
+    if (b.nameFormat !== undefined) patch.name_format = b.nameFormat ? String(b.nameFormat).slice(0, 90) : null;
+    if (b.welcomeMessage !== undefined) patch.welcome_message = b.welcomeMessage ? String(b.welcomeMessage).slice(0, 2000) : null;
+    if (b.showPrize !== undefined) patch.show_prize = b.showPrize ? 1 : 0;
+    res.json(giveawayTicketButtons.update(btn.id, patch));
+  }),
+);
+
+router.delete('/guilds/:guildId/giveaway-ticket-buttons/:id', (req, res) => {
+  const btn = giveawayTicketButtons.get(num(req.params.id));
+  if (!btn || btn.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+  giveawayTicketButtons.remove(btn.id);
+  res.json({ ok: true });
+});
 
 /* ---------------- Applications ---------------- */
 

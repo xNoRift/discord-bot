@@ -9,6 +9,7 @@ const {
 const client = require('../core/client');
 const giveaways = require('../database/models/giveaways');
 const settingsModel = require('../database/models/settings');
+const giveawayTicketButtons = require('../database/models/giveawayTicketButtons');
 const temporaryRoleService = require('./temporaryRoleService');
 const logService = require('./logService');
 const embeds = require('../utils/embeds');
@@ -289,14 +290,17 @@ async function announceWinners(giveaway, winnerIds) {
 
   if (winnerIds.length) {
     const settings = settingsModel.get(giveaway.guild_id);
-    const components = settings.giveaway_ticket_button
+    const buttonConfigs = settings.giveaway_ticket_button ? giveawayTicketButtons.list(giveaway.guild_id) : [];
+    const components = buttonConfigs.length
       ? [
           new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId(`giveaway:ticket:${giveaway.id}`)
-              .setLabel('Ticket erstellen')
-              .setEmoji('🎫')
-              .setStyle(ButtonStyle.Primary),
+            buttonConfigs.slice(0, 5).map((b) =>
+              new ButtonBuilder()
+                .setCustomId(`giveaway:ticket:${giveaway.id}:${b.id}`)
+                .setLabel((b.label || 'Ticket erstellen').slice(0, 80))
+                .setEmoji(b.emoji || '🎫')
+                .setStyle(ButtonStyle.Primary),
+            ),
           ),
         ]
       : [];
@@ -311,7 +315,7 @@ async function announceWinners(giveaway, winnerIds) {
               `**Preis:** ${giveaway.prize}`,
               `**Gewinner:** ${winnerIds.map((id) => `<@${id}>`).join(', ')}`,
               link ? `[Zum Giveaway](${link})` : '',
-              settings.giveaway_ticket_button ? '\nErstellt euch über den Button unten ein Ticket, um euren Preis abzuholen.' : '',
+              components.length ? '\nErstellt euch über den Button unten ein Ticket, um euren Preis abzuholen.' : '',
             ]
               .filter(Boolean)
               .join('\n'),

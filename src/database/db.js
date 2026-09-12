@@ -134,6 +134,17 @@ ensureColumn('guild_settings', 'giveaway_ticket_support_role_id', 'TEXT');
 ensureColumn('guild_settings', 'giveaway_ticket_name_format', 'TEXT');
 ensureColumn('guild_settings', 'giveaway_ticket_welcome_message', 'TEXT');
 
+// Einmal-Migration: alte einzelne Giveaway-Ticket-Konfiguration (Spalten oben) -> erster Eintrag in giveaway_ticket_buttons
+try {
+  db.exec(`
+    INSERT INTO giveaway_ticket_buttons (guild_id, label, discord_category_id, support_role_id, name_format, welcome_message, show_prize, position, created_at)
+    SELECT guild_id, 'Ticket erstellen', giveaway_ticket_category_id, giveaway_ticket_support_role_id, giveaway_ticket_name_format, giveaway_ticket_welcome_message, 1, 0, ${Date.now()}
+    FROM guild_settings
+    WHERE (giveaway_ticket_category_id IS NOT NULL OR giveaway_ticket_support_role_id IS NOT NULL OR giveaway_ticket_name_format IS NOT NULL OR giveaway_ticket_welcome_message IS NOT NULL)
+      AND guild_id NOT IN (SELECT guild_id FROM giveaway_ticket_buttons)
+  `);
+} catch { /* ignore */ }
+
 logger.info(`[db] Datenbank verbunden: ${config.database.path}`);
 
 process.on('exit', () => {

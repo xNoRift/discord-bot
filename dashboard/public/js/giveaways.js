@@ -18,15 +18,7 @@ async function loadSettings() {
   f.giveaway_log_channel_id.value = settings.giveaway_log_channel_id || '';
   f.giveaway_winner_role_duration_ms.value = fmtDuration(settings.giveaway_winner_role_duration_ms || 86400000);
   f.giveaway_ticket_button.checked = Boolean(settings.giveaway_ticket_button);
-  f.giveaway_ticket_name_format.value = settings.giveaway_ticket_name_format || '';
-  f.giveaway_ticket_welcome_message.value = settings.giveaway_ticket_welcome_message || '';
-  syncTicketFields();
 }
-
-function syncTicketFields() {
-  document.getElementById('gwTicketFields').classList.toggle('is-off', !document.getElementById('gwSettings').giveaway_ticket_button.checked);
-}
-document.getElementById('gwSettings').giveaway_ticket_button.addEventListener('change', syncTicketFields);
 
 Dash.initModuleStatus('giveaways_enabled', {
   on: 'Giveaways sind aktiviert. Ein Klick deaktiviert das Modul – es lassen sich dann keine neuen Giveaways mehr erstellen.',
@@ -42,10 +34,6 @@ async function saveGwSettings() {
       giveaway_log_channel_id: a.giveaway_log_channel_id,
       giveaway_winner_role_duration_ms: a.giveaway_winner_role_duration_ms,
       giveaway_ticket_button: a.giveaway_ticket_button,
-      giveaway_ticket_category_id: a.giveaway_ticket_category_id,
-      giveaway_ticket_support_role_id: a.giveaway_ticket_support_role_id,
-      giveaway_ticket_name_format: a.giveaway_ticket_name_format,
-      giveaway_ticket_welcome_message: a.giveaway_ticket_welcome_message,
     });
     toast('Gespeichert.', 'success');
     await loadSettings();
@@ -106,6 +94,118 @@ async function loadTempRoles() {
       : `<div class="empty">${icon('star')}<b>Keine aktiven Gewinnerrollen</b></div>`;
   } catch (e) { w.innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`; }
 }
+
+/* ---------- Ticket-Buttons bei Gewinn ---------- */
+
+let GWTB_CHAN = { categories: [] };
+let GWTB_ROLES = [];
+
+function gwtbCategoryName(id) {
+  const c = (GWTB_CHAN.categories || []).find((x) => String(x.id) === String(id));
+  return c ? c.name : null;
+}
+function gwtbRoleName(id) {
+  const r = GWTB_ROLES.find((x) => String(x.id) === String(id));
+  return r ? r.name : null;
+}
+
+function gwtbCard(b) {
+  const cat = gwtbCategoryName(b.discord_category_id);
+  const role = gwtbRoleName(b.support_role_id);
+  return `
+  <div class="list-row" data-id="${b.id}">
+    <div class="list-row__head">
+      <span class="list-row__title">${escapeHtml(b.emoji || '🎫')} ${escapeHtml(b.label)}</span>
+    </div>
+    <div class="list-row__meta">
+      <span>${icon('hash', 'icon--sm')} ${cat ? escapeHtml(cat) : 'Standard-Kategorie'}</span>
+      <span>${icon('users', 'icon--sm')} ${role ? '@' + escapeHtml(role) : 'Standard-Rolle'}</span>
+      <span>${icon('gift', 'icon--sm')} Preis ${b.show_prize ? 'sichtbar' : 'ausgeblendet'}</span>
+    </div>
+    <div class="list-row__actions">
+      <button class="btn btn--outline btn--sm" data-a="edit" data-id="${b.id}">${icon('edit', 'icon--sm')} Bearbeiten</button>
+      <button class="btn btn--danger btn--sm" data-a="del" data-id="${b.id}">${icon('trash', 'icon--sm')} Entfernen</button>
+    </div>
+  </div>`;
+}
+
+let ticketButtons = [];
+
+async function loadTicketButtons() {
+  const w = document.getElementById('gwtbList');
+  w.innerHTML = '<div class="loading">Lädt…</div>';
+  try {
+    ticketButtons = await apiFor('GET', '/giveaway-ticket-buttons');
+    w.innerHTML = ticketButtons.length
+      ? ticketButtons.map(gwtbCard).join('')
+      : `<div class="empty">${icon('ticket')}<b>Keine Buttons</b>Füge einen hinzu, damit Gewinner sich ein Ticket erstellen können.</div>`;
+  } catch (e) { w.innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`; }
+}
+
+async function ticketButtonModal(existing) {
+  const [ch, roles] = await Promise.all([getChannels(), getRoles()]);
+  GWTB_CHAN = ch; GWTB_ROLES = roles;
+  const catOpts = (ch.categories || []).map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+  const roleOpts = roles.map((r) => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
+  const { modal, close } = openModal(`
+    <h2>${icon('ticket')} ${existing ? 'Button bearbeiten' : 'Ticket-Button hinzufügen'}</h2>
+    <form id="gwtbForm" class="form">
+      <div class="col-2">
+        <div class="field"><label>Beschriftung</label><input name="label" maxlength="80" required value="${escapeHtml(existing ? existing.label : 'Ticket erstellen')}" /></div>
+        <div class="field"><label>Emoji</label><input name="emoji" maxlength="16" placeholder="🎫" value="${escapeHtml(existing?.emoji || '')}" /></div>
+      </div>
+      <div class="col-2">
+        <div class="field"><label>Discord-Kategorie</label><select name="discordCategoryId"><option value="">Standard</option>${catOpts}</select></div>
+        <div class="field"><label>Support-Rolle</label><select name="supportRoleId"><option value="">Standard</option>${roleOpts}</select></div>
+      </div>
+      <div class="field">
+        <label>Kanalname</label>
+        <input name="nameFormat" placeholder="ticket-{user}" maxlength="90" value="${escapeHtml(existing?.name_format || '')}" />
+        <small>Platzhalter: <code>{user}</code>, <code>{number}</code>. Leer = Ticket-Standard.</small>
+      </div>
+      <div class="field">
+        <label>Begrüßung im Ticket</label>
+        <textarea name="welcomeMessage" rows="3" placeholder="Herzlichen Glückwunsch {user}! Dein Preis: {prize}">${escapeHtml(existing?.welcome_message || '')}</textarea>
+        <small>Platzhalter: <code>{user}</code>, <code>{number}</code>, <code>{prize}</code>. Leer = Ticket-Standard.</small>
+      </div>
+      <label class="row-inline"><input type="checkbox" name="showPrize" style="width:auto;" ${!existing || existing.show_prize ? 'checked' : ''}> <span>Preis im Ticket anzeigen (Feld + <code>{prize}</code>)</span></label>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" data-x>Abbrechen</button>
+        <button type="submit" class="btn btn--primary">${existing ? 'Speichern' : 'Hinzufügen'}</button>
+      </div>
+    </form>`);
+  if (existing?.discord_category_id) modal.querySelector('[name=discordCategoryId]').value = existing.discord_category_id;
+  if (existing?.support_role_id) modal.querySelector('[name=supportRoleId]').value = existing.support_role_id;
+  modal.querySelector('[data-x]').onclick = close;
+  modal.querySelector('#gwtbForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const d = readForm(e.target);
+    try {
+      if (existing) await apiFor('PATCH', `/giveaway-ticket-buttons/${existing.id}`, d);
+      else await apiFor('POST', '/giveaway-ticket-buttons', d);
+      toast('Gespeichert.', 'success'); close(); loadTicketButtons();
+    } catch (err) { toast(err.message, 'error'); }
+  };
+}
+
+document.getElementById('gwtbAddBtn').addEventListener('click', () => {
+  if (ticketButtons.length >= 5) { toast('Maximal 5 Ticket-Buttons.', 'error'); return; }
+  ticketButtonModal(null).catch((e) => toast(e.message, 'error'));
+});
+
+document.getElementById('gwtbList').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-a]'); if (!btn) return;
+  const id = btn.dataset.id;
+  try {
+    if (btn.dataset.a === 'edit') {
+      await ticketButtonModal(ticketButtons.find((x) => String(x.id) === String(id)));
+    } else if (btn.dataset.a === 'del') {
+      if (!(await confirmModal('Diesen Ticket-Button entfernen?', { danger: true, confirmLabel: 'Entfernen' }))) return;
+      await apiFor('DELETE', `/giveaway-ticket-buttons/${id}`);
+      toast('Entfernt.', 'success'); loadTicketButtons();
+    }
+  } catch (err) { toast(err.message, 'error'); }
+});
 
 document.getElementById('gwTabs').addEventListener('click', (e) => {
   const b = e.target.closest('.tab'); if (!b) return;
@@ -254,5 +354,6 @@ document.getElementById('newGiveawayBtn').addEventListener('click', () => newGiv
     Dash.trackForm(document.getElementById('gwSettings'), saveGwSettings, { reset: loadSettings });
     await loadList();
     await loadTempRoles();
+    await loadTicketButtons();
   } catch (e) { toast(e.message, 'error'); }
 })();

@@ -4,13 +4,14 @@ const { MessageFlags } = require('discord.js');
 
 const embeds = require('../../utils/embeds');
 const giveaways = require('../../database/models/giveaways');
-const settingsModel = require('../../database/models/settings');
+const giveawayTicketButtons = require('../../database/models/giveawayTicketButtons');
 const ticketService = require('../../services/ticketService');
 
 module.exports = {
   prefix: 'giveaway:ticket',
   async execute(interaction) {
-    const giveawayId = Number.parseInt(interaction.customId.split(':')[2], 10);
+    const [, , giveawayIdRaw, buttonIdRaw] = interaction.customId.split(':');
+    const giveawayId = Number.parseInt(giveawayIdRaw, 10);
     const giveaway = giveaways.get(giveawayId);
 
     if (!giveaway) {
@@ -28,15 +29,17 @@ module.exports = {
       });
     }
 
+    const btn = buttonIdRaw ? giveawayTicketButtons.get(Number.parseInt(buttonIdRaw, 10)) : null;
+
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     try {
-      const settings = settingsModel.get(interaction.guildId);
       const { channel } = await ticketService.createTicket(interaction.guild, interaction.member, {
         overrides: {
-          discordCategoryId: settings.giveaway_ticket_category_id || undefined,
-          supportRoleId: settings.giveaway_ticket_support_role_id || undefined,
-          nameFormat: settings.giveaway_ticket_name_format || undefined,
-          welcomeMessage: settings.giveaway_ticket_welcome_message || undefined,
+          discordCategoryId: btn?.discord_category_id || undefined,
+          supportRoleId: btn?.support_role_id || undefined,
+          nameFormat: btn?.name_format || undefined,
+          welcomeMessage: btn?.welcome_message || undefined,
+          prize: btn && btn.show_prize === 0 ? undefined : giveaway.prize,
         },
       });
       await interaction.editReply({

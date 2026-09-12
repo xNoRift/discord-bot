@@ -234,6 +234,22 @@ CREATE TABLE IF NOT EXISTS giveaway_winners (
 );
 CREATE INDEX IF NOT EXISTS idx_gw_winners_giveaway ON giveaway_winners(giveaway_id);
 
+-- ---------- Ticket-Buttons in der Gewinner-Nachricht (mehrere moeglich, je mit eigener Konfiguration) ----------
+CREATE TABLE IF NOT EXISTS giveaway_ticket_buttons (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id            TEXT NOT NULL,
+  label               TEXT NOT NULL DEFAULT 'Ticket erstellen',
+  emoji               TEXT,
+  discord_category_id TEXT,
+  support_role_id     TEXT,
+  name_format         TEXT,
+  welcome_message     TEXT,
+  show_prize          INTEGER NOT NULL DEFAULT 1,
+  position            INTEGER NOT NULL DEFAULT 0,
+  created_at          INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_gw_ticket_buttons_guild ON giveaway_ticket_buttons(guild_id);
+
 -- ---------- Temporaere Rollen (Giveaway-Gewinnerrolle) ----------
 CREATE TABLE IF NOT EXISTS temporary_roles (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,

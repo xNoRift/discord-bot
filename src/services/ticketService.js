@@ -234,13 +234,14 @@ function buildTicketModal(category, questions) {
   return modal;
 }
 
-function renderWelcome(template, { member, guild, ticketNumber, category }) {
+function renderWelcome(template, { member, guild, ticketNumber, category, prize }) {
   return (template || config.defaults.ticketWelcome)
     .replaceAll('{user}', `<@${member.id}>`)
     .replaceAll('{user.tag}', member.user.tag)
     .replaceAll('{username}', member.user.username)
     .replaceAll('{guild}', guild.name)
     .replaceAll('{category}', category || '')
+    .replaceAll('{prize}', prize || '')
     .replaceAll('{number}', String(ticketNumber));
 }
 
@@ -255,6 +256,7 @@ function renderWelcome(template, { member, guild, ticketNumber, category }) {
  * @param {string} [opts.overrides.supportRoleId]
  * @param {string} [opts.overrides.nameFormat]
  * @param {string} [opts.overrides.welcomeMessage]
+ * @param {string} [opts.overrides.prize]  wird als {prize} im Begrüßungstext ersetzt und als Feld angezeigt
  * @returns {Promise<{ channel: import('discord.js').TextChannel, ticket: object }>}
  */
 async function createTicket(guild, member, opts = {}) {
@@ -368,11 +370,12 @@ async function createTicket(guild, member, opts = {}) {
   const welcomeEmbed = new EmbedBuilder()
     .setColor(panelColor(panel, settings))
     .setTitle(cat ? tg('tickets.welcome.title_cat', { number, category: cat.label }) : tg('tickets.welcome.title', { number }))
-    .setDescription(renderWelcome(welcomeTemplate, { member, guild, ticketNumber: number, category: cat?.label }))
+    .setDescription(renderWelcome(welcomeTemplate, { member, guild, ticketNumber: number, category: cat?.label, prize: ov.prize }))
     .addFields(
       { name: tg('tickets.welcome.field_opener'), value: `<@${member.id}>`, inline: true },
       { name: tg('tickets.welcome.field_created'), value: discordTimestamp(Date.now(), 'F'), inline: true },
       ...(cat ? [{ name: tg('tickets.welcome.field_category'), value: cat.label, inline: true }] : []),
+      ...(ov.prize ? [{ name: 'Preis', value: String(ov.prize).slice(0, 1024), inline: true }] : []),
     )
     .setTimestamp();
 
