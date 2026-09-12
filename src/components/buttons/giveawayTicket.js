@@ -4,6 +4,7 @@ const { MessageFlags } = require('discord.js');
 
 const embeds = require('../../utils/embeds');
 const giveaways = require('../../database/models/giveaways');
+const settingsModel = require('../../database/models/settings');
 const ticketService = require('../../services/ticketService');
 
 module.exports = {
@@ -29,7 +30,15 @@ module.exports = {
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     try {
-      const { channel } = await ticketService.createTicket(interaction.guild, interaction.member);
+      const settings = settingsModel.get(interaction.guildId);
+      const { channel } = await ticketService.createTicket(interaction.guild, interaction.member, {
+        overrides: {
+          discordCategoryId: settings.giveaway_ticket_category_id || undefined,
+          supportRoleId: settings.giveaway_ticket_support_role_id || undefined,
+          nameFormat: settings.giveaway_ticket_name_format || undefined,
+          welcomeMessage: settings.giveaway_ticket_welcome_message || undefined,
+        },
+      });
       await interaction.editReply({
         embeds: [embeds.success('Ticket erstellt', `Dein Ticket wurde erstellt: ${channel}`)],
       });

@@ -83,6 +83,10 @@ CREATE TABLE IF NOT EXISTS guild_settings (
   giveaway_winner_role_duration_ms INTEGER DEFAULT 86400000,
   giveaway_log_channel_id        TEXT,
   giveaway_ticket_button         INTEGER DEFAULT 0,
+  giveaway_ticket_category_id    TEXT,
+  giveaway_ticket_support_role_id TEXT,
+  giveaway_ticket_name_format    TEXT,
+  giveaway_ticket_welcome_message TEXT,
 
   -- Applications / Bewerbungen
   application_enabled          INTEGER DEFAULT 0,

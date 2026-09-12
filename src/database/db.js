@@ -129,6 +129,10 @@ ensureColumn('guild_settings', 'music_default_volume', 'INTEGER DEFAULT 100');
 
 // Giveaways: Ticket-Button bei Gewinn
 ensureColumn('guild_settings', 'giveaway_ticket_button', 'INTEGER DEFAULT 0');
+ensureColumn('guild_settings', 'giveaway_ticket_category_id', 'TEXT');
+ensureColumn('guild_settings', 'giveaway_ticket_support_role_id', 'TEXT');
+ensureColumn('guild_settings', 'giveaway_ticket_name_format', 'TEXT');
+ensureColumn('guild_settings', 'giveaway_ticket_welcome_message', 'TEXT');
 
 logger.info(`[db] Datenbank verbunden: ${config.database.path}`);
 

@@ -48,8 +48,30 @@
       <div class="setting-row__text"><b>Ticket-Button bei Gewinn</b><span>Gewinner können sich über einen Button in der Gewinner-Nachricht direkt ein Ticket erstellen, um ihren Preis abzuholen</span></div>
       <label class="toggle"><input type="checkbox" name="giveaway_ticket_button" /><span class="toggle__track"></span></label>
     </div>
+    <div id="gwTicketFields">
+      <p class="card__sub">Einstellungen für dieses Ticket – genau wie bei den Ticket-Standard-Einstellungen. Leer = allgemeiner Ticket-Standard wird verwendet.</p>
+      <div class="col-2">
+        <div class="field"><label>Discord-Kategorie</label><select name="giveaway_ticket_category_id" data-type="category"></select></div>
+        <div class="field"><label>Support-Rolle</label><select name="giveaway_ticket_support_role_id" data-type="role"></select></div>
+      </div>
+      <div class="field">
+        <label>Kanalname</label>
+        <input name="giveaway_ticket_name_format" placeholder="ticket-{user}" maxlength="90" />
+        <small>Platzhalter: <code>{user}</code>, <code>{number}</code>.</small>
+      </div>
+      <div class="field">
+        <label>Begrüßung im Ticket</label>
+        <textarea name="giveaway_ticket_welcome_message" rows="3" placeholder="Herzlichen Glückwunsch {user}! Ein Team-Mitglied meldet sich gleich, um deinen Gewinn zu übergeben."></textarea>
+        <small>Platzhalter: <code>{user}</code>, <code>{number}</code>.</small>
+      </div>
+    </div>
   </form>
 </div>
+
+<style>
+  #gwTicketFields { margin-top:10px; padding-top:10px; border-top:1px solid var(--line); transition:opacity .15s; }
+  #gwTicketFields.is-off { opacity:.5; pointer-events:none; }
+</style>
 
 <%- include('partials/app-shell-close') %>
 <script src="/static/js/giveaways.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>

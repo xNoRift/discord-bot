@@ -250,11 +250,17 @@ function renderWelcome(template, { member, guild, ticketNumber, category }) {
  * @param {import('discord.js').GuildMember} member
  * @param {object} [opts]
  * @param {number} [opts.categoryId]  ticket_categories.id (bestimmt Discord-Kategorie, Rolle, Text …)
+ * @param {object} [opts.overrides]   Direkte Werte (z. B. aus Giveaway-Einstellungen), greifen zwischen Kategorie und Server-Standard
+ * @param {string} [opts.overrides.discordCategoryId]
+ * @param {string} [opts.overrides.supportRoleId]
+ * @param {string} [opts.overrides.nameFormat]
+ * @param {string} [opts.overrides.welcomeMessage]
  * @returns {Promise<{ channel: import('discord.js').TextChannel, ticket: object }>}
  */
 async function createTicket(guild, member, opts = {}) {
   const settings = settingsModel.get(guild.id);
   const tg = i18n.forGuild(guild.id);
+  const ov = opts.overrides || {};
 
   if (settings.tickets_enabled === 0) {
     throw new Error(tg('tickets.errors.module_disabled'));
@@ -269,13 +275,13 @@ async function createTicket(guild, member, opts = {}) {
   }
   const panel = cat ? ticketPanels.getPanel(cat.panel_id) : null;
 
-  // Werte auflösen: Kategorie überschreibt Server-Standard
-  const discordCategoryId = cat?.discord_category_id || settings.ticket_category_id;
-  const supportRoleId = cat?.support_role_id || settings.ticket_support_role_id;
-  const welcomeTemplate = cat?.welcome_message || settings.ticket_welcome_message;
+  // Werte auflösen: Kategorie > Override (z. B. Giveaway-Einstellungen) > Server-Standard
+  const discordCategoryId = cat?.discord_category_id || ov.discordCategoryId || settings.ticket_category_id;
+  const supportRoleId = cat?.support_role_id || ov.supportRoleId || settings.ticket_support_role_id;
+  const welcomeTemplate = cat?.welcome_message || ov.welcomeMessage || settings.ticket_welcome_message;
   const nameFormat = cat?.prefix
     ? `${cat.prefix}-{user}`
-    : cat?.name_format || settings.ticket_name_format || 'ticket-{user}';
+    : cat?.name_format || ov.nameFormat || settings.ticket_name_format || 'ticket-{user}';
 
   if (!discordCategoryId) {
     throw new Error(tg('tickets.errors.no_discord_category'));

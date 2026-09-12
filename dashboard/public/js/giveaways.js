@@ -18,7 +18,15 @@ async function loadSettings() {
   f.giveaway_log_channel_id.value = settings.giveaway_log_channel_id || '';
   f.giveaway_winner_role_duration_ms.value = fmtDuration(settings.giveaway_winner_role_duration_ms || 86400000);
   f.giveaway_ticket_button.checked = Boolean(settings.giveaway_ticket_button);
+  f.giveaway_ticket_name_format.value = settings.giveaway_ticket_name_format || '';
+  f.giveaway_ticket_welcome_message.value = settings.giveaway_ticket_welcome_message || '';
+  syncTicketFields();
 }
+
+function syncTicketFields() {
+  document.getElementById('gwTicketFields').classList.toggle('is-off', !document.getElementById('gwSettings').giveaway_ticket_button.checked);
+}
+document.getElementById('gwSettings').giveaway_ticket_button.addEventListener('change', syncTicketFields);
 
 Dash.initModuleStatus('giveaways_enabled', {
   on: 'Giveaways sind aktiviert. Ein Klick deaktiviert das Modul – es lassen sich dann keine neuen Giveaways mehr erstellen.',
@@ -34,6 +42,10 @@ async function saveGwSettings() {
       giveaway_log_channel_id: a.giveaway_log_channel_id,
       giveaway_winner_role_duration_ms: a.giveaway_winner_role_duration_ms,
       giveaway_ticket_button: a.giveaway_ticket_button,
+      giveaway_ticket_category_id: a.giveaway_ticket_category_id,
+      giveaway_ticket_support_role_id: a.giveaway_ticket_support_role_id,
+      giveaway_ticket_name_format: a.giveaway_ticket_name_format,
+      giveaway_ticket_welcome_message: a.giveaway_ticket_welcome_message,
     });
     toast('Gespeichert.', 'success');
     await loadSettings();
