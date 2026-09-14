@@ -122,6 +122,7 @@ function gwtbCard(b) {
       <span>${icon('hash', 'icon--sm')} ${cat ? escapeHtml(cat) : 'Standard-Kategorie'}</span>
       <span>${icon('users', 'icon--sm')} ${role ? '@' + escapeHtml(role) : 'Standard-Rolle'}</span>
       <span>${icon('gift', 'icon--sm')} Preis ${b.show_prize ? 'sichtbar' : 'ausgeblendet'}</span>
+      ${(b.questions || []).length ? `<span>${icon('file', 'icon--sm')} ${b.questions.length} Formularfeld${b.questions.length > 1 ? 'er' : ''}</span>` : ''}
     </div>
     <div class="list-row__actions">
       <button class="btn btn--outline btn--sm" data-a="edit" data-id="${b.id}">${icon('edit', 'icon--sm')} Bearbeiten</button>
@@ -143,17 +144,52 @@ async function loadTicketButtons() {
   } catch (e) { w.innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`; }
 }
 
+function gwtbQCard(q, i) {
+  const max = q.max_length || 4000;
+  return `<div class="qfield" data-q="${q.id}">
+    <div class="qfield__head">
+      <b>${i + 1}. ${escapeHtml(q.label || 'Neues Feld')}</b>
+      <button type="button" class="btn btn--danger btn--icon" data-qa="del" title="Feld löschen">${icon('trash', 'icon--sm')}</button>
+    </div>
+    <div class="col-2">
+      <div class="field"><label>Anzeigename <span class="req">*</span></label><input data-qf="label" value="${escapeHtml(q.label)}" maxlength="45"></div>
+      <div class="field"><label>Typ</label>
+        <select data-qf="style">
+          <option value="short"${q.style === 'short' ? ' selected' : ''}>Einzeiliger Text</option>
+          <option value="paragraph"${q.style === 'paragraph' ? ' selected' : ''}>Mehrzeiliger Text</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Platzhalter</label><input data-qf="placeholder" value="${escapeHtml(q.placeholder || '')}" maxlength="100"></div>
+    <div class="field"><label>Zeichenlimit</label><input data-qf="maxLength" type="number" min="1" max="4000" value="${max}"></div>
+    <label class="row-inline"><input type="checkbox" data-qf="required" style="width:auto;" ${q.required ? 'checked' : ''}> <span>Erforderlich</span></label>
+    <div style="margin-top:8px;"><button type="button" class="btn btn--primary btn--sm" data-qa="save">${icon('check', 'icon--sm')} Feld speichern</button></div>
+  </div>`;
+}
+
 async function ticketButtonModal(existing) {
   const [ch, roles] = await Promise.all([getChannels(), getRoles()]);
   GWTB_CHAN = ch; GWTB_ROLES = roles;
   const catOpts = (ch.categories || []).map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
   const roleOpts = roles.map((r) => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
+  const questionsHtml = existing
+    ? `<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px;">
+        <b>${icon('file', 'icon--sm')} Formularfelder <span class="muted">(max. 5 – Discord-Limit)</span></b>
+        <p class="muted" style="font-size:.85rem;margin:4px 0 8px;">Hat der Button Felder, erscheint beim Klick zuerst ein Formular (Discord-Modal). Die Antworten landen im Ticket. Ohne Felder wird das Ticket sofort geöffnet.</p>
+        <div id="gwtbQList">${(existing.questions || []).map(gwtbQCard).join('')}</div>
+        <button type="button" class="btn btn--ghost btn--sm" id="gwtbQAdd" style="margin-top:6px;">${icon('plus', 'icon--sm')} Feld hinzufügen</button>
+      </div>`
+    : `<p class="muted" style="margin-top:10px;">Speichere den Button zuerst, um Formularfelder hinzuzufügen.</p>`;
   const { modal, close } = openModal(`
     <h2>${icon('ticket')} ${existing ? 'Button bearbeiten' : 'Ticket-Button hinzufügen'}</h2>
     <form id="gwtbForm" class="form">
       <div class="col-2">
         <div class="field"><label>Beschriftung</label><input name="label" maxlength="80" required value="${escapeHtml(existing ? existing.label : 'Ticket erstellen')}" /></div>
-        <div class="field"><label>Emoji</label><input name="emoji" maxlength="16" placeholder="🎫" value="${escapeHtml(existing?.emoji || '')}" /></div>
+        <div class="field">
+          <label>Emoji</label>
+          <button type="button" class="emote-btn" id="gwtbEmoteBtn">${existing?.emoji ? escapeHtml(existing.emoji) : '<span class="emote-btn__empty">Wählen…</span>'}</button>
+          <input type="hidden" name="emoji" id="gwtbEmoteVal" value="${escapeHtml(existing?.emoji || '')}">
+        </div>
       </div>
       <div class="col-2">
         <div class="field"><label>Discord-Kategorie</label><select name="discordCategoryId"><option value="">Standard</option>${catOpts}</select></div>
@@ -170,6 +206,7 @@ async function ticketButtonModal(existing) {
         <small>Platzhalter: <code>{user}</code>, <code>{number}</code>, <code>{prize}</code>. Leer = Ticket-Standard.</small>
       </div>
       <label class="row-inline"><input type="checkbox" name="showPrize" style="width:auto;" ${!existing || existing.show_prize ? 'checked' : ''}> <span>Preis im Ticket anzeigen (Feld + <code>{prize}</code>)</span></label>
+      ${questionsHtml}
       <div class="modal__actions">
         <button type="button" class="btn btn--ghost" data-x>Abbrechen</button>
         <button type="submit" class="btn btn--primary">${existing ? 'Speichern' : 'Hinzufügen'}</button>
@@ -178,6 +215,15 @@ async function ticketButtonModal(existing) {
   if (existing?.discord_category_id) modal.querySelector('[name=discordCategoryId]').value = existing.discord_category_id;
   if (existing?.support_role_id) modal.querySelector('[name=supportRoleId]').value = existing.support_role_id;
   modal.querySelector('[data-x]').onclick = close;
+
+  const emoteBtn = modal.querySelector('#gwtbEmoteBtn');
+  emoteBtn.onclick = () => {
+    Dash.openEmojiPicker(emoteBtn, (val) => {
+      modal.querySelector('#gwtbEmoteVal').value = val;
+      emoteBtn.innerHTML = val ? escapeHtml(val) : '<span class="emote-btn__empty">Wählen…</span>';
+    });
+  };
+
   modal.querySelector('#gwtbForm').onsubmit = async (e) => {
     e.preventDefault();
     const d = readForm(e.target);
@@ -187,6 +233,40 @@ async function ticketButtonModal(existing) {
       toast('Gespeichert.', 'success'); close(); loadTicketButtons();
     } catch (err) { toast(err.message, 'error'); }
   };
+
+  if (existing) {
+    const reopen = async () => {
+      close();
+      await loadTicketButtons();
+      await ticketButtonModal(ticketButtons.find((x) => String(x.id) === String(existing.id)));
+    };
+    modal.querySelector('#gwtbQAdd').onclick = async () => {
+      const label = prompt('Feldname (max. 45 Zeichen):');
+      if (!label) return;
+      try {
+        await apiFor('POST', `/giveaway-ticket-buttons/${existing.id}/questions`, { label });
+        toast('Feld hinzugefügt.', 'success');
+        await reopen();
+      } catch (err) { toast(err.message, 'error'); }
+    };
+    modal.querySelector('#gwtbQList').addEventListener('click', async (e) => {
+      const qbtn = e.target.closest('button[data-qa]'); if (!qbtn) return;
+      const row = qbtn.closest('[data-q]'); const qid = row.dataset.q;
+      try {
+        if (qbtn.dataset.qa === 'save') {
+          const patch = {};
+          row.querySelectorAll('[data-qf]').forEach((el) => { patch[el.dataset.qf] = el.type === 'checkbox' ? el.checked : el.value; });
+          await apiFor('PATCH', `/giveaway-ticket-buttons/${existing.id}/questions/${qid}`, patch);
+          toast('Feld gespeichert.', 'success');
+          await reopen();
+        } else if (qbtn.dataset.qa === 'del') {
+          if (!(await confirmModal('Feld löschen?', { danger: true, confirmLabel: 'Löschen' }))) return;
+          await apiFor('DELETE', `/giveaway-ticket-buttons/${existing.id}/questions/${qid}`);
+          await reopen();
+        }
+      } catch (err) { toast(err.message, 'error'); }
+    });
+  }
 }
 
 document.getElementById('gwtbAddBtn').addEventListener('click', () => {

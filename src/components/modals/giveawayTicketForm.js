@@ -8,8 +8,12 @@ const giveawayTicketButtons = require('../../database/models/giveawayTicketButto
 const ticketService = require('../../services/ticketService');
 const giveawayService = require('../../services/giveawayService');
 
+/**
+ * Modal "giveaway:ticketform:<giveawayId>:<buttonId>" – Formular für einen
+ * Giveaway-Ticket-Button mit eigenen Fragen.
+ */
 module.exports = {
-  prefix: 'giveaway:ticket',
+  prefix: 'giveaway:ticketform',
   async execute(interaction) {
     const [, , giveawayIdRaw, buttonIdRaw] = interaction.customId.split(':');
     const giveawayId = Number.parseInt(giveawayIdRaw, 10);
@@ -32,17 +36,23 @@ module.exports = {
 
     const btn = buttonIdRaw ? giveawayTicketButtons.get(Number.parseInt(buttonIdRaw, 10)) : null;
 
-    const questions = btn ? giveawayTicketButtons.listQuestions(btn.id) : [];
-    if (questions.length) {
-      return interaction.showModal(
-        ticketService.buildQuestionsModal(`giveaway:ticketform:${giveawayId}:${btn.id}`, `Ticket: ${btn.label}`, questions),
-      );
-    }
-
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    const questions = btn ? giveawayTicketButtons.listQuestions(btn.id).slice(0, 5) : [];
+    const answers = questions.map((q) => {
+      let value = '';
+      try {
+        value = interaction.fields.getTextInputValue(`q_${q.id}`);
+      } catch {
+        value = '';
+      }
+      return { question: q.label, answer: value };
+    });
+
     try {
       const { channel } = await ticketService.createTicket(interaction.guild, interaction.member, {
         overrides: giveawayService.ticketOverridesFor(giveaway, btn),
+        answers,
       });
       await interaction.editReply({
         embeds: [embeds.success('Ticket erstellt', `Dein Ticket wurde erstellt: ${channel}`)],

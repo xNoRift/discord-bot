@@ -212,12 +212,12 @@ async function rerenderPanelMessage(message, panelId) {
 }
 
 /**
- * Baut das Formular-Modal für eine Kategorie (max. 5 Felder – Discord-Limit).
+ * Baut ein generisches Formular-Modal (max. 5 Felder – Discord-Limit).
+ * Wird sowohl fürs Ticket-Öffnen-Formular einer Kategorie als auch für
+ * andere Formular-Modals (z. B. Giveaway-Ticket-Buttons) verwendet.
  */
-function buildTicketModal(category, questions) {
-  const modal = new ModalBuilder()
-    .setCustomId(`ticket:form:${category.id}`)
-    .setTitle(`Ticket: ${category.label}`.slice(0, 45));
+function buildQuestionsModal(customId, title, questions) {
+  const modal = new ModalBuilder().setCustomId(customId).setTitle(String(title).slice(0, 45));
 
   questions.slice(0, 5).forEach((q) => {
     const input = new TextInputBuilder()
@@ -232,6 +232,13 @@ function buildTicketModal(category, questions) {
   });
 
   return modal;
+}
+
+/**
+ * Baut das Formular-Modal für eine Ticket-Kategorie (max. 5 Felder – Discord-Limit).
+ */
+function buildTicketModal(category, questions) {
+  return buildQuestionsModal(`ticket:form:${category.id}`, `Ticket: ${category.label}`, questions);
 }
 
 function renderWelcome(template, { member, guild, ticketNumber, category, prize }) {
@@ -831,6 +838,7 @@ async function autoCloseSweep() {
 
 module.exports = {
   buildPanelMessage,
+  buildQuestionsModal,
   postOrUpdatePanel,
   createTicket,
   claimTicket,

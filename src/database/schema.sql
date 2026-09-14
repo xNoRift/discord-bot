@@ -250,6 +250,21 @@ CREATE TABLE IF NOT EXISTS giveaway_ticket_buttons (
 );
 CREATE INDEX IF NOT EXISTS idx_gw_ticket_buttons_guild ON giveaway_ticket_buttons(guild_id);
 
+-- ---------- Öffnen-Formular pro Giveaway-Ticket-Button ----------
+CREATE TABLE IF NOT EXISTS giveaway_ticket_button_questions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  button_id   INTEGER NOT NULL,
+  label       TEXT NOT NULL,
+  style       TEXT NOT NULL DEFAULT 'short',   -- short | paragraph
+  placeholder TEXT,
+  required    INTEGER NOT NULL DEFAULT 1,
+  min_length  INTEGER DEFAULT 0,
+  max_length  INTEGER DEFAULT 400,
+  position    INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY (button_id) REFERENCES giveaway_ticket_buttons(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_gwtbq_button ON giveaway_ticket_button_questions(button_id);
+
 -- ---------- Temporaere Rollen (Giveaway-Gewinnerrolle) ----------
 CREATE TABLE IF NOT EXISTS temporary_roles (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,

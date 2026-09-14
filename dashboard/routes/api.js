@@ -1372,7 +1372,11 @@ router.post(
 /* ---------------- Giveaway-Ticket-Buttons (Gewinner-Nachricht) ---------------- */
 
 router.get('/guilds/:guildId/giveaway-ticket-buttons', (req, res) => {
-  res.json(giveawayTicketButtons.list(req.params.guildId));
+  const list = giveawayTicketButtons.list(req.params.guildId).map((b) => ({
+    ...b,
+    questions: giveawayTicketButtons.listQuestions(b.id),
+  }));
+  res.json(list);
 });
 
 router.post(
@@ -1424,6 +1428,65 @@ router.delete('/guilds/:guildId/giveaway-ticket-buttons/:id', (req, res) => {
   giveawayTicketButtons.remove(btn.id);
   res.json({ ok: true });
 });
+
+/* --- Öffnen-Formular pro Giveaway-Ticket-Button --- */
+
+function ownedGwtb(req) {
+  const btn = giveawayTicketButtons.get(num(req.params.id));
+  return btn && btn.guild_id === req.params.guildId ? btn : null;
+}
+
+router.post(
+  '/guilds/:guildId/giveaway-ticket-buttons/:id/questions',
+  asyncHandler(async (req, res) => {
+    if (!ownedGwtb(req)) return res.status(404).json({ error: 'Button nicht gefunden.' });
+    if (giveawayTicketButtons.countQuestions(num(req.params.id)) >= 5) {
+      return res.status(400).json({ error: 'Maximal 5 Felder pro Button (Discord-Limit).' });
+    }
+    if (!req.body.label) return res.status(400).json({ error: 'Feldname erforderlich.' });
+    const q = giveawayTicketButtons.addQuestion({
+      buttonId: num(req.params.id),
+      label: String(req.body.label).slice(0, 45),
+      style: req.body.style === 'paragraph' ? 'paragraph' : 'short',
+      placeholder: req.body.placeholder ? String(req.body.placeholder).slice(0, 100) : null,
+      required: req.body.required !== false,
+      minLength: Math.max(0, num(req.body.minLength, 0)),
+      maxLength: Math.min(4000, Math.max(1, num(req.body.maxLength, 400))),
+    });
+    res.json(q);
+  }),
+);
+
+function ownedGwtbQuestion(req) {
+  if (!ownedGwtb(req)) return null;
+  const q = giveawayTicketButtons.getQuestion(num(req.params.qid));
+  return q && q.button_id === num(req.params.id) ? q : null;
+}
+
+router.patch(
+  '/guilds/:guildId/giveaway-ticket-buttons/:id/questions/:qid',
+  asyncHandler(async (req, res) => {
+    if (!ownedGwtbQuestion(req)) return res.status(404).json({ error: 'Formularfeld nicht gefunden.' });
+    const patch = {};
+    if (req.body.label !== undefined) patch.label = String(req.body.label).slice(0, 45);
+    if (req.body.style !== undefined) patch.style = req.body.style === 'paragraph' ? 'paragraph' : 'short';
+    if (req.body.placeholder !== undefined) patch.placeholder = String(req.body.placeholder).slice(0, 100);
+    if (req.body.required !== undefined) patch.required = req.body.required ? 1 : 0;
+    if (req.body.position !== undefined) patch.position = num(req.body.position, 0);
+    if (req.body.minLength !== undefined) patch.min_length = Math.max(0, num(req.body.minLength, 0));
+    if (req.body.maxLength !== undefined) patch.max_length = Math.min(4000, Math.max(1, num(req.body.maxLength, 400)));
+    res.json(giveawayTicketButtons.updateQuestion(num(req.params.qid), patch));
+  }),
+);
+
+router.delete(
+  '/guilds/:guildId/giveaway-ticket-buttons/:id/questions/:qid',
+  asyncHandler(async (req, res) => {
+    if (!ownedGwtbQuestion(req)) return res.status(404).json({ error: 'Formularfeld nicht gefunden.' });
+    giveawayTicketButtons.deleteQuestion(num(req.params.qid));
+    res.json({ ok: true });
+  }),
+);
 
 /* ---------------- Applications ---------------- */
 

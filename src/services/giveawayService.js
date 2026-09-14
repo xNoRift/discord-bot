@@ -121,6 +121,17 @@ function buildEndedMessage(giveaway, winnerIds, entryCount) {
   return { embeds: [embed], components: [row] };
 }
 
+/** Baut die ticketService.createTicket()-Overrides aus einem Giveaway-Ticket-Button. */
+function ticketOverridesFor(giveaway, btn) {
+  return {
+    discordCategoryId: btn?.discord_category_id || undefined,
+    supportRoleId: btn?.support_role_id || undefined,
+    nameFormat: btn?.name_format || undefined,
+    welcomeMessage: btn?.welcome_message || undefined,
+    prize: btn && btn.show_prize === 0 ? undefined : giveaway.prize,
+  };
+}
+
 async function fetchGiveawayMessage(giveaway) {
   const guild = client.guilds.cache.get(giveaway.guild_id);
   if (!guild) return null;
@@ -543,6 +554,7 @@ module.exports = {
   endGiveaway,
   rerollGiveaway,
   refreshEndedMessage,
+  ticketOverridesFor,
   cancelGiveaway,
   refreshGiveawayMessage,
   restoreAll,
