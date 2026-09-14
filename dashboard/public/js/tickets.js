@@ -24,10 +24,10 @@ function optList(list, val, prefix = '') {
 
 function tqCard(q, i) {
   const max = q.max_length || 4000;
-  return `<div class="qfield" data-q="${q.id}">
+  return `<form class="qfield" data-q="${q.id}">
     <div class="qfield__head">
       <b>${i + 1}. ${escapeHtml(q.label || 'Neues Feld')}</b>
-      <button class="btn btn--danger btn--icon" data-qa="del" title="Feld löschen">${icon('trash', 'icon--sm')}</button>
+      <button type="button" class="btn btn--danger btn--icon" data-qa="del" title="Feld löschen">${icon('trash', 'icon--sm')}</button>
     </div>
     <div class="fgrid fgrid--2">
       <div class="field field--counter">
@@ -61,8 +61,7 @@ function tqCard(q, i) {
         <b data-ql style="width:56px;text-align:right;">${max}</b>
       </div>
     </div>
-    <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" data-qa="save">${icon('check', 'icon--sm')} Feld speichern</button></div>
-  </div>`;
+  </form>`;
 }
 
 /* ================= Modul-Status ================= */
@@ -208,9 +207,9 @@ async function openEditor(panelId) {
     ED.querySelector('#edPNameCount').textContent = `${pn.value.length} / 50`;
   });
   pn.addEventListener('change', () => {
-    savePanel({ name: pn.value }, 'Name gespeichert.').then(() => {
-      ED.querySelector('#edName').textContent = pn.value;
-    });
+    savePanel({ name: pn.value }, 'Name gespeichert.')
+      .then(() => { ED.querySelector('#edName').textContent = pn.value; })
+      .catch(() => {});
   });
 
   ED.querySelector('#edBack').onclick = closeEditor;
@@ -254,7 +253,7 @@ async function savePanel(patch, msg = 'Gespeichert.') {
     const updated = await apiFor('PATCH', `/ticket-panels/${P().id}`, patch);
     window.__panel = updated;
     toast(msg, 'success');
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { toast(e.message, 'error'); throw e; }
 }
 async function saveSettings(patch) {
   try { settings = await apiFor('PATCH', '/settings', patch); toast('Gespeichert.', 'success'); }
@@ -291,24 +290,21 @@ function renderTab(tab) {
           </select>
         </div>
       </div>
-      <div class="card">
+      <form class="card" id="panelDisplayForm">
         <div class="card__head"><h2>${icon('ticket')} Anzeige</h2></div>
-        <div class="field"><label>Button-Text (bei genau 1 Kategorie)</label><input id="f_btn" value="${escapeHtml(p.button_label || '')}" placeholder="Ticket erstellen" /></div>
+        <div class="field"><label>Button-Text (bei genau 1 Kategorie)</label><input name="buttonLabel" value="${escapeHtml(p.button_label || '')}" placeholder="Ticket erstellen" /></div>
         <div class="field">
           <label>Darstellung (bei mehreren Kategorien)</label>
-          <select id="f_layout">
+          <select name="layout">
             <option value="buttons"${(p.panel_layout || (p.use_select ? 'select' : 'buttons')) === 'buttons' ? ' selected' : ''}>Nur Buttons</option>
             <option value="select"${(p.panel_layout || (p.use_select ? 'select' : 'buttons')) === 'select' ? ' selected' : ''}>Nur Auswahlmenü</option>
             <option value="both"${(p.panel_layout || (p.use_select ? 'select' : 'buttons')) === 'both' ? ' selected' : ''}>Buttons + Auswahlmenü</option>
           </select>
           <small>„Buttons + Auswahlmenü“ zeigt beides gleichzeitig – wie im Beispiel-Bild.</small>
         </div>
-        <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" id="f_save">Speichern</button></div>
-      </div>`;
-    body.querySelector('#f_save').onclick = () => savePanel({
-      buttonLabel: body.querySelector('#f_btn').value,
-      layout: body.querySelector('#f_layout').value,
-    });
+      </form>`;
+    const displayForm = body.querySelector('#panelDisplayForm');
+    Dash.trackForm(displayForm, () => savePanel(readForm(displayForm)), { key: 'panelDisplayForm' });
     body.querySelector('#s_ping').onchange = (e) => saveSettings({ ticket_team_ping: e.target.checked ? 1 : 0 });
     body.querySelector('#s_restrict').onchange = (e) => saveSettings({ ticket_close_restricted: e.target.checked ? 1 : 0 });
     body.querySelector('#s_leave').onchange = (e) => saveSettings({ ticket_on_leave: e.target.value });
@@ -321,28 +317,27 @@ function renderTab(tab) {
 
   else if (tab === 'embeds') {
     body.innerHTML = `
-      <div class="card">
+      <form class="card" id="panelEmbedForm">
         <div class="card__head"><h2>${icon('file')} Embed</h2></div>
         <div class="form">
-          <div class="field"><label>Titel</label><input id="e_title" value="${escapeHtml(p.title || '')}" data-emoji /></div>
-          <div class="field"><label>Text</label><textarea id="e_desc" rows="4" data-emoji>${escapeHtml(p.description || '')}</textarea></div>
-          <div class="field"><label>Farbe</label><div class="row-inline"><input type="color" id="e_color" value="${/^#?[0-9a-f]{6}$/i.test(p.color || '') ? (p.color[0] === '#' ? p.color : '#' + p.color) : '#7c5cff'}" style="max-width:70px;"><input id="e_colortext" value="${escapeHtml(p.color || '')}" placeholder="#7c5cff (leer = Standard)"></div></div>
+          <div class="field"><label>Titel</label><input name="title" value="${escapeHtml(p.title || '')}" data-emoji /></div>
+          <div class="field"><label>Text</label><textarea name="description" rows="4" data-emoji>${escapeHtml(p.description || '')}</textarea></div>
+          <div class="field"><label>Farbe</label><div class="row-inline"><input type="color" id="e_color" value="${/^#?[0-9a-f]{6}$/i.test(p.color || '') ? (p.color[0] === '#' ? p.color : '#' + p.color) : '#7c5cff'}" style="max-width:70px;"><input name="color" id="e_colortext" value="${escapeHtml(p.color || '')}" placeholder="#7c5cff (leer = Standard)"></div></div>
           <div class="col-2">
             <div class="field">
               <label>Bild (groß, unten im Embed)</label>
-              <input id="e_image" type="url" value="${escapeHtml(p.image_url || '')}" placeholder="https://…" />
+              <input name="image_url" id="e_image" type="url" value="${escapeHtml(p.image_url || '')}" placeholder="https://…" />
               <div class="field-hint">Direkter Bild-Link (z. B. von Discord hochgeladen &amp; Link kopiert, oder Imgur).</div>
               <img id="e_image_prev" class="embed-img-preview" hidden />
             </div>
             <div class="field">
               <label>Vorschaubild (klein, oben rechts)</label>
-              <input id="e_thumb" type="url" value="${escapeHtml(p.thumbnail_url || '')}" placeholder="https://…" />
+              <input name="thumbnail_url" id="e_thumb" type="url" value="${escapeHtml(p.thumbnail_url || '')}" placeholder="https://…" />
               <img id="e_thumb_prev" class="embed-img-preview embed-img-preview--sm" hidden />
             </div>
           </div>
-          <div><button class="btn btn--primary btn--sm" id="e_save">Speichern</button></div>
         </div>
-      </div>`;
+      </form>`;
     Dash.initEmojiInputs(body);
     body.querySelector('#e_color').oninput = (e) => { body.querySelector('#e_colortext').value = e.target.value; };
 
@@ -361,13 +356,14 @@ function renderTab(tab) {
     wirePreview('e_image', 'e_image_prev');
     wirePreview('e_thumb', 'e_thumb_prev');
 
-    body.querySelector('#e_save').onclick = () => savePanel({
-      title: body.querySelector('#e_title').value,
-      description: body.querySelector('#e_desc').value,
-      color: body.querySelector('#e_colortext').value,
-      image_url: body.querySelector('#e_image').value.trim(),
-      thumbnail_url: body.querySelector('#e_thumb').value.trim(),
-    });
+    const embedForm = body.querySelector('#panelEmbedForm');
+    Dash.trackForm(embedForm, () => savePanel({
+      title: embedForm.title.value,
+      description: embedForm.description.value,
+      color: embedForm.color.value.trim(),
+      image_url: embedForm.image_url.value.trim(),
+      thumbnail_url: embedForm.thumbnail_url.value.trim(),
+    }), { key: 'panelEmbedForm' });
   }
 
   else if (tab === 'kategorien') {
@@ -376,59 +372,55 @@ function renderTab(tab) {
 
   else if (tab === 'bewertung') {
     body.innerHTML = `
-      <div class="card">
+      <form class="card" id="panelRatingForm">
         <div class="card__head"><h2>${icon('star')} Bewertung nach Schließung</h2></div>
         <div class="setting-row">
           <div class="setting-row__text"><b>Bewertung aktivieren</b><span>Nutzer kann nach dem Schließen 1–5 Sterne vergeben</span></div>
-          <label class="toggle"><input type="checkbox" id="r_on" ${p.rating_enabled ? 'checked' : ''}><span class="toggle__track"></span></label>
+          <label class="toggle"><input type="checkbox" name="rating_enabled" ${p.rating_enabled ? 'checked' : ''}><span class="toggle__track"></span></label>
         </div>
-        <div class="field"><label>Bewertungen posten in</label><select id="r_ch">${optList(CH.text, p.rating_channel_id, '#')}</select></div>
-        <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" id="r_save">Speichern</button></div>
-      </div>`;
-    body.querySelector('#r_save').onclick = () => savePanel({
-      ratingEnabled: body.querySelector('#r_on').checked ? 1 : 0,
-      rating_enabled: body.querySelector('#r_on').checked ? 1 : 0,
-      rating_channel_id: body.querySelector('#r_ch').value,
-    });
+        <div class="field"><label>Bewertungen posten in</label><select name="rating_channel_id">${optList(CH.text, p.rating_channel_id, '#')}</select></div>
+      </form>`;
+    const ratingForm = body.querySelector('#panelRatingForm');
+    Dash.trackForm(ratingForm, () => savePanel(readForm(ratingForm)), { key: 'panelRatingForm' });
   }
 
   else if (tab === 'auto') {
     body.innerHTML = `
-      <div class="card">
+      <form class="card" id="panelAutoForm">
         <div class="card__head"><h2>${icon('bot')} Automationen</h2></div>
         <div class="field"><label>Automatisch schließen nach Inaktivität (Stunden)</label>
-          <input type="number" id="a_hours" min="0" max="720" value="${p.autoclose_hours || 0}" />
+          <input type="number" name="autoclose_hours" min="0" max="720" value="${p.autoclose_hours || 0}" />
           <small>0 = deaktiviert. Der Bot schließt offene Tickets ohne Nachricht nach dieser Zeit.</small>
         </div>
-        <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" id="a_save">Speichern</button></div>
-      </div>`;
-    body.querySelector('#a_save').onclick = () => savePanel({ autoclose_hours: parseInt(body.querySelector('#a_hours').value, 10) || 0 });
+      </form>`;
+    const autoForm = body.querySelector('#panelAutoForm');
+    Dash.trackForm(autoForm, () => savePanel(readForm(autoForm)), { key: 'panelAutoForm' });
   }
 
   else if (tab === 'logs') {
     body.innerHTML = `
-      <div class="card">
+      <form class="card" id="panelLogForm">
         <div class="card__head"><h2>${icon('file')} Panel-Logs</h2></div>
         <div class="field"><label>Eigener Log-Kanal für dieses Panel</label>
-          <select id="l_ch">${optList(CH.text, p.log_channel_id, '#')}</select>
+          <select name="log_channel_id">${optList(CH.text, p.log_channel_id, '#')}</select>
           <small>Leer = der serverweite Ticket-Log-Kanal wird verwendet.</small>
         </div>
-        <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" id="l_save">Speichern</button></div>
-      </div>`;
-    body.querySelector('#l_save').onclick = () => savePanel({ log_channel_id: body.querySelector('#l_ch').value });
+      </form>`;
+    const logForm = body.querySelector('#panelLogForm');
+    Dash.trackForm(logForm, () => savePanel(readForm(logForm)), { key: 'panelLogForm' });
   }
 
   else if (tab === 'claim') {
     body.innerHTML = `
-      <div class="card">
+      <form class="card" id="panelClaimForm">
         <div class="card__head"><h2>${icon('hash')} Claim-Kategorie</h2></div>
         <div class="field"><label>Übernommene Tickets verschieben nach</label>
-          <select id="c_cat">${optList(CH.categories, p.claim_category_id)}</select>
+          <select name="claim_category_id">${optList(CH.categories, p.claim_category_id)}</select>
           <small>Wenn ein Teammitglied ein Ticket übernimmt, wird der Kanal in diese Discord-Kategorie verschoben.</small>
         </div>
-        <div style="margin-top:12px;"><button class="btn btn--primary btn--sm" id="c_save">Speichern</button></div>
-      </div>`;
-    body.querySelector('#c_save').onclick = () => savePanel({ claim_category_id: body.querySelector('#c_cat').value });
+      </form>`;
+    const claimForm = body.querySelector('#panelClaimForm');
+    Dash.trackForm(claimForm, () => savePanel(readForm(claimForm)), { key: 'panelClaimForm' });
   }
 }
 
@@ -458,7 +450,7 @@ function renderCategoriesTab(body, editCatId) {
         <button class="btn btn--danger btn--icon" data-cat-del="${c.id}" title="Löschen">${icon('trash', 'icon--sm')}</button>
       </div>
     </div>
-    <div class="card" id="catForm">
+    <form class="card" id="catForm">
       <div class="card__head">
         <h2>${icon('settings')} Allgemein</h2>
         <label class="head-toggle"><span>Kategorie aktiv</span>
@@ -516,9 +508,7 @@ function renderCategoriesTab(body, editCatId) {
         <div class="field-hint">Begrüßung im Ticket (leer = Server-Standard). Platzhalter: {user}, {number}, {category}</div>
         <textarea data-cf="welcomeMessage" rows="3">${escapeHtml(c.welcome_message || '')}</textarea>
       </div>
-
-      <div style="margin-top:16px;"><button class="btn btn--primary" data-cat-save="${c.id}">${icon('check', 'icon--sm')} Kategorie speichern</button></div>
-    </div>
+    </form>
 
     <div class="card" id="catFormCard">
       <div class="card__head"><h2>${icon('file')} Ticket-Öffnen Formular <span class="muted">(max. 5 Felder – Discord-Limit)</span></h2></div>
@@ -562,23 +552,27 @@ function renderCategoriesTab(body, editCatId) {
     const emoteBtn = body.querySelector('#catEmoteBtn');
     emoteBtn.onclick = () => {
       Dash.openEmojiPicker(emoteBtn, (val) => {
-        body.querySelector('#catEmoteVal').value = val;
+        const hidden = body.querySelector('#catEmoteVal');
+        hidden.value = val;
+        hidden.dispatchEvent(new Event('input', { bubbles: true }));
         emoteBtn.innerHTML = val ? val : '<span class="emote-btn__empty">Wählen…</span>';
       });
     };
-    body.querySelector(`[data-cat-save]`).onclick = async (e) => {
+
+    const catForm = body.querySelector('#catForm');
+    Dash.trackForm(catForm, async () => {
       const patch = {};
-      body.querySelectorAll('#catForm [data-cf]').forEach((el) => {
+      catForm.querySelectorAll('[data-cf]').forEach((el) => {
         patch[el.dataset.cf] = el.type === 'checkbox' ? el.checked : el.value;
       });
-      const id = e.currentTarget.dataset.catSave;
       try {
-        await apiFor('PATCH', `/ticket-panels/${p.id}/categories/${id}`, patch);
+        await apiFor('PATCH', `/ticket-panels/${p.id}/categories/${c.id}`, patch);
         toast('Kategorie gespeichert.', 'success');
         await refreshPanel();
-        renderCategoriesTab(body, id);
-      } catch (err) { toast(err.message, 'error'); }
-    };
+        renderCategoriesTab(body, c.id);
+      } catch (err) { toast(err.message, 'error'); throw err; }
+    }, { fieldAttr: 'data-cf', key: 'catForm' });
+
     body.querySelector(`[data-cat-del]`).onclick = async (e) => {
       if (!(await confirmModal('Kategorie löschen?', { danger: true, confirmLabel: 'Löschen' }))) return;
       await apiFor('DELETE', `/ticket-panels/${p.id}/categories/${e.currentTarget.dataset.catDel}`);
@@ -600,27 +594,29 @@ function renderCategoriesTab(body, editCatId) {
       const out = slider.closest('.field').querySelector('[data-ql]');
       slider.addEventListener('input', () => { out.textContent = slider.value; });
     });
+    body.querySelectorAll('#tqList [data-q]').forEach((row) => {
+      const qid = row.dataset.q;
+      Dash.trackForm(row, async () => {
+        const patch = {};
+        row.querySelectorAll('[data-qf]').forEach((el) => {
+          patch[el.dataset.qf] = el.type === 'checkbox' ? el.checked : el.value;
+        });
+        try {
+          await apiFor('PATCH', `/ticket-panels/${p.id}/categories/${c.id}/questions/${qid}`, patch);
+          toast('Feld gespeichert.', 'success');
+        } catch (err) { toast(err.message, 'error'); throw err; }
+      }, { fieldAttr: 'data-qf', key: 'q-' + qid });
+    });
     body.querySelector('#tqList').onclick = async (e) => {
-      const btn = e.target.closest('button[data-qa]');
+      const btn = e.target.closest('button[data-qa="del"]');
       if (!btn) return;
       const row = btn.closest('[data-q]');
       const qid = row.dataset.q;
       try {
-        if (btn.dataset.qa === 'save') {
-          const patch = {};
-          row.querySelectorAll('[data-qf]').forEach((el) => {
-            patch[el.dataset.qf] = el.type === 'checkbox' ? el.checked : el.value;
-          });
-          await apiFor('PATCH', `/ticket-panels/${p.id}/categories/${c.id}/questions/${qid}`, patch);
-          toast('Feld gespeichert.', 'success');
-          await refreshPanel();
-          renderCategoriesTab(body, c.id);
-        } else if (btn.dataset.qa === 'del') {
-          if (!(await confirmModal('Feld löschen?', { danger: true, confirmLabel: 'Löschen' }))) return;
-          await apiFor('DELETE', `/ticket-panels/${p.id}/categories/${c.id}/questions/${qid}`);
-          await refreshPanel();
-          renderCategoriesTab(body, c.id);
-        }
+        if (!(await confirmModal('Feld löschen?', { danger: true, confirmLabel: 'Löschen' }))) return;
+        await apiFor('DELETE', `/ticket-panels/${p.id}/categories/${c.id}/questions/${qid}`);
+        await refreshPanel();
+        renderCategoriesTab(body, c.id);
       } catch (err) { toast(err.message, 'error'); }
     };
   }

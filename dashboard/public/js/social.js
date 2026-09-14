@@ -149,11 +149,11 @@ function row(s) {
       <button class="btn btn--outline btn--sm" data-a="toggle">${s.enabled ? 'Pausieren' : 'Aktivieren'}</button>
       <button class="btn btn--danger btn--sm" data-a="del">${icon('trash', 'icon--sm')} Entfernen</button>
     </div>
-    <div class="col-2" data-edit hidden style="margin-top:8px;">
-      <div class="field"><label>Kanal</label><select data-e-channel>${channelOptionsHtml(s.channelId)}</select></div>
-      <div class="field"><label>Erwähnung</label><select data-e-mention>${mentionOptionsHtml(s.mention || 'none')}</select></div>
-      <div style="grid-column:1/-1;"><button class="btn btn--primary btn--sm" data-a="save">${icon('check', 'icon--sm')} Speichern</button> <button class="btn btn--ghost btn--sm" data-a="cancel">Abbrechen</button></div>
-    </div>
+    <form class="col-2" data-edit hidden style="margin-top:8px;">
+      <div class="field"><label>Kanal</label><select name="channelId">${channelOptionsHtml(s.channelId)}</select></div>
+      <div class="field"><label>Erwähnung</label><select name="mention">${mentionOptionsHtml(s.mention || 'none')}</select></div>
+      <div style="grid-column:1/-1;"><button type="button" class="btn btn--ghost btn--sm" data-a="cancel">Abbrechen</button></div>
+    </form>
   </div>`;
 }
 
@@ -168,6 +168,17 @@ async function load() {
   listEl.innerHTML = subs.length
     ? subs.map(row).join('')
     : '<p class="muted">Noch keine Benachrichtigungen. Oben eine hinzufügen.</p>';
+
+  listEl.querySelectorAll('[data-id]').forEach((box) => {
+    const id = box.dataset.id;
+    const editForm = box.querySelector('[data-edit]');
+    Dash.trackForm(editForm, async () => {
+      try {
+        await apiFor('PATCH', `/social/${id}`, { channelId: editForm.channelId.value, mention: editForm.mention.value });
+        toast('Gespeichert.', 'success');
+      } catch (err) { toast(err.message, 'error'); throw err; }
+    }, { key: 'sub-' + id });
+  });
 }
 
 listEl.addEventListener('click', async (e) => {
@@ -186,14 +197,11 @@ listEl.addEventListener('click', async (e) => {
       box.querySelector('[data-edit]').hidden = false;
       box.querySelector('[data-view]').hidden = true;
     } else if (btn.dataset.a === 'cancel') {
-      box.querySelector('[data-edit]').hidden = true;
+      const editForm = box.querySelector('[data-edit]');
+      editForm.reset();
+      editForm.sbMarkClean?.();
+      editForm.hidden = true;
       box.querySelector('[data-view]').hidden = false;
-    } else if (btn.dataset.a === 'save') {
-      const channelId = box.querySelector('[data-e-channel]').value;
-      const mention = box.querySelector('[data-e-mention]').value;
-      await apiFor('PATCH', `/social/${id}`, { channelId, mention });
-      toast('Gespeichert.', 'success');
-      await load();
     } else if (btn.dataset.a === 'del') {
       if (!(await confirmModal('Diese Benachrichtigung entfernen?', { danger: true, confirmLabel: 'Entfernen' }))) return;
       await apiFor('DELETE', `/social/${id}`);

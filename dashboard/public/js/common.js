@@ -426,8 +426,17 @@ const saveBar = {
     return this.el;
   },
   register(tracker) {
+    // Ersetzt einen evtl. vorhandenen Tracker mit demselben Key (z. B. wenn ein
+    // dynamisch neu gezeichneter Bereich sich erneut registriert) statt Leichen anzusammeln.
+    if (tracker.key !== undefined) {
+      for (const t of this.trackers) if (t.key === tracker.key) this.trackers.delete(t);
+    }
     this.trackers.add(tracker);
     this.ensure();
+  },
+  unregister(tracker) {
+    this.trackers.delete(tracker);
+    this.refresh();
   },
   dirty() {
     return [...this.trackers].filter((t) => {
@@ -477,24 +486,37 @@ const saveBar = {
 };
 
 /**
- * Beobachtet ein <form> auf Änderungen und meldet sie an die Speicher-Leiste.
- * @param {HTMLFormElement} form
+ * Beobachtet ein <form> (oder einen beliebigen Container mit z. B. [data-cf]-Feldern)
+ * auf Änderungen und meldet sie an die Speicher-Leiste.
+ * @param {HTMLElement} container  <form> mit name-Attributen, oder ein anderer Container
+ *   zusammen mit fieldAttr (z. B. ein <div> mit [data-cf]-Feldern)
  * @param {() => Promise<void>} saveFn  wird beim Speichern aufgerufen (wirft bei Fehler)
- * @param {{extra?: () => string, reset?: () => (void|Promise)}} [o]
+ * @param {{extra?: () => string, reset?: () => (void|Promise), fieldAttr?: string, key?: string}} [o]
  *   extra: zusätzlicher Zustand (z. B. Checklisten außerhalb der Felder)
  *   reset: eigenes Zurücksetzen (sonst: nur Feldwerte wiederherstellen)
+ *   fieldAttr: Attribut, das die Felder markiert (Standard: "name")
+ *   key: eindeutiger Schlüssel für dynamisch neu gezeichnete Bereiche (Standard: container.id).
+ *        Ein erneutes trackForm() mit demselben key ersetzt den alten Tracker (kein Leck bei Re-Render).
  */
-function trackForm(form, saveFn, o) {
-  if (!form || form.dataset.sbTracked) return;
-  form.dataset.sbTracked = '1';
-  const extra = o && o.extra;
-  const resetFn = o && o.reset;
+function trackForm(container, saveFn, o) {
+  if (!container || container.dataset.sbTracked) return;
+  container.dataset.sbTracked = '1';
+  const opts = o || {};
+  const extra = opts.extra;
+  const resetFn = opts.reset;
+  const fieldAttr = opts.fieldAttr || 'name';
+  const key = opts.key || container.id || undefined;
+  const isForm = container.tagName === 'FORM';
+  const selector = fieldAttr === 'name' ? '[name]' : `[${fieldAttr}]`;
+  const fieldKey = (el) => (fieldAttr === 'name' ? el.name : el.getAttribute(fieldAttr));
+  const fields = () => [...container.querySelectorAll(selector)];
 
   const snapshot = () => {
     const m = {};
-    for (const el of form.elements) {
-      if (!el.name) continue;
-      m[el.name] = el.type === 'checkbox' ? el.checked : el.value;
+    for (const el of fields()) {
+      const k = fieldKey(el);
+      if (!k) continue;
+      m[k] = el.type === 'checkbox' ? el.checked : el.value;
     }
     return JSON.stringify(m) + (extra ? '|' + extra() : '');
   };
@@ -503,15 +525,17 @@ function trackForm(form, saveFn, o) {
   const restore = async () => {
     if (resetFn) { await resetFn(); return; }
     const m = JSON.parse(clean.split('|')[0]);
-    for (const el of form.elements) {
-      if (!el.name || !(el.name in m)) continue;
-      if (el.type === 'checkbox') el.checked = m[el.name];
-      else el.value = m[el.name];
+    for (const el of fields()) {
+      const k = fieldKey(el);
+      if (!k || !(k in m)) continue;
+      if (el.type === 'checkbox') el.checked = m[k];
+      else el.value = m[k];
       el.dispatchEvent(new Event('input', { bubbles: true }));
     }
   };
 
   const tracker = {
+    key,
     isDirty: () => snapshot() !== clean,
     save: async () => { await saveFn(); clean = snapshot(); },
     cancel: async () => { await restore(); clean = snapshot(); },
@@ -520,12 +544,15 @@ function trackForm(form, saveFn, o) {
   saveBar.register(tracker);
 
   const check = () => saveBar.refresh();
-  form.addEventListener('input', check);
-  form.addEventListener('change', check);
-  form.addEventListener('submit', (e) => { e.preventDefault(); saveBar.saveAll(); });
+  container.addEventListener('input', check);
+  container.addEventListener('change', check);
+  if (isForm) {
+    container.addEventListener('submit', (e) => { e.preventDefault(); saveBar.saveAll(); });
+  }
 
   // Von außen (nach eigenem Speichern der Seite) aufrufbar.
-  form.sbMarkClean = () => { tracker.markClean(); saveBar.refresh(); };
+  container.sbMarkClean = () => { tracker.markClean(); saveBar.refresh(); };
+  return tracker;
 }
 
 /* ---------------- Sidebar (Mobile) ---------------- */

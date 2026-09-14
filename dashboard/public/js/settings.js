@@ -40,6 +40,7 @@ load()
 /* ---------------- Bot auf diesem Server (Nickname + Server-Avatar) ---------------- */
 
 const statusEl = document.getElementById('botProfileStatus');
+const botNickForm = document.getElementById('botNickForm');
 
 async function loadBotMember() {
   try {
@@ -47,22 +48,24 @@ async function loadBotMember() {
     document.getElementById('botAvatar').src = (p.avatarUrl || '') + (p.avatarUrl ? '?t=' + Date.now() : '');
     document.getElementById('botNick').value = p.nick || '';
     document.getElementById('botNick').placeholder = p.username || 'Bot';
+    botNickForm.sbMarkClean?.();
   } catch (e) {
     statusEl.textContent = e.message;
   }
 }
 
-document.getElementById('botNickSave').addEventListener('click', async () => {
+async function saveNick() {
   const nick = document.getElementById('botNick').value.trim();
   try {
     const r = await apiFor('POST', '/bot-member/nick', { nick });
     toast(r.nick ? `Bot heißt hier jetzt "${r.nick}".` : 'Nickname zurückgesetzt.', 'success');
-    statusEl.textContent = 'Gespeichert ✓';
   } catch (e) {
     toast(e.message, 'error');
     statusEl.textContent = e.message;
+    throw e;
   }
-});
+}
+Dash.trackForm(botNickForm, saveNick, { reset: loadBotMember });
 
 document.getElementById('botAvatarFile').addEventListener('change', (ev) => {
   const file = ev.target.files[0];
@@ -99,14 +102,14 @@ loadBotMember();
 
 /* ---------------- Bot-Status / Aktivität (bot-weit) ---------------- */
 
-const psMsg = document.getElementById('psStatusMsg');
+const presenceForm = document.getElementById('presenceForm');
 
 function psToggleUrl() {
   document.getElementById('psUrlWrap').hidden = document.getElementById('psType').value !== 'streaming';
 }
-document.getElementById('psType').addEventListener('change', psToggleUrl);
 
 async function loadBotPresence() {
+  if (!presenceForm) return; // Karte nur für Besitzer im DOM
   try {
     const p = await api('GET', '/api/bot/presence');
     document.getElementById('psStatus').value = p.status || 'online';
@@ -114,12 +117,13 @@ async function loadBotPresence() {
     document.getElementById('psText').value = p.activityText || '';
     document.getElementById('psUrl').value = p.activityUrl || '';
     psToggleUrl();
+    presenceForm.sbMarkClean?.();
   } catch (e) {
-    psMsg.textContent = e.message;
+    toast(e.message, 'error');
   }
 }
 
-document.getElementById('psSave').addEventListener('click', async () => {
+async function savePresence() {
   const body = {
     status: document.getElementById('psStatus').value,
     activityType: document.getElementById('psType').value,
@@ -129,19 +133,24 @@ document.getElementById('psSave').addEventListener('click', async () => {
   try {
     await api('POST', '/api/bot/presence', body);
     toast('Bot-Status aktualisiert.', 'success');
-    psMsg.textContent = 'Gespeichert ✓';
   } catch (e) {
     toast(e.message, 'error');
-    psMsg.textContent = e.message;
+    throw e;
   }
-});
+}
 
-loadBotPresence();
+if (presenceForm) {
+  document.getElementById('psType').addEventListener('change', psToggleUrl);
+  Dash.trackForm(presenceForm, savePresence, { reset: loadBotPresence });
+  loadBotPresence();
+}
 
 /* ---------------- Bot-Support per DM / ModMail (bot-weit, nur Besitzer) ---------------- */
 
+const modmailForm = document.getElementById('modmailForm');
+
 async function loadModmail() {
-  if (!document.getElementById('mmSave')) return; // Karte nur für Besitzer im DOM
+  if (!modmailForm) return; // Karte nur für Besitzer im DOM
   try {
     await fillSelectors();
     const m = await api('GET', '/api/bot/modmail');
@@ -157,13 +166,13 @@ async function loadModmail() {
     } else {
       st.textContent = 'Aktuell ist ein anderer Server der Bot-Support. Speichern schaltet auf diesen Server um.';
     }
+    modmailForm.sbMarkClean?.();
   } catch (e) {
-    document.getElementById('mmMsg').textContent = e.message;
+    toast(e.message, 'error');
   }
 }
 
-document.getElementById('mmSave')?.addEventListener('click', async () => {
-  const msg = document.getElementById('mmMsg');
+async function saveModmail() {
   const body = {
     enabled: document.getElementById('mmEnabled').checked,
     guildId: Dash.GUILD_ID,
@@ -174,15 +183,17 @@ document.getElementById('mmSave')?.addEventListener('click', async () => {
   try {
     await api('POST', '/api/bot/modmail', body);
     toast('Bot-Support gespeichert.', 'success');
-    msg.textContent = 'Gespeichert ✓';
     await loadModmail();
   } catch (e) {
     toast(e.message, 'error');
-    msg.textContent = e.message;
+    throw e;
   }
-});
+}
 
-loadModmail();
+if (modmailForm) {
+  Dash.trackForm(modmailForm, saveModmail, { reset: loadModmail });
+  loadModmail();
+}
 
 /* ---------------- Sicherheit: Login-Protokoll (nur Besitzer) ---------------- */
 

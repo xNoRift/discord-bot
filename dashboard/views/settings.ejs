@@ -20,25 +20,22 @@
         <button class="btn btn--ghost btn--sm" id="botAvatarReset" type="button">Zurücksetzen</button>
       </div>
     </div>
-    <div class="field" style="flex:1;min-width:220px;">
+    <form id="botNickForm" class="field" style="flex:1;min-width:220px;">
       <label>Anzeigename auf diesem Server (Nickname)</label>
       <div class="field-hint">Max. 32 Zeichen. Leer lassen = Standard-Bot-Name. Der Bot braucht das Recht „Nickname ändern".</div>
-      <div class="row-inline">
-        <input id="botNick" type="text" maxlength="32" placeholder="NoRift Bot" />
-        <button class="btn btn--primary btn--sm" id="botNickSave" type="button">Speichern</button>
-      </div>
+      <input id="botNick" name="nick" type="text" maxlength="32" placeholder="NoRift Bot" />
       <p class="muted" id="botProfileStatus"></p>
-    </div>
+    </form>
   </div>
 </div>
 
 <% if (typeof isOwner !== 'undefined' && isOwner) { %>
 <div class="card">
   <div class="card__head"><h2><%- icon('bot') %> Bot-Status <span class="muted">(gilt bot-weit · nur Besitzer)</span></h2></div>
-  <div class="form">
+  <form id="presenceForm" class="form">
     <div class="field">
       <label>Status</label>
-      <select id="psStatus">
+      <select id="psStatus" name="status">
         <option value="online">🟢 Online</option>
         <option value="idle">🌙 Abwesend</option>
         <option value="dnd">⛔ Bitte nicht stören</option>
@@ -48,7 +45,7 @@
     <div class="col-2">
       <div class="field">
         <label>Aktivität</label>
-        <select id="psType">
+        <select id="psType" name="type">
           <option value="none">— keine —</option>
           <option value="playing">Spielt …</option>
           <option value="watching">Schaut … zu</option>
@@ -60,34 +57,32 @@
       </div>
       <div class="field">
         <label>Text</label>
-        <input id="psText" type="text" maxlength="128" placeholder="/help • Dashboard" />
+        <input id="psText" name="text" type="text" maxlength="128" placeholder="/help • Dashboard" />
       </div>
     </div>
     <div class="field" id="psUrlWrap" hidden>
       <label>Stream-Link (Twitch / YouTube)</label>
-      <input id="psUrl" type="url" maxlength="300" placeholder="https://twitch.tv/deinname" />
+      <input id="psUrl" name="url" type="url" maxlength="300" placeholder="https://twitch.tv/deinname" />
     </div>
-    <div><button class="btn btn--primary btn--sm" id="psSave" type="button">Status speichern</button> <span class="muted" id="psStatusMsg"></span></div>
-  </div>
+  </form>
 </div>
 
 <div class="card">
   <div class="card__head"><h2><%- icon('chat') %> Bot-Support per DM (ModMail) <span class="muted">(gilt bot-weit · nur Besitzer)</span></h2></div>
   <p class="card__sub">Schreibt jemand dem Bot eine Direktnachricht, wird daraus automatisch ein Ticket auf <strong>einem</strong> Support-Server. Antworten des Teams im Ticket-Kanal gehen als DM zurück. Interne Notiz: Nachricht mit <code>//</code> beginnen – wird nicht weitergeleitet.</p>
-  <div class="form">
+  <form id="modmailForm" class="form">
     <div class="setting-row">
       <div class="setting-row__text"><b>Diesen Server als Bot-Support verwenden</b><span id="mmState">…</span></div>
-      <label class="toggle"><input type="checkbox" id="mmEnabled"><span class="toggle__track"></span></label>
+      <label class="toggle"><input type="checkbox" id="mmEnabled" name="enabled"><span class="toggle__track"></span></label>
     </div>
     <div class="col-2">
-      <div class="field"><label>Kategorie für DM-Tickets</label><select id="mmCategory" data-type="category"></select><small>Pflicht. Discord-Kategorie, in der die <code>modmail-…</code>-Kanäle entstehen.</small></div>
-      <div class="field"><label>Support-Rolle</label><select id="mmRole" data-type="role"></select><small>Leer = Standard-Support-Rolle dieses Servers.</small></div>
+      <div class="field"><label>Kategorie für DM-Tickets</label><select id="mmCategory" name="categoryId" data-type="category"></select><small>Pflicht. Discord-Kategorie, in der die <code>modmail-…</code>-Kanäle entstehen.</small></div>
+      <div class="field"><label>Support-Rolle</label><select id="mmRole" name="roleId" data-type="role"></select><small>Leer = Standard-Support-Rolle dieses Servers.</small></div>
     </div>
     <div class="col-2">
-      <div class="field"><label>Log-Kanal</label><select id="mmLog" data-type="text"></select><small>Leer = kein eigener Log.</small></div>
+      <div class="field"><label>Log-Kanal</label><select id="mmLog" name="logChannelId" data-type="text"></select><small>Leer = kein eigener Log.</small></div>
     </div>
-    <div><button class="btn btn--primary btn--sm" id="mmSave" type="button">Speichern</button> <span class="muted" id="mmMsg"></span></div>
-  </div>
+  </form>
 </div>
 
 <div class="card">
