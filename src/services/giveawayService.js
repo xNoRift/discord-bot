@@ -83,6 +83,11 @@ function buildActiveMessage(giveaway, entryCount) {
       .setLabel('Teilnehmen')
       .setEmoji('🎉')
       .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`giveaway:list:${giveaway.id}`)
+      .setLabel('Teilnehmer')
+      .setEmoji('👥')
+      .setStyle(ButtonStyle.Secondary),
   );
 
   return { embeds: [embed], components: [row] };
