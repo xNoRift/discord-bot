@@ -320,6 +320,75 @@ document.getElementById('gwList').addEventListener('click', async (e) => {
 
 /* ---------- Modals ---------- */
 
+function hostPickerHtml(hostId) {
+  if (!window.IS_OWNER) return '';
+  return `
+    <div class="field">
+      <label>Veranstalter <span class="muted">(optional, Standard: du selbst)</span></label>
+      <input type="hidden" name="hostId" value="${hostId ? escapeHtml(hostId) : ''}">
+      <div class="host-picker">
+        <input type="text" class="host-picker__search" placeholder="Nach Namen oder ID suchen…" autocomplete="off">
+        <button type="button" class="btn btn--ghost btn--sm host-picker__reset">Zurücksetzen</button>
+        <div class="host-picker__selected muted"></div>
+        <div class="host-picker__results"></div>
+      </div>
+    </div>`;
+}
+
+async function wireHostPicker(modal, initialHostId) {
+  if (!window.IS_OWNER) return;
+  const hidden = modal.querySelector('input[name=hostId]');
+  const search = modal.querySelector('.host-picker__search');
+  const resetBtn = modal.querySelector('.host-picker__reset');
+  const selectedEl = modal.querySelector('.host-picker__selected');
+  const resultsEl = modal.querySelector('.host-picker__results');
+
+  const showSelected = (name, tag) => {
+    selectedEl.textContent = name ? `Ausgewählt: ${name}${tag ? ' (' + tag + ')' : ''}` : 'Standard: du selbst';
+  };
+  showSelected(null);
+
+  if (initialHostId) {
+    try {
+      const list = await apiFor('GET', `/members?q=${initialHostId}`);
+      if (list[0]) showSelected(list[0].displayName, list[0].tag);
+    } catch { /* ignore */ }
+  }
+
+  let t;
+  search.addEventListener('input', () => {
+    clearTimeout(t);
+    const q = search.value.trim();
+    if (q.length < 2) { resultsEl.innerHTML = ''; return; }
+    t = setTimeout(async () => {
+      try {
+        const list = await apiFor('GET', `/members?q=${encodeURIComponent(q)}`);
+        resultsEl.innerHTML = list.slice(0, 8).map((m) => `
+          <div class="host-picker__row" data-id="${m.id}" data-name="${escapeHtml(m.displayName)}" data-tag="${escapeHtml(m.tag)}">
+            <img src="${escapeHtml(m.avatarUrl)}" alt="" />
+            <span>${escapeHtml(m.displayName)} <span class="muted">${escapeHtml(m.tag)}</span></span>
+          </div>`).join('') || '<div class="muted" style="padding:6px;">Kein Treffer.</div>';
+      } catch (err) { toast(err.message, 'error'); }
+    }, 300);
+  });
+
+  resultsEl.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-id]');
+    if (!row) return;
+    hidden.value = row.dataset.id;
+    showSelected(row.dataset.name, row.dataset.tag);
+    resultsEl.innerHTML = '';
+    search.value = '';
+  });
+
+  resetBtn.addEventListener('click', () => {
+    hidden.value = '';
+    showSelected(null);
+    resultsEl.innerHTML = '';
+    search.value = '';
+  });
+}
+
 async function newGiveawayModal() {
   const [ch, roles] = await Promise.all([getChannels(), getRoles()]);
   const chOpts = ch.text.map((c) => `<option value="${c.id}">#${escapeHtml(c.name)}</option>`).join('');
@@ -337,11 +406,13 @@ async function newGiveawayModal() {
         <div class="field"><label>Rollen-Dauer</label><input name="winnerRoleDuration" placeholder="${fmtDuration(settings.giveaway_winner_role_duration_ms || 86400000)}" /></div>
       </div>
       <div class="field"><label>Beschreibung (optional)</label><textarea name="description" rows="2"></textarea></div>
+      ${hostPickerHtml()}
       <div class="modal__actions">
         <button type="button" class="btn btn--ghost" data-x>Abbrechen</button>
         <button type="submit" class="btn btn--primary">🎉 Giveaway starten</button>
       </div>
     </form>`);
+  wireHostPicker(modal, null);
   modal.querySelector('[data-x]').onclick = close;
   modal.querySelector('#gForm').onsubmit = async (e) => {
     e.preventDefault();
@@ -404,10 +475,12 @@ async function editModal(id) {
       <div class="field"><label>Gewinner</label><input name="winnerCount" type="number" min="1" ${window.IS_OWNER ? '' : 'max="20"'} value="${g.winner_count}" /></div>
       <div class="field"><label>Erforderliche Rolle</label><select name="requiredRoleId"><option value="">Keine</option>${roleOpts}</select></div>
       <div class="field"><label>Gewinnerrolle</label><select name="winnerRoleId"><option value="">Keine</option>${roleOpts}</select></div>
+      ${hostPickerHtml(g.host_id)}
       <div class="modal__actions"><button type="button" class="btn btn--ghost" data-x>Abbrechen</button><button class="btn btn--primary">Speichern</button></div>
     </form>`);
   if (g.required_role_id) modal.querySelector('[name=requiredRoleId]').value = g.required_role_id;
   if (g.winner_role_id) modal.querySelector('[name=winnerRoleId]').value = g.winner_role_id;
+  wireHostPicker(modal, g.host_id);
   modal.querySelector('[data-x]').onclick = close;
   modal.querySelector('#ef').onsubmit = async (e) => {
     e.preventDefault();

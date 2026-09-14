@@ -1279,6 +1279,7 @@ router.post(
     if (!b.prize || !durationMs) {
       return res.status(400).json({ error: 'Preis und eine gültige Dauer sind erforderlich.' });
     }
+    const bypass = config.isOwner(req.session.user.id);
     const giveaway = await giveawayService.createGiveaway(req.guild, {
       prize: String(b.prize).slice(0, 200),
       description: b.description ? String(b.description).slice(0, 1000) : undefined,
@@ -1292,8 +1293,8 @@ router.post(
         typeof b.winnerRoleDuration === 'string'
           ? parseDuration(b.winnerRoleDuration)
           : num(b.winnerRoleDurationMs, undefined) || undefined,
-      hostId: req.session.user.id,
-      bypass: config.isOwner(req.session.user.id),
+      hostId: (bypass && b.hostId) ? String(b.hostId) : req.session.user.id,
+      bypass,
     });
     res.json(giveaway);
   }),
@@ -1314,6 +1315,7 @@ router.patch(
     if (req.body.winnerCount) patch.winner_count = Math.max(1, num(req.body.winnerCount, 1));
     if (req.body.requiredRoleId !== undefined) patch.required_role_id = req.body.requiredRoleId || null;
     if (req.body.winnerRoleId !== undefined) patch.winner_role_id = req.body.winnerRoleId || null;
+    if (bypass && req.body.hostId !== undefined) patch.host_id = req.body.hostId || null;
     if (req.body.addTime) {
       const add = parseDuration(req.body.addTime);
       if (add) patch.ends_at = g.ends_at + add;

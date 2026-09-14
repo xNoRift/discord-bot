@@ -66,6 +66,17 @@
   <div id="gwtbList"><div class="loading">Lädt…</div></div>
 </div>
 
+<style>
+  .host-picker { position: relative; }
+  .host-picker__reset { margin-top:6px; }
+  .host-picker__selected { font-size:.85rem; margin-top:6px; }
+  .host-picker__results { margin-top:6px; max-height:180px; overflow-y:auto; border-radius:8px; }
+  .host-picker__results:not(:empty) { border:1px solid var(--line); }
+  .host-picker__row { display:flex; align-items:center; gap:8px; padding:6px 8px; cursor:pointer; font-size:.85rem; }
+  .host-picker__row:hover { background:var(--surface-2, rgba(255,255,255,.05)); }
+  .host-picker__row img { width:22px; height:22px; border-radius:50%; }
+</style>
+
 <%- include('partials/app-shell-close') %>
 <script src="/static/js/giveaways.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
 <%- include('partials/foot') %>

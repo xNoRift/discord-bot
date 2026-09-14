@@ -56,6 +56,7 @@ function update(id, patch) {
     'winner_role_duration_ms',
     'channel_id',
     'message_id',
+    'host_id',
   ];
   const keys = Object.keys(patch).filter((k) => allowed.includes(k));
   if (!keys.length) return get(id);
