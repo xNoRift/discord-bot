@@ -85,8 +85,8 @@ function buildPanelMessage(panel, categories) {
 
   // Layout: 'buttons' | 'select' | 'both'  (Alt-Flag use_select wird noch berücksichtigt)
   const layout = panel.panel_layout || (panel.use_select ? 'select' : 'buttons');
-  const wantSelect = (layout === 'select' || layout === 'both') && categories.length > 1;
-  const wantButtons = layout === 'buttons' || layout === 'both' || categories.length === 1;
+  const wantSelect = layout === 'select' || layout === 'both';
+  const wantButtons = layout === 'buttons' || layout === 'both';
 
   if (wantSelect) {
     components.push(
