@@ -573,9 +573,9 @@ function renderCategoriesTab(body, editCatId) {
       } catch (err) { toast(err.message, 'error'); throw err; }
     }, { fieldAttr: 'data-cf', key: 'catForm' });
 
-    body.querySelector(`[data-cat-del]`).onclick = async (e) => {
+    body.querySelector(`[data-cat-del]`).onclick = async () => {
       if (!(await confirmModal('Kategorie löschen?', { danger: true, confirmLabel: 'Löschen' }))) return;
-      await apiFor('DELETE', `/ticket-panels/${p.id}/categories/${e.currentTarget.dataset.catDel}`);
+      await apiFor('DELETE', `/ticket-panels/${p.id}/categories/${c.id}`);
       await refreshPanel();
       renderCategoriesTab(body);
     };
