@@ -1504,6 +1504,62 @@ router.patch('/guilds/:guildId/modules/:module', actionLimiter, (req, res) => {
   res.json(moduleSettings.update(req.params.guildId, req.params.module, req.body || {}));
 });
 
+/* ---------------- Beteiligungs-Belohnungen (Level) ---------------- */
+
+const levelsModel = require('../../src/database/models/levels');
+
+router.get('/guilds/:guildId/levels/leaderboard', (req, res) => {
+  const limit = Math.min(100, Math.max(1, num(req.query.limit, 20)));
+  const rows = levelsModel.top(req.params.guildId, limit).map((r, i) => {
+    const m = req.guild.members.cache.get(r.user_id);
+    const { into, needed } = levelsModel.levelFromXp(r.xp);
+    return {
+      rank: i + 1,
+      userId: r.user_id,
+      name: m ? m.displayName : null,
+      avatarUrl: m ? m.displayAvatarURL({ size: 64 }) : null,
+      xp: r.xp,
+      level: r.level,
+      progress: Math.round((into / needed) * 100),
+      messages: r.messages,
+      voiceMinutes: r.voice_minutes,
+    };
+  });
+  res.json({ total: levelsModel.count(req.params.guildId), rows });
+});
+
+router.get('/guilds/:guildId/levels/rewards', (req, res) => {
+  res.json(levelsModel.listRewards(req.params.guildId));
+});
+
+router.post('/guilds/:guildId/levels/rewards', actionLimiter, (req, res) => {
+  const level = num(req.body.level);
+  const roleId = String(req.body.roleId || '');
+  if (!level || level < 1 || level > 500) return res.status(400).json({ error: 'Level muss zwischen 1 und 500 liegen.' });
+  if (!req.guild.roles.cache.has(roleId)) return res.status(400).json({ error: 'Bitte eine gültige Rolle wählen.' });
+  if (levelsModel.listRewards(req.params.guildId).length >= 50) return res.status(400).json({ error: 'Maximal 50 Belohnungen.' });
+  levelsModel.addReward(req.params.guildId, level, roleId);
+  res.json(levelsModel.listRewards(req.params.guildId));
+});
+
+router.delete('/guilds/:guildId/levels/rewards/:id', (req, res) => {
+  const r = levelsModel.getReward(num(req.params.id));
+  if (!r || r.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+  levelsModel.removeReward(r.id);
+  res.json({ ok: true });
+});
+
+router.delete('/guilds/:guildId/levels/users/:userId', (req, res) => {
+  if (!/^\d{5,25}$/.test(req.params.userId)) return res.status(400).json({ error: 'Ungültige ID.' });
+  levelsModel.resetUser(req.params.guildId, req.params.userId);
+  res.json({ ok: true });
+});
+
+router.post('/guilds/:guildId/levels/reset', actionLimiter, (req, res) => {
+  levelsModel.resetAll(req.params.guildId);
+  res.json({ ok: true });
+});
+
 /* ---------------- Applications ---------------- */
 
 router.get('/guilds/:guildId/application-types', (req, res) => {

@@ -1,0 +1,60 @@
+<%- include('partials/head', { title: guild.name + ' – Beteiligungs-Belohnungen' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('star') %> Beteiligungs-Belohnungen</h1></div>
+  <p>Mitglieder sammeln durch Schreiben und Sprachzeit XP, steigen im Level auf und bekommen Rollen als Belohnung.</p>
+</div>
+
+<div class="module-status" id="moduleStatus">
+  <span class="module-status__dot"></span>
+  <span class="module-status__text"><b id="msTitle">…</b><span id="msText"></span></span>
+  <button class="btn btn--ghost btn--sm" id="msToggle">…</button>
+</div>
+
+<form id="lvlForm" class="form">
+  <div class="card">
+    <div class="card__head"><h2><%- icon('settings') %> Einstellungen</h2></div>
+    <div class="col-2">
+      <div class="field"><label>XP pro Nachricht (min.)</label><input name="xpMin" type="number" min="1" max="200" /></div>
+      <div class="field"><label>XP pro Nachricht (max.)</label><input name="xpMax" type="number" min="1" max="400" /></div>
+    </div>
+    <div class="field" style="max-width:320px;"><label>Cooldown (Sekunden)</label><input name="cooldownSec" type="number" min="0" max="3600" /><small>So oft kann ein Mitglied maximal XP durch Nachrichten bekommen.</small></div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>XP für Sprachzeit</b><span>Mitglieder bekommen XP für die Zeit in Sprachkanälen (AFK-Kanal zählt nicht)</span></div>
+      <label class="toggle"><input type="checkbox" name="voiceXp" /><span class="toggle__track"></span></label>
+    </div>
+    <div class="field" style="max-width:320px;"><label>XP pro Sprach-Minute</label><input name="voiceXpPerMinute" type="number" min="1" max="100" /></div>
+    <div class="col-2">
+      <div class="field"><label>Level-Up-Kanal</label><select name="announceChannelId" data-type="text"></select><small>Leer = im Kanal der Nachricht.</small></div>
+      <div class="field"><label>Kanäle ohne XP (IDs)</label><input name="noXpChannelIds" placeholder="Kanal-ID, Kanal-ID" /></div>
+    </div>
+    <div class="field"><label>Level-Up-Nachricht</label><input name="announceMessage" maxlength="300" /><small>Platzhalter: <code>{user}</code> <code>{username}</code> <code>{level}</code></small></div>
+  </div>
+</form>
+
+<div class="col-2">
+  <div class="card">
+    <div class="card__head"><h2><%- icon('gift') %> Level-Belohnungen</h2></div>
+    <p class="card__sub">Wer dieses Level erreicht, bekommt die Rolle (der Bot muss in der Rollenliste darüber stehen).</p>
+    <form id="rewardForm" class="row-inline" style="flex-wrap:wrap;margin-bottom:12px;">
+      <input id="rwLevel" type="number" min="1" max="500" placeholder="Level" style="max-width:110px;" />
+      <select id="rwRole" data-type="role" style="max-width:220px;"></select>
+      <button class="btn btn--primary btn--sm" type="submit"><%- icon('plus', 'icon--sm') %> Hinzufügen</button>
+    </form>
+    <div id="rewardList"><div class="loading">Lädt…</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card__head">
+      <h2><%- icon('chart') %> Rangliste</h2>
+      <div class="spacer"></div>
+      <button class="btn btn--danger btn--sm" id="lvlResetAll" type="button">Alle zurücksetzen</button>
+    </div>
+    <div id="board"><div class="loading">Lädt…</div></div>
+  </div>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/levels.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

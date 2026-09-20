@@ -2,6 +2,7 @@
 
 const tempVoiceService = require('../services/tempVoiceService');
 const musicService = require('../services/musicService');
+const levelService = require('../services/levelService');
 const logger = require('../utils/logger');
 
 module.exports = {
@@ -11,6 +12,12 @@ module.exports = {
       await tempVoiceService.onVoiceUpdate(oldState, newState);
     } catch (err) {
       logger.error('[voiceStateUpdate] Temp-Voice:', err.message);
+    }
+
+    try {
+      await levelService.onVoice(oldState, newState);
+    } catch (err) {
+      logger.warn('[voiceStateUpdate] Level:', err.message);
     }
 
     // Musik: wenn der Bot mit niemandem mehr im Sprachkanal ist -> verlassen.

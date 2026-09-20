@@ -4,6 +4,7 @@ const ticketsModel = require('../database/models/tickets');
 const countingService = require('../services/countingService');
 const suggestionService = require('../services/suggestionService');
 const protectionService = require('../services/protectionService');
+const levelService = require('../services/levelService');
 const logger = require('../utils/logger');
 
 /**
@@ -29,6 +30,12 @@ module.exports = {
       }
     } catch {
       /* ignore */
+    }
+
+    try {
+      await levelService.onMessage(message);
+    } catch (err) {
+      logger.warn('[messageCreate] Level:', err.message);
     }
 
     try {
