@@ -605,7 +605,7 @@ function renderCategoriesTab(body, editCatId, sub = 'allgemein') {
       </div>`;
     body.querySelector('.tile-grid').onclick = async (e) => {
       if (e.target.closest('[data-cat-add]')) {
-        const label = prompt('Bezeichnung (z. B. Support, Bug melden):');
+        const label = await Dash.promptModal('Bezeichnung der Kategorie', { title: 'Neue Kategorie', placeholder: 'z. B. Support, Bug melden', maxLength: 80, confirmLabel: 'Erstellen' });
         if (!label) return;
         try {
           const nc = await apiFor('POST', `/ticket-panels/${p.id}/categories`, { label });

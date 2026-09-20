@@ -241,7 +241,7 @@ async function ticketButtonModal(existing) {
       await ticketButtonModal(ticketButtons.find((x) => String(x.id) === String(existing.id)));
     };
     modal.querySelector('#gwtbQAdd').onclick = async () => {
-      const label = prompt('Feldname (max. 45 Zeichen):');
+      const label = await Dash.promptModal('Feldname', { title: 'Neues Feld', placeholder: 'z. B. Wie alt bist du?', maxLength: 45, confirmLabel: 'Hinzufügen', hint: 'Maximal 45 Zeichen.' });
       if (!label) return;
       try {
         await apiFor('POST', `/giveaway-ticket-buttons/${existing.id}/questions`, { label });

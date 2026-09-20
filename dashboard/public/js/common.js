@@ -301,20 +301,26 @@ if (document.readyState === 'loading') {
 
 /* ---------------- Modal ---------------- */
 
-function openModal(innerHtml) {
+function openModal(innerHtml, { onClose } = {}) {
   const root = document.getElementById('modalRoot');
   const overlay = h(`<div class="modal-overlay"><div class="modal">${innerHtml}</div></div>`);
   root.appendChild(overlay);
-  const close = () => overlay.remove();
+  let closed = false;
+  const onKey = (e) => {
+    // Bei mehreren übereinander liegenden Fenstern schließt Esc nur das oberste
+    if (e.key === 'Escape' && root.lastElementChild === overlay) close();
+  };
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    document.removeEventListener('keydown', onKey);
+    overlay.remove();
+    if (onClose) onClose();
+  };
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) close();
   });
-  document.addEventListener('keydown', function onKey(e) {
-    if (e.key === 'Escape') {
-      close();
-      document.removeEventListener('keydown', onKey);
-    }
-  });
+  document.addEventListener('keydown', onKey);
   return { overlay, modal: overlay.querySelector('.modal'), close };
 }
 
@@ -327,15 +333,52 @@ function confirmModal(message, { danger = false, confirmLabel = 'Bestätigen' } 
         <button class="btn btn--ghost" data-act="cancel">Abbrechen</button>
         <button class="btn ${danger ? 'btn--danger' : 'btn--primary'}" data-act="ok">${escapeHtml(confirmLabel)}</button>
       </div>
-    `);
-    modal.querySelector('[data-act="cancel"]').onclick = () => {
-      close();
-      resolve(false);
-    };
+    `, { onClose: () => resolve(false) });
+    modal.querySelector('[data-act="cancel"]').onclick = close;
     modal.querySelector('[data-act="ok"]').onclick = () => {
+      resolve(true); // vor close(), damit onClose nicht "false" liefert
       close();
-      resolve(true);
     };
+  });
+}
+
+/**
+ * Eingabe-Fenster im Dashboard-Design (Ersatz für window.prompt).
+ * Liefert den eingegebenen Text oder null bei Abbruch (Abbrechen, Esc, Klick daneben).
+ */
+function promptModal(message, { title = 'Eingabe', placeholder = '', value = '', maxLength = 200, required = true, multiline = false, confirmLabel = 'OK', hint = '' } = {}) {
+  return new Promise((resolve) => {
+    const attrs = `data-input maxlength="${maxLength}" placeholder="${escapeHtml(placeholder)}"`;
+    const control = multiline
+      ? `<textarea rows="4" ${attrs}>${escapeHtml(value)}</textarea>`
+      : `<input type="text" ${attrs} value="${escapeHtml(value)}" />`;
+    const { modal, close } = openModal(`
+      <h2>${escapeHtml(title)}</h2>
+      <form class="form" data-form>
+        <div class="field">
+          <label>${escapeHtml(String(message).replace(/:\s*$/, ''))}</label>
+          ${control}
+          ${hint ? `<small>${escapeHtml(hint)}</small>` : ''}
+          <div class="field-error" data-error hidden>Bitte etwas eingeben.</div>
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" data-act="cancel">Abbrechen</button>
+          <button type="submit" class="btn btn--primary">${escapeHtml(confirmLabel)}</button>
+        </div>
+      </form>`, { onClose: () => resolve(null) });
+    const field = modal.querySelector('[data-input]');
+    const error = modal.querySelector('[data-error]');
+    setTimeout(() => { field.focus(); field.select?.(); }, 30);
+    modal.querySelector('[data-act="cancel"]').onclick = close;
+    field.addEventListener('input', () => { error.hidden = true; });
+    if (multiline) field.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); modal.querySelector('[data-form]').requestSubmit(); } });
+    modal.querySelector('[data-form]').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const v = field.value.trim();
+      if (required && !v) { error.hidden = false; field.focus(); return; }
+      resolve(v); // vor close(), damit onClose nicht "null" liefert
+      close();
+    });
   });
 }
 
@@ -1005,6 +1048,7 @@ new MutationObserver((muts) => {
 }).observe(document.body, { childList: true, subtree: true });
 
 window.Dash = {
+  promptModal,
   uploadImage,
   enhanceWidgets,
   moduleForm,

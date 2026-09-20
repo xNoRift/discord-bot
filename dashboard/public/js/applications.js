@@ -587,7 +587,12 @@ $('subList').addEventListener('click', async (e) => {
     if (await run(() => apiFor('DELETE', `/applications/${id}`), 'Einreichung gelöscht.')) loadSubs();
     return;
   }
-  const note = prompt('Nachricht an den Bewerber (optional):');
+  const note = await Dash.promptModal('Nachricht an den Bewerber (optional)', {
+    title: action === 'accept' ? 'Bewerbung annehmen' : 'Bewerbung ablehnen',
+    multiline: true, required: false, maxLength: 1000,
+    confirmLabel: action === 'accept' ? 'Annehmen' : 'Ablehnen',
+    hint: 'Der Bewerber bekommt diese Nachricht zusammen mit dem Ergebnis per Direktnachricht. Strg+Enter bestätigt.',
+  });
   if (note === null) return;
   const r = await run(() => apiFor('POST', `/applications/${id}/review`, { decision: action, note }));
   if (r) { toast(`Bewerbung ${action === 'accept' ? 'angenommen' : 'abgelehnt'}.${r.roleNote || ''}`, 'success'); loadSubs(); }
