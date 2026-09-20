@@ -648,6 +648,49 @@ router.post(
   }),
 );
 
+// Interface-Kanal anlegen (nur lesbar, der Bot darf schreiben), als Interface setzen und die Nachricht senden
+router.post(
+  '/guilds/:guildId/tempvoice/create-interface',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const me = req.guild.members.me ?? (await req.guild.members.fetchMe().catch(() => null));
+    if (!me?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      return res.status(403).json({ error: 'Dem Bot fehlt „Kanäle verwalten".' });
+    }
+    try {
+      const s = settingsModel.get(req.guild.id);
+      const hub = s.tempvoice_hub_channel_id ? req.guild.channels.cache.get(s.tempvoice_hub_channel_id) : null;
+      const channel = await req.guild.channels.create({
+        name: '🎛️・interface',
+        type: ChannelType.GuildText,
+        parent: s.tempvoice_category_id || hub?.parentId || null,
+        topic: 'Steuere hier deinen eigenen Sprachkanal – du musst dafür in deinem Kanal sitzen.',
+        reason: 'Temp-Voice Interface-Kanal (Dashboard)',
+        permissionOverwrites: [
+          { id: req.guild.roles.everyone.id, deny: [PermissionFlagsBits.SendMessages] },
+          {
+            id: me.id,
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.EmbedLinks,
+              PermissionFlagsBits.ReadMessageHistory,
+            ],
+          },
+        ],
+      });
+      settingsModel.update(req.guild.id, {
+        tempvoice_interface_channel_id: channel.id,
+        tempvoice_interface_message_id: null,
+      });
+      const msg = await tempVoiceService.postOrUpdateInterface(req.guild);
+      res.json({ ok: true, id: channel.id, name: channel.name, url: msg?.url || null });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
 // Interface-Nachricht in den konfigurierten Text-Kanal posten / aktualisieren
 router.post(
   '/guilds/:guildId/tempvoice/post-interface',

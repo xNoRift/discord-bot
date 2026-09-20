@@ -2,6 +2,7 @@
 
 const {
   ChannelType,
+  OverwriteType,
   PermissionFlagsBits,
   ActionRowBuilder,
   ButtonBuilder,
@@ -25,6 +26,23 @@ const logger = require('../utils/logger');
  */
 
 const MAX_LIMIT = 99;
+
+// channelId -> Map<userId, Beitrittszeit>. Die Einfüge-Reihenfolge der Map = wer am längsten im Kanal ist.
+// Nur im Speicher: nach einem Neustart wird die Reihenfolge aus den aktuellen Kanal-Mitgliedern neu aufgebaut.
+const presence = new Map();
+
+function trackJoin(channelId, userId) {
+  let members = presence.get(channelId);
+  if (!members) presence.set(channelId, (members = new Map()));
+  if (!members.has(userId)) members.set(userId, Date.now());
+}
+
+function trackLeave(channelId, userId) {
+  const members = presence.get(channelId);
+  if (!members) return;
+  members.delete(userId);
+  if (members.size === 0) presence.delete(channelId);
+}
 
 function renderName(format, member, guild) {
   return (
@@ -70,7 +88,6 @@ function panelComponents(row = {}) {
       new ButtonBuilder().setCustomId('tempvoice:btn:disconnect').setLabel('Trennen').setEmoji('🔌').setStyle(ButtonStyle.Secondary),
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('tempvoice:btn:claim').setLabel('Übernehmen').setEmoji('👑').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('tempvoice:btn:delete').setLabel('Löschen').setEmoji('🗑️').setStyle(ButtonStyle.Danger),
     ),
   ];
@@ -110,7 +127,9 @@ function interfaceEmbed(guild) {
         '',
         '✏️ **Umbenennen** · 👥 **Benutzerlimit** · 🔒 **Sperren** · 🙈 **Verstecken** · 🌍 **Region**',
         '➕ **Hinzufügen** · ➖ **Entfernen** · 🚫 **Blockieren** · ♻️ **Entblockieren** · 🔌 **Trennen**',
-        '👑 **Übernehmen** · 🗑️ **Löschen**',
+        '🗑️ **Löschen**',
+        '',
+        '👑 Verlässt der Besitzer den Kanal, wird automatisch die Person Besitzer, die am längsten im Kanal ist.',
       ].join('\n'),
     )
     .setFooter({ text: guild.name });
@@ -184,8 +203,21 @@ async function onVoiceUpdate(oldState, newState) {
   const guild = newState.guild || oldState.guild;
   if (!guild) return;
 
-  if (oldState.channelId && oldState.channelId !== newState.channelId && tempVoice.isTemp(oldState.channelId)) {
-    await maybeDeleteEmpty(guild, oldState.channelId);
+  const moved = oldState.channelId !== newState.channelId;
+  const who = newState.member || oldState.member;
+
+  if (moved && who && !who.user.bot) {
+    if (oldState.channelId) trackLeave(oldState.channelId, who.id);
+    if (newState.channelId && tempVoice.isTemp(newState.channelId)) trackJoin(newState.channelId, who.id);
+  }
+
+  if (oldState.channelId && moved && tempVoice.isTemp(oldState.channelId)) {
+    const stillThere = await maybeDeleteEmpty(guild, oldState.channelId);
+    if (stillThere && who) {
+      await handOverIfOwnerLeft(guild, oldState.channelId, who.id).catch((err) =>
+        logger.warn(`[tempvoice] Besitzer-Übergabe fehlgeschlagen: ${err.message}`),
+      );
+    }
   }
 
   const settings = settingsModel.get(guild.id);
@@ -277,17 +309,74 @@ async function createFor(member, settings) {
     .catch((err) => logger.warn(`[tempvoice] Panel: ${err.message}`));
 }
 
+/** Löscht den Kanal, wenn er leer ist. @returns {Promise<boolean>} true, wenn der Kanal weiter besteht. */
 async function maybeDeleteEmpty(guild, channelId) {
   const channel =
     guild.channels.cache.get(channelId) ?? (await guild.channels.fetch(channelId).catch(() => null));
   if (!channel) {
     tempVoice.remove(channelId);
-    return;
+    presence.delete(channelId);
+    return false;
   }
   if (channel.members.filter((m) => !m.user.bot).size === 0) {
     await channel.delete('Temp-Voice: leer').catch(() => null);
     tempVoice.remove(channelId);
+    presence.delete(channelId);
+    return false;
   }
+  return true;
+}
+
+/**
+ * Macht das Mitglied, das am längsten im Kanal sitzt, zum neuen Besitzer –
+ * aber nur, wenn der Besitzer den Kanal gerade verlassen hat.
+ */
+async function handOverIfOwnerLeft(guild, channelId, leftUserId) {
+  const row = tempVoice.get(channelId);
+  if (!row || row.owner_id !== leftUserId) return;
+  const channel =
+    guild.channels.cache.get(channelId) ?? (await guild.channels.fetch(channelId).catch(() => null));
+  if (!channel) return;
+  await transferOwnership(channel, row);
+}
+
+/** Wählt aus den Anwesenden das Mitglied mit der längsten Verweildauer und macht es zum Besitzer. */
+async function transferOwnership(channel, row) {
+  const humans = channel.members.filter((m) => !m.user.bot && m.id !== row.owner_id);
+  if (humans.size === 0) return;
+
+  const joined = presence.get(channel.id);
+  let next = null;
+  let earliest = Infinity;
+  for (const m of humans.values()) {
+    const t = joined?.get(m.id) ?? Infinity;
+    if (next === null || t < earliest) {
+      next = m;
+      earliest = t;
+    }
+  }
+
+  const previousOwnerId = row.owner_id;
+  tempVoice.setOwner(channel.id, next.id);
+  await channel.permissionOverwrites
+    .edit(next, { ViewChannel: true, Connect: true, Speak: true, ManageChannels: true, MoveMembers: true })
+    .catch((err) => logger.warn(`[tempvoice] Rechte für neuen Besitzer: ${err.message}`));
+  // Der bisherige Besitzer darf den Kanal weiter betreten, aber nicht mehr verwalten.
+  await channel.permissionOverwrites
+    .edit(previousOwnerId, { ManageChannels: null, MoveMembers: null }, { type: OverwriteType.Member })
+    .catch(() => null);
+
+  await refreshPanel(channel);
+  channel
+    .send({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(config.branding.color)
+          .setDescription(`👑 <@${next.id}> ist jetzt Besitzer dieses Kanals – der bisherige Besitzer hat den Kanal verlassen.`),
+      ],
+      allowedMentions: { parse: [] },
+    })
+    .catch(() => null);
 }
 
 async function cleanup(client) {
@@ -304,9 +393,19 @@ async function cleanup(client) {
       tempVoice.remove(row.channel_id);
       continue;
     }
-    if (channel.members.filter((m) => !m.user.bot).size === 0) {
+    const humans = channel.members.filter((m) => !m.user.bot);
+    if (humans.size === 0) {
       await channel.delete('Temp-Voice: Aufräumen beim Start').catch(() => null);
       tempVoice.remove(row.channel_id);
+      continue;
+    }
+
+    // Beitrittsreihenfolge neu aufbauen; war der Besitzer beim Neustart nicht mehr im Kanal, geht der Kanal weiter.
+    for (const m of humans.values()) trackJoin(channel.id, m.id);
+    if (!humans.has(row.owner_id)) {
+      await transferOwnership(channel, row).catch((err) =>
+        logger.warn(`[tempvoice] Besitzer-Übergabe beim Start fehlgeschlagen: ${err.message}`),
+      );
     }
   }
 }
@@ -396,28 +495,9 @@ async function disconnectUser(channel, targetId, row) {
   return `🔌 <@${targetId}> wurde aus dem Kanal getrennt.`;
 }
 
-async function claim(channel, member) {
-  const row = tempVoice.get(channel.id);
-  if (!row) throw new Error('Kein temporärer Kanal.');
-  if (row.owner_id === member.id) throw new Error('Du bist bereits Besitzer.');
-  const ownerStillHere = channel.members.has(row.owner_id);
-  if (ownerStillHere && !isManager(member)) throw new Error('Der Besitzer ist noch im Kanal.');
-  tempVoice.setOwner(channel.id, member.id);
-  await channel.permissionOverwrites
-    .edit(member.id, {
-      ViewChannel: true,
-      Connect: true,
-      Speak: true,
-      ManageChannels: true,
-      MoveMembers: true,
-    })
-    .catch(() => null);
-  await refreshPanel(channel);
-  return `👑 <@${member.id}> ist jetzt Besitzer dieses Kanals.`;
-}
-
 async function destroy(channel) {
   tempVoice.remove(channel.id);
+  presence.delete(channel.id);
   await channel.delete('Temp-Voice: vom Besitzer gelöscht');
 }
 
@@ -441,7 +521,6 @@ module.exports = {
   blockUser,
   unblockUser,
   disconnectUser,
-  claim,
   destroy,
   MAX_LIMIT,
 };

@@ -56,6 +56,28 @@ document.getElementById('tvMakeHub').addEventListener('click', async () => {
   }
 });
 
+document.getElementById('tvMakeInterface').addEventListener('click', async () => {
+  const st = document.getElementById('tvIfStatus');
+  try {
+    st.textContent = 'Kanal wird erstellt…';
+    const r = await apiFor('POST', '/tempvoice/create-interface', {});
+    toast(`Kanal „${r.name}" erstellt und als Interface gesetzt.`, 'success');
+    // Der frische Kanal ist noch nicht in der gecachten Kanalliste – Option manuell ergänzen
+    const sel = form.querySelector('[name="tempvoice_interface_channel_id"]');
+    if (sel) {
+      if (![...sel.options].some((o) => o.value === r.id)) {
+        sel.insertAdjacentHTML('beforeend', `<option value="${r.id}">#${Dash.escapeHtml(r.name)}</option>`);
+      }
+      sel.value = r.id;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    st.innerHTML = r.url ? `Aktiv – <a href="${r.url}" target="_blank" rel="noopener">zur Nachricht</a>` : 'Kanal erstellt ✓';
+  } catch (err) {
+    toast(err.message, 'error');
+    st.textContent = err.message;
+  }
+});
+
 document.getElementById('tvPostInterface').addEventListener('click', async () => {
   const st = document.getElementById('tvIfStatus');
   const channelId = form.querySelector('[name="tempvoice_interface_channel_id"]').value || null;

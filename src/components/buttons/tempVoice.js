@@ -62,11 +62,8 @@ module.exports = {
     }
     const row = tempVoice.get(channel.id);
 
-    // "Übernehmen" hat eigene Logik – sonst Besitzer/Manager-Check.
-    if (action !== 'claim') {
-      const check = tempVoiceService.assertControl(channel.id, interaction.member);
-      if (!check.ok) return ephemeral(interaction, check.reason);
-    }
+    const check = tempVoiceService.assertControl(channel.id, interaction.member);
+    if (!check.ok) return ephemeral(interaction, check.reason);
 
     try {
       if (action === 'rename') {
@@ -110,10 +107,6 @@ module.exports = {
       }
       if (action === 'hide') {
         return ephemeral(interaction, await tempVoiceService.toggleHide(channel, row), true);
-      }
-      if (action === 'claim') {
-        const msg = await tempVoiceService.claim(channel, interaction.member);
-        return interaction.reply({ embeds: [embeds.success(undefined, msg)] });
       }
       if (action === 'delete') {
         await interaction.reply({ embeds: [embeds.info(undefined, 'Kanal wird gelöscht …')], flags: MessageFlags.Ephemeral });

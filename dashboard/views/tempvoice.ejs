@@ -55,6 +55,10 @@
     <div class="field">
       <label>Interface-Kanal</label>
       <select name="tempvoice_interface_channel_id" data-type="text"></select>
+      <div class="field-hint">
+        Noch keinen passenden Kanal?
+        <button type="button" class="btn btn--ghost btn--sm" id="tvMakeInterface" style="margin-left:6px;"><%- icon('plus', 'icon--sm') %> Interface-Kanal anlegen</button>
+      </div>
     </div>
     <div class="row-inline" style="margin-top:6px;">
       <button type="button" class="btn btn--primary btn--sm" id="tvPostInterface"><%- icon('send', 'icon--sm') %> Interface senden / aktualisieren</button>
@@ -70,8 +74,9 @@
       <li>🔒 <b>Sperren / Entsperren</b> · 🙈 <b>Verstecken / Zeigen</b> · 🌍 <b>Region</b></li>
       <li>➕ <b>Hinzufügen</b> / ➖ <b>Entfernen</b> – Zutritt geben oder nehmen</li>
       <li>🚫 <b>Blockieren</b> / ♻️ <b>Entblockieren</b> · 🔌 <b>Trennen</b></li>
-      <li>👑 <b>Übernehmen</b> · 🗑️ <b>Löschen</b></li>
+      <li>🗑️ <b>Löschen</b></li>
     </ul>
+    <p class="card__sub">Verlässt der Besitzer den Kanal, wird automatisch die Person neuer Besitzer, die am längsten im Kanal ist.</p>
   </div>
 
   <div class="form-actions">
