@@ -2,6 +2,7 @@
 
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const settingsModel = require('../database/models/settings');
+const moduleSettings = require('../database/models/moduleSettings');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
 
@@ -41,7 +42,7 @@ function canPost(channel, me) {
   return Boolean(p?.has(PermissionFlagsBits.ViewChannel) && p?.has(PermissionFlagsBits.SendMessages));
 }
 
-async function post(guild, channelId, { asEmbed, color, text, member, ping }) {
+async function post(guild, channelId, { asEmbed, color, text, member, ping, design = {} }) {
   const channel = guild.channels.cache.get(String(channelId || ''));
   const me = guild.members.me ?? (await guild.members.fetchMe().catch(() => null));
   if (!canPost(channel, me)) {
@@ -50,12 +51,13 @@ async function post(guild, channelId, { asEmbed, color, text, member, ping }) {
   }
 
   if (asEmbed) {
-    const embed = new EmbedBuilder()
-      .setColor(color)
-      .setDescription(text || '​')
-      .setAuthor({ name: member.user.tag, iconURL: member.user.displayAvatarURL() })
-      .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
-      .setTimestamp();
+    const embed = new EmbedBuilder().setColor(color).setDescription(text || '​');
+    if (design.title) embed.setTitle(design.title.slice(0, 256));
+    if (design.author !== false) embed.setAuthor({ name: member.user.tag, iconURL: member.user.displayAvatarURL() });
+    if (design.thumbnail !== false) embed.setThumbnail(member.user.displayAvatarURL({ size: 256 }));
+    if (design.footer) embed.setFooter({ text: design.footer.slice(0, 2048) });
+    if (design.imageUrl && /^https:\/\//i.test(design.imageUrl)) embed.setImage(design.imageUrl);
+    if (design.timestamp !== false) embed.setTimestamp();
     const payload = { embeds: [embed] };
     if (ping) {
       payload.content = `<@${member.id}>`;
@@ -78,6 +80,7 @@ async function sendJoin(member) {
   if (!s.welcome_enabled) return;
 
   const color = parseHexColor(s.welcome_color, config.branding.color);
+  const m = moduleSettings.get(member.guild.id, 'welcome');
 
   if (s.welcome_channel_id) {
     await post(member.guild, s.welcome_channel_id, {
@@ -86,6 +89,14 @@ async function sendJoin(member) {
       text: render(s.welcome_message || config.defaults.welcomeMessage, member, member.guild),
       member,
       ping: s.welcome_ping !== 0,
+      design: {
+        title: render(m.joinTitle, member, member.guild),
+        footer: render(m.joinFooter, member, member.guild),
+        imageUrl: m.joinImageUrl,
+        thumbnail: m.joinThumbnail,
+        author: m.joinAuthor,
+        timestamp: m.joinTimestamp,
+      },
     });
   }
 
@@ -100,9 +111,17 @@ async function sendJoin(member) {
 async function sendLeave(member) {
   const s = settingsModel.get(member.guild.id);
   if (!s.leave_enabled || !s.leave_channel_id) return;
+  const m = moduleSettings.get(member.guild.id, 'welcome');
   await post(member.guild, s.leave_channel_id, {
-    asEmbed: false,
-    color: config.branding.color,
+    asEmbed: m.leaveEmbed,
+    color: parseHexColor(m.leaveColor, config.branding.color),
+    design: {
+      title: render(m.leaveTitle, member, member.guild),
+      footer: render(m.leaveFooter, member, member.guild),
+      thumbnail: m.leaveThumbnail,
+      author: false,
+      timestamp: m.leaveTimestamp,
+    },
     text: render(s.leave_message || config.defaults.leaveMessage, member, member.guild).slice(0, 2000),
     member,
     ping: false,

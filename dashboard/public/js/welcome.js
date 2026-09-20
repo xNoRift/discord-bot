@@ -20,13 +20,55 @@ function roleChecklist(roles, selected, prefix) {
     .join('');
 }
 
+const MODULE_KEYS = ['joinTitle', 'joinFooter', 'joinImageUrl', 'joinThumbnail', 'joinAuthor', 'joinTimestamp',
+  'leaveEmbed', 'leaveTitle', 'leaveFooter', 'leaveColor', 'leaveThumbnail', 'leaveTimestamp'];
+const lvPick = document.getElementById('lvColor');
+const lvText = document.getElementById('lvColorText');
+const preview = document.getElementById('wcPreview');
+
+function sample(t) {
+  return String(t || '')
+    .replaceAll('{user}', '@Max').replaceAll('{mention}', '@Max').replaceAll('{user.tag}', 'max')
+    .replaceAll('{username}', 'Max').replaceAll('{server}', 'Dein Server').replaceAll('{guild}', 'Dein Server')
+    .replaceAll('{membercount}', '128').replaceAll('{memberCount}', '128').replaceAll('{count}', '128');
+}
+
+function renderPreview() {
+  if (!preview) return;
+  const f = (n) => form.elements[n];
+  const col = /^#?[0-9a-f]{6}$/i.test(f('welcome_color').value) ? f('welcome_color').value.replace(/^#?/, '#') : '#7c5cff';
+  const text = sample(f('welcome_message').value) || 'Willkommen auf Dein Server, @Max!';
+  const img = /^https:\/\//i.test(f('joinImageUrl').value) ? f('joinImageUrl').value : '';
+  preview.style.borderLeftColor = col;
+  preview.innerHTML =
+    (f('joinAuthor').checked ? '<div class="embed-preview__author">Max</div>' : '') +
+    (f('joinTitle').value ? '<div class="embed-preview__title">' + escapeHtml(sample(f('joinTitle').value)) + '</div>' : '') +
+    '<div class="embed-preview__text">' + escapeHtml(text) + '</div>' +
+    (f('joinThumbnail').checked ? '<div class="embed-preview__thumb"></div>' : '') +
+    (img ? '<img class="embed-preview__img" src="' + escapeHtml(img) + '" alt="">' : '') +
+    (f('joinFooter').value || f('joinTimestamp').checked
+      ? '<div class="embed-preview__foot">' + escapeHtml(sample(f('joinFooter').value)) + (f('joinFooter').value && f('joinTimestamp').checked ? ' • ' : '') + (f('joinTimestamp').checked ? 'Heute' : '') + '</div>'
+      : '');
+}
+form.addEventListener('input', renderPreview);
+form.addEventListener('change', renderPreview);
+
+lvPick.addEventListener('input', () => { lvText.value = lvPick.value; lvText.dispatchEvent(new Event('input', { bubbles: true })); });
+lvText.addEventListener('input', () => {
+  const v = lvText.value.trim();
+  if (/^#?[0-9a-fA-F]{6}$/.test(v)) lvPick.value = v[0] === '#' ? v : '#' + v;
+});
+
 let current = {};
 
 async function load() {
-  const [s, roles] = await Promise.all([apiFor('GET', '/settings'), getRoles()]);
+  const [s, roles, wm] = await Promise.all([apiFor('GET', '/settings'), getRoles(), apiFor('GET', '/modules/welcome')]);
   current = s;
   await fillSelectors(s);
   applyToForm(form, s);
+  applyToForm(form, wm);
+  if (/^#?[0-9a-f]{6}$/i.test(wm.leaveColor || '')) lvPick.value = wm.leaveColor[0] === '#' ? wm.leaveColor : '#' + wm.leaveColor;
+  renderPreview();
 
   const col = /^#?[0-9a-f]{6}$/i.test(s.welcome_color || '') ? s.welcome_color : '#7c5cff';
   colorPick.value = col[0] === '#' ? col : '#' + col;
@@ -67,6 +109,9 @@ async function saveWelcome() {
       autorole_ids: collectRoles('joinRoleChecks'),
       autorole_bot_ids: collectRoles('joinRoleBotChecks'),
     });
+    const wm = {};
+    for (const k of MODULE_KEYS) wm[k] = a[k];
+    await apiFor('PATCH', '/modules/welcome', wm);
     toast('Willkommens-System gespeichert.', 'success');
     statusEl.textContent = 'Gespeichert ✓';
     await load();
@@ -96,6 +141,18 @@ document.getElementById('wcTest').addEventListener('click', async () => {
     statusEl.textContent = 'Test wird gesendet…';
     await apiFor('POST', '/welcome/test', { kind: 'join' });
     toast('Testnachricht gesendet – schau in den gewählten Kanal.', 'success');
+    statusEl.textContent = 'Test gesendet ✓';
+  } catch (err) {
+    toast(err.message, 'error');
+    statusEl.textContent = err.message;
+  }
+});
+
+document.getElementById('wcTestLeave').addEventListener('click', async () => {
+  try {
+    statusEl.textContent = 'Test wird gesendet…';
+    await apiFor('POST', '/welcome/test', { kind: 'leave' });
+    toast('Abschieds-Test gesendet – schau in den gewählten Kanal.', 'success');
     statusEl.textContent = 'Test gesendet ✓';
   } catch (err) {
     toast(err.message, 'error');

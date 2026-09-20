@@ -48,6 +48,19 @@
         <input name="welcome_color" id="wcColorText" type="text" placeholder="#7c5cff" maxlength="7" />
       </div>
     </div>
+
+    <details class="embed-editor" style="margin-top:14px;" open>
+      <summary class="text-2" style="cursor:pointer;"><b>Embed-Editor</b> – Aussehen der Willkommens-Box</summary>
+      <div class="col-2" style="margin-top:10px;">
+        <div class="field"><label>Titel</label><input name="joinTitle" maxlength="256" placeholder="z. B. Willkommen, {username}!" data-emoji /></div>
+        <div class="field"><label>Fußzeile</label><input name="joinFooter" maxlength="256" placeholder="z. B. Du bist Mitglied Nr. {membercount}" data-emoji /></div>
+      </div>
+      <div class="field"><label>Großes Bild (URL)</label><input name="joinImageUrl" maxlength="500" placeholder="https://…/banner.png" /><small>Nur https-Links. Leer = kein Bild.</small></div>
+      <div class="setting-row"><div class="setting-row__text"><b>Profilbild als Thumbnail</b><span>Zeigt das Profilbild des Mitglieds rechts oben</span></div><label class="toggle"><input type="checkbox" name="joinThumbnail" /><span class="toggle__track"></span></label></div>
+      <div class="setting-row"><div class="setting-row__text"><b>Mitgliedsname als Autor</b><span>Name und Profilbild über dem Text</span></div><label class="toggle"><input type="checkbox" name="joinAuthor" /><span class="toggle__track"></span></label></div>
+      <div class="setting-row"><div class="setting-row__text"><b>Zeitstempel</b><span>Zeigt Datum und Uhrzeit unten in der Box</span></div><label class="toggle"><input type="checkbox" name="joinTimestamp" /><span class="toggle__track"></span></label></div>
+      <div class="field"><label>Vorschau</label><div class="embed-preview" id="wcPreview"></div></div>
+    </details>
   </div>
 
   <div class="card">
@@ -90,9 +103,21 @@
       <label>Text</label>
       <textarea name="leave_message" rows="2" placeholder="{username} hat den Server verlassen." data-emoji></textarea>
     </div>
+    <details class="embed-editor" style="margin-top:10px;">
+      <summary class="text-2" style="cursor:pointer;"><b>Embed-Editor</b> – Aussehen der Abschieds-Box</summary>
+      <div class="setting-row"><div class="setting-row__text"><b>Als Embed senden</b><span>Farbige Box statt einfachem Text</span></div><label class="toggle"><input type="checkbox" name="leaveEmbed" /><span class="toggle__track"></span></label></div>
+      <div class="col-2" style="margin-top:10px;">
+        <div class="field"><label>Titel</label><input name="leaveTitle" maxlength="256" placeholder="z. B. Auf Wiedersehen" data-emoji /></div>
+        <div class="field"><label>Fußzeile</label><input name="leaveFooter" maxlength="256" placeholder="z. B. Wir sind jetzt {membercount}" data-emoji /></div>
+      </div>
+      <div class="field" style="max-width:220px;"><label>Farbe</label><div class="row-inline"><input type="color" id="lvColor" value="#7c5cff" style="max-width:70px;" /><input name="leaveColor" id="lvColorText" maxlength="7" placeholder="#7c5cff" /></div></div>
+      <div class="setting-row"><div class="setting-row__text"><b>Profilbild als Thumbnail</b></div><label class="toggle"><input type="checkbox" name="leaveThumbnail" /><span class="toggle__track"></span></label></div>
+      <div class="setting-row"><div class="setting-row__text"><b>Zeitstempel</b></div><label class="toggle"><input type="checkbox" name="leaveTimestamp" /><span class="toggle__track"></span></label></div>
+    </details>
   </div>
 
   <div class="form-actions">
+    <button class="btn btn--ghost btn--sm" type="button" id="wcTestLeave"><%- icon('send', 'icon--sm') %> Abschieds-Test senden</button>
     <button class="btn btn--ghost btn--sm" type="button" id="wcTest"><%- icon('send', 'icon--sm') %> Testnachricht senden</button>
     <span class="muted" id="wcStatus"></span>
   </div>
