@@ -1,0 +1,40 @@
+<%- include('partials/head', { title: guild.name + ' – Neuigkeiten' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('bell') %> Neuigkeiten</h1></div>
+  <p>Veröffentliche Ankündigungen als schönes Embed direkt aus dem Dashboard in einen Kanal deiner Wahl.</p>
+</div>
+
+<form id="newsDefaults" class="card">
+  <div class="card__head"><h2><%- icon('settings') %> Einstellungen</h2></div>
+  <div class="field" style="max-width:360px;"><label>Standard-Kanal</label><select name="defaultChannelId" data-type="text"></select><small>Wird beim Verfassen vorausgewählt.</small></div>
+</form>
+
+<div class="col-2">
+  <div class="card">
+    <div class="card__head"><h2><%- icon('send') %> Neue Ankündigung</h2></div>
+    <form id="newsForm" class="form">
+      <div class="field"><label>Kanal</label><select id="nsChannel" data-type="text"></select></div>
+      <div class="field"><label>Titel</label><input id="nsTitle" maxlength="256" placeholder="z. B. Server-Update" data-emoji /></div>
+      <div class="field"><label>Text</label><textarea id="nsBody" rows="6" maxlength="4000" placeholder="Was gibt es Neues? (Markdown wird unterstützt)" data-emoji></textarea></div>
+      <div class="col-2">
+        <div class="field"><label>Farbe</label><div class="row-inline"><input type="color" id="nsColor" value="#7c5cff" style="max-width:70px;" /></div></div>
+        <div class="field"><label>Erwähnung</label>
+          <select id="nsPing"><option value="none">Keine</option><option value="@everyone">@everyone</option><option value="@here">@here</option></select>
+        </div>
+      </div>
+      <div class="field"><label>Bild-URL (optional)</label><input id="nsImage" type="url" placeholder="https://…" /></div>
+      <div><button class="btn btn--primary" type="submit"><%- icon('send', 'icon--sm') %> Veröffentlichen</button></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('clock') %> Bisherige Ankündigungen</h2></div>
+    <div id="newsList"><div class="loading">Lädt…</div></div>
+  </div>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/news.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

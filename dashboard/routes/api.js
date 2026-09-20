@@ -1560,6 +1560,68 @@ router.post('/guilds/:guildId/levels/reset', actionLimiter, (req, res) => {
   res.json({ ok: true });
 });
 
+/* ---------------- Neuigkeiten ---------------- */
+
+const newsModel = require('../../src/database/models/news');
+
+router.get('/guilds/:guildId/news', (req, res) => {
+  res.json(newsModel.list(req.params.guildId));
+});
+
+router.post(
+  '/guilds/:guildId/news',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const b = req.body || {};
+    const title = String(b.title || '').trim().slice(0, 256);
+    const body = String(b.body || '').trim().slice(0, 4000);
+    if (!title && !body) return res.status(400).json({ error: 'Bitte einen Titel oder Text angeben.' });
+
+    const channel = req.guild.channels.cache.get(String(b.channelId || ''));
+    if (!channel || !channel.isTextBased()) return res.status(400).json({ error: 'Bitte einen gültigen Textkanal wählen.' });
+
+    const embed = new EmbedBuilder().setColor(/^#?[0-9a-fA-F]{6}$/.test(b.color || '') ? parseInt(String(b.color).replace('#', ''), 16) : config.branding.color).setTimestamp();
+    if (title) embed.setTitle(title);
+    if (body) embed.setDescription(body);
+    if (/^https:\/\//i.test(b.imageUrl || '')) embed.setImage(String(b.imageUrl));
+    embed.setFooter({ text: `Von ${req.session.user.globalName || req.session.user.username}` });
+
+    let content;
+    const allowedMentions = { parse: [] };
+    const ping = String(b.ping || 'none');
+    if (ping === '@everyone' || ping === '@here') {
+      content = ping;
+      allowedMentions.parse = ['everyone'];
+    } else if (/^\d{5,25}$/.test(ping) && req.guild.roles.cache.has(ping)) {
+      content = `<@&${ping}>`;
+      allowedMentions.roles = [ping];
+    }
+
+    let msg;
+    try {
+      msg = await channel.send({ content, embeds: [embed], allowedMentions });
+    } catch (err) {
+      return res.status(400).json({ error: 'Senden fehlgeschlagen: ' + discordErr(err) });
+    }
+    const row = newsModel.add({ guildId: req.params.guildId, channelId: channel.id, messageId: msg.id, title, body, authorId: req.session.user.id });
+    res.json({ ...row, url: msg.url });
+  }),
+);
+
+router.delete(
+  '/guilds/:guildId/news/:id',
+  asyncHandler(async (req, res) => {
+    const post = newsModel.get(num(req.params.id));
+    if (!post || post.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    if (req.query.discord === '1' && post.channel_id && post.message_id) {
+      const ch = req.guild.channels.cache.get(post.channel_id);
+      await ch?.messages.delete(post.message_id).catch(() => null);
+    }
+    newsModel.remove(post.id);
+    res.json({ ok: true });
+  }),
+);
+
 /* ---------------- Applications ---------------- */
 
 router.get('/guilds/:guildId/application-types', (req, res) => {
