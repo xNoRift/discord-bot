@@ -114,7 +114,8 @@ function pageLocals(req, active, extra = {}) {
 
 router.get('/', (req, res) => {
   if (req.session?.user) return res.redirect('/servers');
-  res.render('landing', { brandName: config.branding.name, brand: config.branding, dashboardUrl: config.dashboard.url });
+  const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${config.discord.clientId}&scope=bot+applications.commands&permissions=${config.discord.invitePermissions}`;
+  res.render('landing', { brandName: config.branding.name, brand: config.branding, dashboardUrl: config.dashboard.url, inviteUrl });
 });
 
 router.get('/login', (req, res) => {

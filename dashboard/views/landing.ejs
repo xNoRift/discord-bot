@@ -1,24 +1,104 @@
-<%- include('partials/head', { title: brandName }) %>
+<%- include('partials/head', { title: brandName + ' – Der Discord-Bot für deinen Server' }) %>
+<link rel="stylesheet" href="/static/css/landing.css?v=<%= typeof assetVer !== 'undefined' ? assetVer : '1' %>" />
 
-<div class="auth">
-  <div class="auth__card">
-    <span class="auth__logo"><%- icon('bot') %></span>
-    <h1><%= brandName %></h1>
-    <p class="auth__lead">
-      Steuere Tickets, Giveaways und Bewerbungen deines Discord-Servers –
-      an einem Ort, in Echtzeit, direkt mit dem Bot verbunden.
-    </p>
+<div class="lp">
+  <div class="lp__stars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
 
-    <div class="auth__features">
-      <div class="auth__feature"><%- icon('ticket') %><strong>Ticketsystem</strong><span>Panels, Kategorien, Logs</span></div>
-      <div class="auth__feature"><%- icon('gift') %><strong>Giveaways</strong><span>Auto-Auslosung &amp; Gewinnerrolle</span></div>
-      <div class="auth__feature"><%- icon('clipboard') %><strong>Bewerbungen</strong><span>Eigene Fragen &amp; Review</span></div>
-      <div class="auth__feature"><%- icon('shield') %><strong>Sicher</strong><span>OAuth2, CSRF, Rate-Limit</span></div>
-    </div>
+  <header class="lp-nav">
+    <a class="lp-brand" href="/"><span class="lp-brand__logo"><%- icon('bot') %></span><%= brandName %></a>
+    <nav class="lp-nav__links" aria-label="Hauptnavigation">
+      <a class="lp-nav__link is-active" href="#top">Home</a>
+      <div class="lp-drop">
+        <a class="lp-nav__link" href="#funktionen" aria-haspopup="true">Funktionen <span class="lp-caret">⌄</span></a>
+        <div class="lp-drop__menu">
+          <a href="#f-tickets"><%- icon('ticket', 'icon--sm') %> Tickets</a>
+          <a href="#f-giveaways"><%- icon('gift', 'icon--sm') %> Giveaways</a>
+          <a href="#f-bewerbungen"><%- icon('clipboard', 'icon--sm') %> Bewerbungen</a>
+          <a href="#f-social"><%- icon('bell', 'icon--sm') %> Benachrichtigungen</a>
+          <a href="#f-community"><%- icon('users', 'icon--sm') %> Community</a>
+        </div>
+      </div>
+      <a class="lp-nav__link" href="#sicherheit">Sicherheit</a>
+      <a class="lp-nav__link" href="#faq">FAQ</a>
+      <a class="lp-btn lp-btn--solid" href="/auth/discord">Dashboard</a>
+    </nav>
+  </header>
 
-    <a class="btn btn--primary btn--lg" href="/auth/discord"><%- icon('bot') %> Mit Discord anmelden</a>
-    <p class="auth__hint">Es werden nur deine Server und dein Profil gelesen.</p>
-  </div>
+  <main id="top">
+    <section class="lp-hero">
+      <h1>Mache deinen Server <span class="lp-grad">smarter!</span></h1>
+      <p class="lp-hero__lead">
+        <%= brandName %> ist ein Bot für Discord, der dir hilft, deinen Server und deine Community
+        zu organisieren – mit Tickets, Giveaways, Bewerbungen, Willkommens-System und vielem mehr.
+        Alles bequem über ein Dashboard im Browser steuerbar.
+      </p>
+      <div class="lp-hero__cta">
+        <a class="lp-btn lp-btn--solid lp-btn--lg" href="<%= inviteUrl %>" target="_blank" rel="noopener">Hol dir den Bot jetzt</a>
+        <a class="lp-link" href="#funktionen">Entdecke die Funktionen <span aria-hidden="true">→</span></a>
+      </div>
+    </section>
+
+    <section class="lp-mock" aria-label="Vorschau des Dashboards">
+      <div class="lp-mock__bar">
+        <span class="lp-brand lp-brand--sm"><span class="lp-brand__logo"><%- icon('bot') %></span><%= brandName %></span>
+        <span class="lp-mock__user">Nice One <i class="lp-avatar"></i></span>
+      </div>
+      <div class="lp-mock__body">
+        <div class="lp-mock__side"><i class="lp-dot lp-dot--a"></i><i class="lp-dot lp-dot--b"></i><i class="lp-dot lp-dot--c"></i></div>
+        <div class="lp-mock__main">
+          <h3>Moin Nice One!</h3>
+          <div class="lp-servers">
+            <div class="lp-server"><i class="lp-dot lp-dot--a lp-dot--lg"></i><span>Chill Zone</span></div>
+            <div class="lp-server"><i class="lp-dot lp-dot--b lp-dot--lg"></i><span>Wumpus' Home</span></div>
+            <div class="lp-server"><i class="lp-dot lp-dot--c lp-dot--lg"></i><span>Music Lovers</span></div>
+            <div class="lp-server"><i class="lp-dot lp-dot--d lp-dot--lg"></i><span>Burger Club</span></div>
+            <div class="lp-server"><i class="lp-dot lp-dot--e lp-dot--lg"></i><span>Movie Studios</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-section" id="funktionen">
+      <h2>Alles, was dein Server braucht</h2>
+      <p class="lp-section__lead">Aktiviere nur, was du brauchst – jedes Modul hat einen eigenen Ein/Aus-Schalter.</p>
+      <div class="lp-grid">
+        <article class="lp-card" id="f-tickets"><%- icon('ticket') %><h3>Ticketsystem</h3><p>Mehrere Panels und Kategorien, eigene Formulare, Bewertungen, Auto-Schließen und Logs.</p></article>
+        <article class="lp-card" id="f-giveaways"><%- icon('gift') %><h3>Giveaways</h3><p>Automatische Auslosung, Gewinnerrolle, Teilnehmerliste mit Gewinnchance und Ticket-Button für Gewinner.</p></article>
+        <article class="lp-card" id="f-bewerbungen"><%- icon('clipboard') %><h3>Bewerbungen</h3><p>Eigene Fragen pro Bewerbungsart, Annehmen/Ablehnen mit automatischer Rolle.</p></article>
+        <article class="lp-card" id="f-social"><%- icon('bell') %><h3>Benachrichtigungen</h3><p>Twitch, YouTube, TikTok &amp; RSS: automatische Meldungen im Kanal deiner Wahl.</p></article>
+        <article class="lp-card" id="f-community"><%- icon('users') %><h3>Willkommen &amp; Rollen</h3><p>Begrüßungsnachricht, Auto-Rollen und Abschieds-Nachricht.</p></article>
+        <article class="lp-card"><%- icon('sparkles') %><h3>Musik, Spiele &amp; Temp-Voice</h3><p>Musik-Player, Zähl-Spiel und „Join to Create"-Sprachkanäle.</p></article>
+      </div>
+    </section>
+
+    <section class="lp-section lp-section--alt" id="sicherheit">
+      <h2>Sicher &amp; datenschutzfreundlich</h2>
+      <div class="lp-grid lp-grid--3">
+        <article class="lp-card"><%- icon('lock') %><h3>Login über Discord</h3><p>Anmeldung per OAuth2 – es werden nur Profil und Serverliste gelesen, nie dein Passwort.</p></article>
+        <article class="lp-card"><%- icon('shield') %><h3>Verschlüsselt gespeichert</h3><p>Zugangstokens liegen verschlüsselt in der Datenbank, mit CSRF-Schutz und Rate-Limits.</p></article>
+        <article class="lp-card"><%- icon('file') %><h3>Automatische Löschfristen</h3><p>Protokolle werden nach 90 Tagen automatisch gelöscht, tägliche Sicherungskopien inklusive.</p></article>
+      </div>
+    </section>
+
+    <section class="lp-section" id="faq">
+      <h2>Häufige Fragen</h2>
+      <div class="lp-faq">
+        <details><summary>Kostet der Bot etwas?</summary><p>Nein – einladen, Dashboard öffnen und loslegen.</p></details>
+        <details><summary>Welche Rechte braucht der Bot?</summary><p>Das hängt von den Modulen ab, die du nutzt (z. B. Kanäle verwalten für Tickets, Rollen verwalten für Auto-Rollen). Den Einladungslink kannst du auf dem Server jederzeit anpassen.</p></details>
+        <details><summary>Wer kann das Dashboard bedienen?</summary><p>Nur Personen mit „Server verwalten" oder Administrator-Rechten auf dem jeweiligen Server.</p></details>
+      </div>
+    </section>
+
+    <section class="lp-final">
+      <h2>Bereit, deinen Server smarter zu machen?</h2>
+      <div class="lp-hero__cta">
+        <a class="lp-btn lp-btn--solid lp-btn--lg" href="<%= inviteUrl %>" target="_blank" rel="noopener">Bot einladen</a>
+        <a class="lp-btn lp-btn--ghost lp-btn--lg" href="/auth/discord">Zum Dashboard</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="lp-foot">© <%= new Date().getFullYear() %> <%= brandName %> · Nicht mit Discord Inc. verbunden.</footer>
 </div>
 
 <%- include('partials/foot') %>
