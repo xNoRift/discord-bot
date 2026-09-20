@@ -268,6 +268,12 @@ function buildManagementRow(ticket) {
       .setLabel(tg('tickets.buttons.delete'))
       .setEmoji('🗑️')
       .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId('ticket:closereq')
+      .setLabel('Anfrage')
+      .setEmoji('📨')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(closed),
   );
 }
 
@@ -1076,35 +1082,196 @@ function formatDuration(ms) {
   return `${Math.floor(h / 24)} Tage ${h % 24} Std.`;
 }
 
-/* ---------------- Auto-Close ---------------- */
+/* ---------------- Automationen ---------------- */
 
+const HOUR = 3600_000;
+
+/**
+ * Läuft jede Minute. Je Ticket (mit Panel) gelten die Automationen der Kategorie
+ * (bei Überschreibung) oder des Panels:
+ *  - Auto-Alert: erinnert den Ersteller nach Inaktivität
+ *  - Ticket schließen, wenn der Ersteller nach dem Alert nicht reagiert
+ *  - Auto-Team-Alert: erinnert das Teammitglied des Tickets, gibt es danach frei
+ *  - Auto-Unclaim: gibt inaktive Tickets frei
+ *  - Auto-Close: schließt Tickets nach Inaktivität
+ */
 async function autoCloseSweep() {
   const now = Date.now();
-  // Weit genug zurück suchen; Feinprüfung pro Panel darunter.
-  const candidates = ticketsModel.listStaleOpen(now - 60 * 60 * 1000);
+  // Mindestens 1 Stunde – kürzere Zeiten gibt es in den Einstellungen nicht.
+  const candidates = ticketsModel.listStaleOpen(now - HOUR);
   for (const ticket of candidates) {
-    const panel = ticketPanels.getPanel(ticket.panel_id);
-    const hours = panel?.autoclose_hours || 0;
-    if (hours <= 0) continue;
-    const last = ticket.last_activity_at || ticket.created_at;
-    if (now - last < hours * 3600_000) continue;
-
-    const guild = client.guilds.cache.get(ticket.guild_id);
-    if (!guild) continue;
-    const channel =
-      guild.channels.cache.get(ticket.channel_id) ??
-      (await guild.channels.fetch(ticket.channel_id).catch(() => null));
-    if (!channel) {
-      ticketsModel.markDeleted(ticket.id, client.user.id);
-      continue;
+    try {
+      await autoProcess(ticket, now);
+    } catch (err) {
+      logger.warn(`[ticket] Automation #${ticket.id}: ${err.message}`);
     }
-    const me = guild.members.me;
-    await closeTicket(channel, me).catch((err) => logger.warn(`[ticket] autoclose #${ticket.id}: ${err.message}`));
-    const tg = i18n.forGuild(guild.id);
+  }
+}
+
+async function autoProcess(ticket, now) {
+  const panel = ticketPanels.getPanel(ticket.panel_id);
+  const cat = ticket.category_id ? ticketPanels.getCategory(ticket.category_id) : null;
+  const a = ticketPanels.effectiveAuto(panel, cat);
+  const any =
+    a.autoClose.enabled || a.autoAlert.enabled || a.autoTeamAlert.enabled || a.autoUnclaim.enabled || a.closeUnresponsive.enabled;
+  if (!any) return;
+
+  const guild = client.guilds.cache.get(ticket.guild_id);
+  if (!guild) return;
+  const channel =
+    guild.channels.cache.get(ticket.channel_id) ?? (await guild.channels.fetch(ticket.channel_id).catch(() => null));
+  if (!channel) {
+    ticketsModel.markDeleted(ticket.id, client.user.id);
+    return;
+  }
+  const me = guild.members.me;
+  const tg = i18n.forGuild(guild.id);
+  const last = ticket.last_activity_at || ticket.created_at;
+  const idle = now - last;
+
+  // 1) Ersteller reagiert nach dem Alert nicht -> schließen
+  if (a.closeUnresponsive.enabled && ticket.alerted_at && now - ticket.alerted_at >= a.closeUnresponsive.hours * HOUR) {
+    await closeTicket(channel, me);
     await channel
-      .send({ embeds: [embeds.warning(tg('tickets.close.auto_title'), tg('tickets.close.auto_desc', { hours }))] })
+      .send({ embeds: [embeds.warning('⏰ Automatisch geschlossen', `Der Ersteller hat auf die Erinnerung nicht geantwortet (${a.closeUnresponsive.hours} Std.).`)] })
+      .catch(() => null);
+    return;
+  }
+
+  // 2) Team-Alert -> danach automatisch freigeben
+  if (ticket.claimed_by && a.autoTeamAlert.enabled) {
+    const h = a.autoTeamAlert.hours * HOUR;
+    if (ticket.team_alerted_at && now - ticket.team_alerted_at >= h) {
+      await unclaimTicket(channel, me);
+      ticketsModel.setTeamAlerted(ticket.id, null);
+      return;
+    }
+    if (!ticket.team_alerted_at && idle >= h) {
+      await channel
+        .send({
+          content: `<@${ticket.claimed_by}>`,
+          embeds: [embeds.warning('⏰ Team-Erinnerung', `Dieses Ticket ist seit ${a.autoTeamAlert.hours} Std. inaktiv. Bitte kümmere dich darum – sonst wird es wieder freigegeben.`)],
+          allowedMentions: { users: [ticket.claimed_by] },
+        })
+        .catch(() => null);
+      ticketsModel.setTeamAlerted(ticket.id, now);
+    }
+  } else if (ticket.claimed_by && a.autoUnclaim.enabled && idle >= a.autoUnclaim.hours * HOUR) {
+    // 3) Auto-Unclaim (nur wenn kein Team-Alert läuft)
+    await unclaimTicket(channel, me);
+    return;
+  }
+
+  // 4) Auto-Alert an den Ersteller
+  if (a.autoAlert.enabled && !ticket.alerted_at && idle >= a.autoAlert.hours * HOUR) {
+    await channel
+      .send({
+        content: `<@${ticket.opener_id}>`,
+        embeds: [embeds.warning('⏰ Erinnerung', `Dieses Ticket ist seit ${a.autoAlert.hours} Std. inaktiv. Brauchst du noch Hilfe? Schreibe eine Nachricht, sonst wird es eventuell geschlossen.`)],
+        allowedMentions: { users: [ticket.opener_id] },
+      })
+      .catch(() => null);
+    ticketsModel.setAlerted(ticket.id, now);
+  }
+
+  // 5) Auto-Close nach Inaktivität
+  if (a.autoClose.enabled && idle >= a.autoClose.hours * HOUR) {
+    await closeTicket(channel, me);
+    await channel
+      .send({ embeds: [embeds.warning(tg('tickets.close.auto_title'), tg('tickets.close.auto_desc', { hours: a.autoClose.hours }))] })
       .catch(() => null);
   }
+}
+
+/* ---------------- Close-Request ---------------- */
+
+/** Das Team fragt den Ersteller, ob das Ticket geschlossen werden kann. */
+async function requestClose(channel, member) {
+  const ticket = ticketsModel.getByChannel(channel.id);
+  if (!ticket) throw new Error(i18n.forGuild(channel.guild.id)('tickets.errors.not_a_ticket'));
+  if (ticket.status !== 'open') throw new Error('Das Ticket ist nicht offen.');
+
+  ticketsModel.setCloseRequest(ticket.id, member.id);
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`ticket:closereq:accept:${ticket.id}`).setLabel('Ja, schließen').setEmoji('✅').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`ticket:closereq:decline:${ticket.id}`).setLabel('Nein, offen lassen').setEmoji('❌').setStyle(ButtonStyle.Secondary),
+  );
+  await channel.send({
+    content: `<@${ticket.opener_id}>`,
+    embeds: [embeds.info('🔒 Kann dieses Ticket geschlossen werden?', `<@${member.id}> möchte dieses Ticket schließen. Ist dein Anliegen gelöst?`)],
+    components: [row],
+    allowedMentions: { users: [ticket.opener_id] },
+  });
+  await ticketLog(ticket, {
+    guildId: channel.guild.id,
+    category: 'ticket',
+    type: 'ticket_close_request',
+    title: '🔒 Close-Request gesendet',
+    fields: [
+      { name: 'Ticket', value: `#${ticket.number}`, inline: true },
+      { name: 'Angefragt von', value: `<@${member.id}>`, inline: true },
+    ],
+    actorId: member.id,
+    overrideChannelId: ticketLogOverride(ticket),
+    meta: { ticketId: ticket.id },
+  });
+}
+
+/** Antwort auf eine Close-Request: schließt das Ticket (wenn „nach Close-Request schließen“ aktiv ist) oder meldet die Zustimmung. */
+async function answerCloseRequest(channel, member, accept) {
+  const ticket = ticketsModel.getByChannel(channel.id);
+  if (!ticket || ticket.status !== 'open' || !ticket.close_request_by) throw new Error('Es gibt keine offene Close-Request.');
+  ticketsModel.setCloseRequest(ticket.id, null);
+
+  if (!accept) {
+    await channel.send({ embeds: [embeds.info('❌ Close-Request abgelehnt', `<@${member.id}> möchte, dass das Ticket offen bleibt.`)] }).catch(() => null);
+    return 'declined';
+  }
+  const panel = ticket.panel_id ? ticketPanels.getPanel(ticket.panel_id) : null;
+  const cat = ticket.category_id ? ticketPanels.getCategory(ticket.category_id) : null;
+  if (ticketPanels.effectiveAuto(panel, cat).closeAfterRequest) {
+    await closeTicket(channel, member);
+    return 'closed';
+  }
+  await channel
+    .send({ embeds: [embeds.success('✅ Close-Request angenommen', `<@${member.id}> stimmt zu – das Team kann das Ticket jetzt schließen.`)] })
+    .catch(() => null);
+  return 'accepted';
+}
+
+/* ---------------- Ticket im Auftrag eines Nutzers ---------------- */
+
+/** Rollen-IDs, die für eine Kategorie zuständig sind (Haupt-Rolle + zusätzliche). */
+function categoryRoleIds(cat) {
+  return [cat.support_role_id, ...String(ticketPanels.categoryCfg(cat).supportRoleIds || '').split(',')]
+    .map((x) => String(x || '').trim())
+    .filter(Boolean);
+}
+
+/** Kategorien, in denen dieses Mitglied Tickets im Auftrag anderer öffnen darf. */
+function onBehalfCategories(guildId, member, settings) {
+  const out = [];
+  for (const p of ticketPanels.listPanels(guildId)) {
+    for (const c of ticketPanels.listCategories(p.id)) {
+      if (c.enabled === 0 || !ticketPanels.categoryCfg(c).onBehalf) continue;
+      const allowed = isSupport(member, settings) || categoryRoleIds(c).some((id) => member.roles.cache.has(id));
+      if (allowed) out.push({ id: c.id, label: c.label, panel: p.name });
+    }
+  }
+  return out;
+}
+
+async function openOnBehalf(guild, staff, targetUser, categoryId) {
+  const settings = settingsModel.get(guild.id);
+  const allowed = onBehalfCategories(guild.id, staff, settings).some((c) => c.id === categoryId);
+  if (!allowed) throw new Error('Für diese Kategorie darfst du keine Tickets im Auftrag öffnen.');
+  const target = await guild.members.fetch(targetUser.id).catch(() => null);
+  if (!target) throw new Error('Das Mitglied ist nicht auf diesem Server.');
+  const { channel, ticket } = await createTicket(guild, target, { categoryId });
+  await channel
+    .send({ embeds: [embeds.info('📝 Im Auftrag erstellt', `Dieses Ticket wurde von <@${staff.id}> für <@${target.id}> geöffnet.`)] })
+    .catch(() => null);
+  return { channel, ticket };
 }
 
 module.exports = {
@@ -1128,5 +1295,9 @@ module.exports = {
   buildTicketModal,
   submitRating,
   autoCloseSweep,
+  requestClose,
+  answerCloseRequest,
+  onBehalfCategories,
+  openOnBehalf,
   rerenderPanelMessage,
 };

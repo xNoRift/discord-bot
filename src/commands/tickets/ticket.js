@@ -37,9 +37,45 @@ module.exports = {
         .setDescription('Einen Nutzer wieder aus dem Ticket entfernen.')
         .addUserOption((o) => o.setName('nutzer').setDescription('Wer soll den Zugriff verlieren?').setRequired(true)),
     )
-    .addSubcommand((s) => s.setName('delete').setDescription('Ticket endgültig löschen.')),
+    .addSubcommand((s) => s.setName('delete').setDescription('Ticket endgültig löschen.'))
+    .addSubcommand((s) => s.setName('closerequest').setDescription('Den Ersteller fragen, ob das Ticket geschlossen werden kann.'))
+    .addSubcommand((s) =>
+      s
+        .setName('open')
+        .setDescription('Ein Ticket im Auftrag eines Nutzers öffnen.')
+        .addUserOption((o) => o.setName('nutzer').setDescription('Für wen wird das Ticket geöffnet?').setRequired(true))
+        .addStringOption((o) => o.setName('kategorie').setDescription('Ticket-Kategorie').setRequired(true).setAutocomplete(true)),
+    ),
+
+  /** Autocomplete für "kategorie": nur Kategorien, in denen man im Auftrag öffnen darf. */
+  async autocomplete(interaction) {
+    const focused = String(interaction.options.getFocused() || '').toLowerCase();
+    const list = ticketService
+      .onBehalfCategories(interaction.guildId, interaction.member, interaction.settings || {})
+      .filter((c) => `${c.label} ${c.panel}`.toLowerCase().includes(focused))
+      .slice(0, 25)
+      .map((c) => ({ name: `${c.label} (${c.panel})`.slice(0, 100), value: String(c.id) }));
+    await interaction.respond(list);
+  },
 
   async execute(interaction) {
+    // "open" funktioniert überall (nicht nur in Ticket-Kanälen)
+    if (interaction.options.getSubcommand() === 'open') {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      try {
+        const user = interaction.options.getUser('nutzer');
+        const { channel } = await ticketService.openOnBehalf(
+          interaction.guild,
+          interaction.member,
+          user,
+          Number.parseInt(interaction.options.getString('kategorie'), 10),
+        );
+        return interaction.editReply({ embeds: [embeds.success('📝 Ticket geöffnet', `Ticket für <@${user.id}> erstellt: ${channel}`)] });
+      } catch (err) {
+        return interaction.editReply({ embeds: [embeds.error(undefined, err.message)] });
+      }
+    }
+
     const ticket = ticketsModel.getByChannel(interaction.channelId);
     if (!ticket || ticket.status === 'deleted') {
       return interaction.reply({
@@ -58,8 +94,14 @@ module.exports = {
       interaction.reply({ embeds: [embeds.error(undefined, msg)], flags: MessageFlags.Ephemeral });
 
     // Berechtigungen je Unterbefehl
-    if (['claim', 'rename', 'add', 'remove', 'delete', 'reopen'].includes(sub) && !support) {
+    if (['claim', 'rename', 'remove', 'delete', 'reopen', 'closerequest'].includes(sub) && !support) {
       return deny('Dafür brauchst du eine Support-Rolle.');
+    }
+    // Personen hinzufügen: Team – oder der Ersteller, wenn das Panel es erlaubt
+    if (sub === 'add' && !support) {
+      const panel = ticket.panel_id ? require('../../database/models/ticketPanels').getPanel(ticket.panel_id) : null;
+      const allowUserAdd = panel && require('../../database/models/ticketPanels').panelCfg(panel).allowUserAdd;
+      if (!(isOpener && allowUserAdd)) return deny('Dafür brauchst du eine Support-Rolle.');
     }
     if (sub === 'unclaim' && !support && !isClaimer) {
       return deny('Nur das Support-Team oder wer das Ticket übernommen hat, kann es freigeben.');
@@ -103,6 +145,9 @@ module.exports = {
           await ticketService.removeMemberFromTicket(channel, member, user);
           return interaction.editReply({ embeds: [embeds.success('➖ Entfernt', `<@${user.id}> hat keinen Zugriff mehr.`)] });
         }
+        case 'closerequest':
+          await ticketService.requestClose(channel, member);
+          return interaction.editReply({ embeds: [embeds.success('📨 Gesendet', 'Der Ersteller wurde gefragt.')] });
         case 'delete':
           await ticketService.deleteTicket(channel, member);
           return interaction.editReply({ embeds: [embeds.warning('🗑️ Wird gelöscht', 'Der Kanal wird gleich entfernt.')] });
