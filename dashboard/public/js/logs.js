@@ -8,7 +8,7 @@ const ICО = {
   ticket_create: 'ticket', ticket_close: 'ticket', ticket_reopen: 'ticket', ticket_delete: 'trash', ticket_claim: 'check',
   giveaway_create: 'gift', giveaway_end: 'gift', giveaway_winners: 'star', giveaway_reroll: 'refresh',
   giveaway_cancel: 'x', giveaway_role_granted: 'star', giveaway_role_removed: 'clock',
-  application_create: 'clipboard', application_accept: 'check', application_reject: 'x',
+  application_create: 'clipboard', application_accept: 'check', application_reject: 'x', application_chat: 'chat',
 };
 
 async function loadLogs() {

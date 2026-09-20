@@ -35,6 +35,7 @@ const EDITABLE_FIELDS = [
   'application_panel_message',
   'application_panel_channel_id',
   'application_panel_message_id',
+  'application_chat_category_id',
   // Redesign / erweiterte Einstellungen
   'tickets_enabled',
   'music_enabled',

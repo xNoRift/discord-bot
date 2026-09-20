@@ -36,7 +36,7 @@ async function loadSettings() {
   settings = await apiFor('GET', '/settings');
   await fillSelectors(settings);
   applyToForm(document.getElementById('appSettings'), settings);
-  ['application_channel_id', 'application_team_role_id', 'application_log_channel_id'].forEach((k) => {
+  ['application_channel_id', 'application_team_role_id', 'application_log_channel_id', 'application_chat_category_id'].forEach((k) => {
     if (settings[k]) document.querySelector(`#appSettings [name=${k}]`).value = settings[k];
   });
   if (settings.application_channel_id) document.getElementById('appPanelCh').value = settings.application_channel_id;
@@ -46,7 +46,8 @@ async function saveAppSettings() {
   try {
     settings = await apiFor('PATCH', '/settings', {
       application_channel_id: a.application_channel_id, application_team_role_id: a.application_team_role_id,
-      application_log_channel_id: a.application_log_channel_id, application_panel_title: a.application_panel_title,
+      application_log_channel_id: a.application_log_channel_id, application_chat_category_id: a.application_chat_category_id,
+      application_panel_title: a.application_panel_title,
       application_panel_message: a.application_panel_message,
     });
     toast('Gespeichert.', 'success');
@@ -135,6 +136,12 @@ async function openEditor(typeId) {
         </div>
         <div class="field"><label>Beschreibung</label><input name="description" value="${escapeHtml(t.description || '')}" maxlength="200" /></div>
         <div class="field"><label>Annahme-Rolle (bei „Annehmen" automatisch vergeben)</label><select name="acceptRoleId"><option value="">— keine —</option>${roleOpts}</select></div>
+        <hr class="divider" />
+        <div class="field"><label>${icon('chat', 'icon--sm')} Kategorie für Bewerber-Chats <span class="muted">(optional)</span></label>
+          <select name="chatCategoryId" data-type="category"></select>
+          <small>Leer = Server-Standard (Karte „Panel &amp; Kanäle“), sonst Kanal ohne Kategorie.</small></div>
+        <div class="setting-row"><div class="setting-row__text"><b>Chat automatisch öffnen</b><span>Sobald eine Bewerbung eingeht, wird sofort ein privater Chat mit dem Bewerber angelegt</span></div>
+          <label class="toggle"><input type="checkbox" name="autoChat"${t.auto_chat ? ' checked' : ''} /><span class="toggle__track"></span></label></div>
       </div>
     </form>
     <div class="card">
@@ -145,6 +152,7 @@ async function openEditor(typeId) {
   initEmojiInputs(ED);
   const typeForm = ED.querySelector('#typeForm');
   if (t.accept_role_id) typeForm.acceptRoleId.value = t.accept_role_id;
+  await fillSelectors({ chatCategoryId: t.chat_category_id || '' });
   ED.querySelector('#eBack').onclick = () => { ED.hidden = true; IX.hidden = false; loadTypes(); };
   ED.querySelector('#eDel').onclick = async () => {
     if (!(await confirmModal('Bewerbungsart samt Fragen löschen?', { danger: true, confirmLabel: 'Löschen' }))) return;
@@ -236,6 +244,12 @@ function appRow(a) {
     ? `<button class="btn btn--success btn--sm" data-a="accept" data-id="${a.id}">${icon('check', 'icon--sm')} Annehmen</button>
        <button class="btn btn--danger btn--sm" data-a="reject" data-id="${a.id}">${icon('x', 'icon--sm')} Ablehnen</button>`
     : `<span class="muted">Bearbeitet ${a.reviewed_at ? escapeHtml(fmtDate(a.reviewed_at)) : ''}</span>`;
+  const chatCtl = !a.chat
+    ? `<button class="btn btn--primary btn--sm" data-a="chat" data-id="${a.id}">${icon('chat', 'icon--sm')} Chat öffnen</button>`
+    : a.chat.status === 'closed'
+      ? `<a class="btn btn--outline btn--sm" href="${escapeHtml(a.chat.url)}" target="_blank" rel="noopener">${icon('chat', 'icon--sm')} Chat (geschlossen)</a>
+         <button class="btn btn--ghost btn--sm" data-a="chat" data-id="${a.id}">Wieder öffnen</button>`
+      : `<a class="btn btn--outline btn--sm" href="${escapeHtml(a.chat.url)}" target="_blank" rel="noopener">${icon('chat', 'icon--sm')} Zum Chat</a>`;
   return `<div class="list-row" data-id="${a.id}">
     <div class="list-row__head">
       <span class="list-row__title">#${a.id} · ${escapeHtml(a.type_name || '?')}</span>
@@ -243,7 +257,7 @@ function appRow(a) {
       <span class="muted">${escapeHtml(a.user_tag || a.user_id)}</span>
     </div>
     ${answers}
-    <div class="list-row__actions">${actions}</div></div>`;
+    <div class="list-row__actions">${actions}${chatCtl}</div></div>`;
 }
 async function loadApps() {
   const w = document.getElementById('appList');
@@ -261,6 +275,14 @@ document.getElementById('appTabs').addEventListener('click', (e) => {
 document.getElementById('appList').addEventListener('click', async (e) => {
   const btn = e.target.closest('button[data-a]'); if (!btn) return;
   const id = btn.dataset.id, decision = btn.dataset.a;
+  if (decision === 'chat') {
+    btn.disabled = true;
+    try {
+      const r = await apiFor('POST', `/applications/${id}/chat`);
+      toast(r.created ? 'Chat geöffnet.' : 'Chat ist bereits vorhanden.', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+    return loadApps();
+  }
   const note = prompt(`Nachricht an den Bewerber (optional):`) || '';
   try {
     const r = await apiFor('POST', `/applications/${id}/review`, { decision, note });

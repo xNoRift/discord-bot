@@ -2030,6 +2030,12 @@ router.patch(
       if (req.body[k] !== undefined) patch[k] = req.body[k];
     }
     if (req.body.acceptRoleId !== undefined) patch.accept_role_id = req.body.acceptRoleId || null;
+    if (req.body.chatCategoryId !== undefined) {
+      const id = String(req.body.chatCategoryId || '');
+      if (id && !/^\d{5,25}$/.test(id)) return res.status(400).json({ error: 'Ungültige Kategorie.' });
+      patch.chat_category_id = id || null;
+    }
+    if (req.body.autoChat !== undefined) patch.auto_chat = req.body.autoChat ? 1 : 0;
     if (req.body.enabled !== undefined) patch.enabled = req.body.enabled ? 1 : 0;
     res.json(appModel.updateType(type.id, patch));
   }),
@@ -2110,12 +2116,31 @@ router.post(
 
 router.get('/guilds/:guildId/applications', (req, res) => {
   res.json(
-    appModel.listApplications(req.params.guildId, { status: req.query.status, limit: 100 }).map((a) => ({
-      ...a,
-      answers: JSON.parse(a.answers_json || '[]'),
-    })),
+    appModel.listApplications(req.params.guildId, { status: req.query.status, limit: 100 }).map((a) => {
+      const chat = ticketsModel.getActiveByApplication(a.id);
+      return {
+        ...a,
+        answers: JSON.parse(a.answers_json || '[]'),
+        chat: chat ? { status: chat.status, url: `https://discord.com/channels/${a.guild_id}/${chat.channel_id}` } : null,
+      };
+    }),
   );
 });
+
+router.post(
+  '/guilds/:guildId/applications/:id/chat',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const app = appModel.getApplication(num(req.params.id));
+    if (!app || app.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    const { channel, created } = await applicationService.openChat(req.guild, app, { id: req.session.user.id });
+    res.json({
+      ok: true,
+      created,
+      url: `https://discord.com/channels/${app.guild_id}/${channel.id}`,
+    });
+  }),
+);
 
 router.post(
   '/guilds/:guildId/applications/:id/review',

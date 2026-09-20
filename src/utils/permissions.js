@@ -31,6 +31,8 @@ function isSupport(member, settings, ticket) {
   if (isManager(member)) return true;
   const roleId = settings?.ticket_support_role_id;
   if (roleId && member.roles.cache.has(roleId)) return true;
+  // Bewerber-Chats werden vom Bewerbungs-Team betreut
+  if (ticket?.application_id && isApplicationTeam(member, settings)) return true;
   if (ticket?.category_id) {
     const ticketPanels = require('../database/models/ticketPanels');
     const cat = ticketPanels.getCategory(ticket.category_id);

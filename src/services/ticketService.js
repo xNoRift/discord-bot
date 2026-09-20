@@ -52,6 +52,7 @@ function panelColor(panel, settings) {
 
 /** Log-Kanal für Ticket-Events: Panel-Log > (logService-Fallback). */
 function ticketLogOverride(ticket) {
+  if (ticket?.application_id) return settingsModel.get(ticket.guild_id).application_log_channel_id || undefined;
   if (!ticket?.panel_id) return undefined;
   const panel = ticketPanels.getPanel(ticket.panel_id);
   return panel?.log_channel_id || undefined;
@@ -886,7 +887,9 @@ async function closeTicket(channel, member, opts = {}) {
   await channel.permissionOverwrites
     .edit(ticket.opener_id, { SendMessages: false })
     .catch(() => null);
-  await channel.setName(`geschlossen-${String(ticket.number).padStart(4, '0')}`).catch(() => null);
+  await channel
+    .setName(`${ticket.application_id ? 'bewerbung-geschlossen' : 'geschlossen'}-${String(ticket.number).padStart(4, '0')}`)
+    .catch(() => null);
 
   await updateManagementMessage(channel, updated);
   await channel
@@ -920,7 +923,9 @@ async function closeTicket(channel, member, opts = {}) {
 
   // Transkript (wenn am Panel aktiviert)
   const closePanel = ticket.panel_id ? ticketPanels.getPanel(ticket.panel_id) : null;
-  if (closePanel && ticketPanels.panelCfg(closePanel).transcripts) {
+  // Bewerber-Chats haben kein Panel: Transkript geht immer in den Bewerbungs-Log-Kanal (falls gesetzt)
+  const wantTranscript = closePanel ? ticketPanels.panelCfg(closePanel).transcripts : Boolean(ticket.application_id);
+  if (wantTranscript) {
     await require('./transcriptService')
       .send(channel, ticketsModel.get(ticket.id))
       .catch((err) => logger.warn(`[ticket] Transkript #${ticket.number}: ${err.message}`));
@@ -944,7 +949,9 @@ async function reopenTicket(channel, member) {
   await channel.permissionOverwrites
     .edit(ticket.opener_id, { SendMessages: true, ViewChannel: true })
     .catch(() => null);
-  await channel.setName(`ticket-${String(ticket.number).padStart(4, '0')}`).catch(() => null);
+  await channel
+    .setName(`${ticket.application_id ? 'bewerbung' : 'ticket'}-${String(ticket.number).padStart(4, '0')}`)
+    .catch(() => null);
 
   await updateManagementMessage(channel, updated);
   await channel

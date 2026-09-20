@@ -4,13 +4,16 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ChannelType,
   EmbedBuilder,
   ModalBuilder,
+  PermissionsBitField,
   TextInputBuilder,
   TextInputStyle,
 } = require('discord.js');
 const client = require('../core/client');
 const appModel = require('../database/models/applications');
+const ticketsModel = require('../database/models/tickets');
 const settingsModel = require('../database/models/settings');
 const logService = require('./logService');
 const embeds = require('../utils/embeds');
@@ -142,6 +145,11 @@ function buildReviewMessage(application, answers) {
       .setEmoji('❌')
       .setStyle(ButtonStyle.Danger)
       .setDisabled(application.status !== 'pending'),
+    new ButtonBuilder()
+      .setCustomId(`app:chat:${application.id}`)
+      .setLabel('Chat')
+      .setEmoji('💬')
+      .setStyle(ButtonStyle.Primary),
   );
 
   return { embeds: [embed], components: [row] };
@@ -196,7 +204,187 @@ async function submitApplication(guild, user, type, answers) {
     meta: { applicationId: application.id, typeId: type.id },
   });
 
+  // Chat automatisch öffnen (Einstellung der Bewerbungsart)
+  if (type.auto_chat) {
+    await openChat(guild, application, null).catch((err) =>
+      logger.warn(`[application] Auto-Chat für #${application.id}: ${err.message}`),
+    );
+  }
+
   return application;
+}
+
+/* ---------------- Bewerber-Chat ---------------- */
+
+const CHAT_PERMS = [
+  PermissionsBitField.Flags.ViewChannel,
+  PermissionsBitField.Flags.SendMessages,
+  PermissionsBitField.Flags.ReadMessageHistory,
+  PermissionsBitField.Flags.AttachFiles,
+  PermissionsBitField.Flags.EmbedLinks,
+];
+
+async function fetchChannel(guild, id) {
+  if (!id) return null;
+  return guild.channels.cache.get(id) ?? (await guild.channels.fetch(id).catch(() => null));
+}
+
+function chatChannelName(user) {
+  const base = String(user.username ?? user.tag ?? user.id)
+    .toLowerCase()
+    .replace(/[^a-z0-9\-_]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+  return `bewerbung-${base || user.id}`;
+}
+
+/** Discord-Kategorie für Bewerber-Chats: Bewerbungsart > Server-Standard > keine (oberste Ebene). */
+function chatCategoryId(type, settings) {
+  return type?.chat_category_id || settings.application_chat_category_id || null;
+}
+
+/**
+ * Öffnet einen privaten Chat (Ticket) zwischen Team und Bewerber.
+ * Existiert bereits ein Chat, wird er wiederverwendet (ein geschlossener wird wieder geöffnet).
+ * @param {import('discord.js').Guild} guild
+ * @param {object} application  applications-Zeile
+ * @param {{id:string}|null} staff  Teammitglied, das den Chat öffnet (null = automatisch bei Eingang)
+ * @returns {Promise<{ channel: import('discord.js').TextChannel, ticket: object, created: boolean }>}
+ */
+async function openChat(guild, application, staff) {
+  const settings = settingsModel.get(guild.id);
+  const embedColor = config.branding.color;
+
+  // Vorhandenen Chat wiederverwenden
+  const existing = ticketsModel.getActiveByApplication(application.id);
+  if (existing) {
+    const channel = await fetchChannel(guild, existing.channel_id);
+    if (channel) {
+      if (existing.status === 'closed') {
+        await require('./ticketService').reopenTicket(channel, { id: staff?.id ?? client.user?.id });
+      }
+      return { channel, ticket: ticketsModel.get(existing.id), created: false };
+    }
+    ticketsModel.markDeleted(existing.id, staff?.id ?? client.user?.id); // Kanal wurde manuell gelöscht
+  }
+
+  const member = await guild.members.fetch(application.user_id).catch(() => null);
+  if (!member) throw new Error('Der Bewerber ist nicht (mehr) auf diesem Server.');
+
+  const me = guild.members.me;
+  if (!me?.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+    throw new Error('Dem Bot fehlt die Berechtigung „Kanäle verwalten“.');
+  }
+
+  const type = application.type_id ? appModel.getType(application.type_id) : null;
+  const parentId = chatCategoryId(type, settings);
+  let parent = null;
+  if (parentId) {
+    parent = await fetchChannel(guild, parentId);
+    if (!parent || parent.type !== ChannelType.GuildCategory) {
+      throw new Error('Die eingestellte Kategorie für Bewerber-Chats existiert nicht mehr.');
+    }
+  }
+
+  const teamRoleId = settings.application_team_role_id;
+  const overwrites = [
+    { id: guild.roles.everyone.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+    { id: member.id, allow: CHAT_PERMS },
+    {
+      id: me.id,
+      allow: [...CHAT_PERMS, PermissionsBitField.Flags.ManageChannels, PermissionsBitField.Flags.ManageMessages],
+    },
+  ];
+  if (teamRoleId && guild.roles.cache.has(teamRoleId)) overwrites.push({ id: teamRoleId, allow: CHAT_PERMS });
+
+  const channel = await guild.channels.create({
+    name: chatChannelName(member.user),
+    type: ChannelType.GuildText,
+    ...(parent ? { parent: parent.id } : {}),
+    permissionOverwrites: overwrites,
+    topic: `Bewerbung #${application.id}${application.type_name ? ' • ' + application.type_name : ''} • Bewerber: ${member.user.tag} (${member.id})`,
+  });
+
+  const ticket = ticketsModel.createApplicationChat({
+    guildId: guild.id,
+    channelId: channel.id,
+    applicationId: application.id,
+    openerId: member.id,
+  });
+  ticketsModel.touch(ticket.id);
+
+  const welcome = new EmbedBuilder()
+    .setColor(embedColor)
+    .setTitle(`💬 Bewerbung #${application.id}${application.type_name ? ` – ${application.type_name}` : ''}`)
+    .setDescription(
+      `Hallo <@${member.id}>, das Team möchte sich mit dir über deine Bewerbung unterhalten.\n` +
+        'Bitte beantworte Rückfragen hier im Chat.',
+    )
+    .addFields(
+      { name: 'Bewerber', value: `<@${member.id}>`, inline: true },
+      { name: 'Status', value: statusLabel(application.status), inline: true },
+      ...(staff ? [{ name: 'Geöffnet von', value: `<@${staff.id}>`, inline: true }] : []),
+    )
+    .setTimestamp();
+
+  const pings = [`<@${member.id}>`];
+  if (teamRoleId && guild.roles.cache.has(teamRoleId)) pings.push(`<@&${teamRoleId}>`);
+
+  await channel.send({
+    content: pings.join(' • '),
+    embeds: [welcome],
+    components: [require('./ticketService').buildManagementRow(ticket)],
+  });
+
+  // Eingereichte Antworten im Chat mitlesen können
+  const answers = JSON.parse(application.answers_json || '[]');
+  if (answers.length) {
+    await channel
+      .send({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(embedColor)
+            .setTitle('📋 Eingereichte Antworten')
+            .addFields(
+              answers.slice(0, 24).map((a) => ({
+                name: String(a.question).slice(0, 256),
+                value: (a.answer && a.answer.trim() ? a.answer : '*(keine Angabe)*').slice(0, 1024),
+              })),
+            ),
+        ],
+      })
+      .catch(() => null);
+  }
+
+  await member
+    .send({
+      embeds: [
+        embeds.info(
+          '💬 Chat zu deiner Bewerbung',
+          `Das Team von **${guild.name}** hat einen Chat zu deiner Bewerbung als **${application.type_name ?? 'Bewerbung'}** geöffnet: <#${channel.id}>`,
+        ),
+      ],
+    })
+    .catch(() => null);
+
+  await logService.log({
+    guildId: guild.id,
+    category: 'application',
+    type: 'application_chat',
+    title: '💬 Bewerber-Chat geöffnet',
+    color: config.branding.color,
+    fields: [
+      { name: 'Bewerbung', value: `#${application.id} – ${application.type_name ?? '?'}`, inline: true },
+      { name: 'Bewerber', value: `<@${member.id}>`, inline: true },
+      { name: 'Kanal', value: `<#${channel.id}>`, inline: true },
+      staff ? { name: 'Geöffnet von', value: `<@${staff.id}>`, inline: true } : null,
+    ].filter(Boolean),
+    actorId: staff?.id ?? member.id,
+    meta: { applicationId: application.id, channelId: channel.id },
+  });
+
+  return { channel, ticket, created: true };
 }
 
 /* ---------------- Review ---------------- */
@@ -275,6 +463,24 @@ async function reviewApplication(guild, applicationId, reviewer, decision, note)
     await member.send({ embeds: [dm] }).catch(() => null);
   }
 
+  // Ist ein Chat offen, das Ergebnis dort festhalten
+  const chat = ticketsModel.getActiveByApplication(applicationId);
+  if (chat?.status === 'open') {
+    const chatChannel = await fetchChannel(guild, chat.channel_id);
+    if (chatChannel) {
+      await chatChannel
+        .send({
+          embeds: [
+            (decision === 'accepted'
+              ? embeds.success('✅ Bewerbung angenommen', `<@${reviewer.id}> hat die Bewerbung angenommen.`)
+              : embeds.error('❌ Bewerbung abgelehnt', `<@${reviewer.id}> hat die Bewerbung abgelehnt.`)
+            ).addFields(note ? [{ name: 'Nachricht vom Team', value: note.slice(0, 1024) }] : []),
+          ],
+        })
+        .catch(() => null);
+    }
+  }
+
   await logService.log({
     guildId: guild.id,
     category: 'application',
@@ -302,5 +508,6 @@ module.exports = {
   buildReviewMessage,
   submitApplication,
   reviewApplication,
+  openChat,
   statusLabel,
 };

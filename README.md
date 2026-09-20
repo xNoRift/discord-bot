@@ -56,6 +56,10 @@ Bot und Dashboard laufen in **einem** Node-Prozess und teilen sich dieselbe SQLi
 - Bewerbung wird gespeichert und in den Bewerbungs-Channel gepostet
 - Team-Buttons **✅ Annehmen** / **❌ Ablehnen** (mit optionaler Nachricht an den Bewerber)
 - Bei Annahme optional automatische Rollenvergabe
+- **💬 Bewerber-Chat:** per Button (Discord oder Dashboard) öffnet das Team einen privaten Chat mit dem Bewerber –
+  technisch ein Ticket (Übernehmen, Schließen mit Transkript, Wieder-öffnen, Löschen). Die Discord-Kategorie dafür ist
+  **optional** (pro Bewerbungsart, sonst Server-Standard, sonst ohne Kategorie); optional öffnet sich der Chat
+  automatisch, sobald eine Bewerbung eingeht
 - Bearbeitung auch komplett im Dashboard möglich
 
 ### 📊 Dashboard

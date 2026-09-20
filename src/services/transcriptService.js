@@ -37,7 +37,9 @@ function stamp(ts) {
 /** Baut den Transkript-Text aus den Nachrichten. */
 function buildText(ticket, messages) {
   const lines = [
-    `Transkript – Ticket #${ticket.number}${ticket.category_label ? ` (${ticket.category_label})` : ''}`,
+    ticket.application_id
+      ? `Transkript – Bewerber-Chat (Bewerbung #${ticket.application_id})`
+      : `Transkript – Ticket #${ticket.number}${ticket.category_label ? ` (${ticket.category_label})` : ''}`,
     `Ersteller-ID: ${ticket.opener_id}`,
     `Erstellt: ${stamp(ticket.created_at)} UTC`,
     '='.repeat(60),
@@ -66,7 +68,9 @@ async function send(channel, ticket) {
   const guild = channel.guild;
   const panel = ticket.panel_id ? ticketPanels.getPanel(ticket.panel_id) : null;
   const settings = settingsModel.get(guild.id);
-  const targetId = panel?.log_channel_id || settings.ticket_log_channel_id;
+  const targetId = ticket.application_id
+    ? settings.application_log_channel_id || settings.log_channel_id
+    : panel?.log_channel_id || settings.ticket_log_channel_id;
   if (!targetId) return null;
   const target = guild.channels.cache.get(targetId) ?? (await guild.channels.fetch(targetId).catch(() => null));
   if (!target || !target.isTextBased()) return null;
@@ -81,7 +85,7 @@ async function send(channel, ticket) {
   const file = new AttachmentBuilder(Buffer.from(text, 'utf8'), { name: `transkript-${String(ticket.number).padStart(4, '0')}.txt` });
   const embed = new EmbedBuilder()
     .setColor(config.branding.color)
-    .setTitle(`📄 Transkript – Ticket #${ticket.number}`)
+    .setTitle(ticket.application_id ? `📄 Transkript – Bewerber-Chat #${ticket.application_id}` : `📄 Transkript – Ticket #${ticket.number}`)
     .addFields(
       { name: 'Ersteller', value: `<@${ticket.opener_id}>`, inline: true },
       { name: 'Nachrichten', value: String(messages.length), inline: true },

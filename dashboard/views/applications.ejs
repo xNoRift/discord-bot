@@ -26,8 +26,9 @@
       <div class="card__head"><h2><%- icon('settings') %> Panel &amp; Kanäle</h2></div>
       <form id="appSettings" class="form">
         <div class="field"><label>Bewerbungs-Kanal</label><select name="application_channel_id" data-type="text"></select><small>Hier landen eingereichte Bewerbungen.</small></div>
-        <div class="field"><label>Team-Rolle</label><select name="application_team_role_id" data-type="role"></select></div>
-        <div class="field"><label>Log-Kanal</label><select name="application_log_channel_id" data-type="text"></select></div>
+        <div class="field"><label>Team-Rolle</label><select name="application_team_role_id" data-type="role"></select><small>Darf Bewerbungen bearbeiten und sieht die Bewerber-Chats.</small></div>
+        <div class="field"><label>Log-Kanal</label><select name="application_log_channel_id" data-type="text"></select><small>Log-Einträge und Transkripte der Bewerber-Chats.</small></div>
+        <div class="field"><label>Kategorie für Bewerber-Chats <span class="muted">(optional)</span></label><select name="application_chat_category_id" data-type="category"></select><small>Hier entstehen die Chats mit den Bewerbern. Leer = Kanal ohne Kategorie. Pro Bewerbungsart überschreibbar.</small></div>
         <div class="field"><label>Panel-Titel</label><input name="application_panel_title" type="text" /></div>
         <div class="field"><label>Panel-Text</label><textarea name="application_panel_message" rows="2"></textarea></div>
       </form>

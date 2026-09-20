@@ -43,6 +43,12 @@ ensureColumn('guild_settings', 'bot_prefix', "TEXT DEFAULT '!'");
 ensureColumn('giveaways', 'description', 'TEXT');
 ensureColumn('applications', 'review_note', 'TEXT');
 
+// Bewerber-Chat: ein Ticket, das mit einer Bewerbung verknüpft ist
+ensureColumn('tickets', 'application_id', 'INTEGER');
+ensureColumn('application_types', 'chat_category_id', 'TEXT');
+ensureColumn('application_types', 'auto_chat', 'INTEGER DEFAULT 0');
+ensureColumn('guild_settings', 'application_chat_category_id', 'TEXT');
+
 // Multi-Panel-Ticketsystem
 ensureColumn('tickets', 'panel_id', 'INTEGER');
 ensureColumn('tickets', 'category_id', 'INTEGER');

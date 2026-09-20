@@ -39,6 +39,25 @@ function createModmail({ guildId, channelId, number, openerId, dmChannelId }) {
   return get(info.lastInsertRowid);
 }
 
+/** Bewerber-Chat: Ticket ohne Panel, verknüpft mit einer Bewerbung (application_id). Nummer = Bewerbungs-ID. */
+function createApplicationChat({ guildId, channelId, applicationId, openerId }) {
+  const info = db
+    .prepare(
+      `INSERT INTO tickets
+        (guild_id, channel_id, number, opener_id, category_label, status, created_at, application_id)
+       VALUES (?, ?, ?, ?, 'Bewerbung', 'open', ?, ?)`,
+    )
+    .run(guildId, channelId, applicationId, openerId, Date.now(), applicationId);
+  return get(info.lastInsertRowid);
+}
+
+/** Aktueller (nicht gelöschter) Chat einer Bewerbung. */
+function getActiveByApplication(applicationId) {
+  return db
+    .prepare("SELECT * FROM tickets WHERE application_id = ? AND status != 'deleted' ORDER BY id DESC LIMIT 1")
+    .get(applicationId);
+}
+
 function get(id) {
   return db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
 }
@@ -98,7 +117,7 @@ function listStaleOpen(beforeTs) {
 function countOpenByUser(guildId, userId) {
   return db
     .prepare(
-      "SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND opener_id = ? AND status IN ('open','closed')",
+      "SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND opener_id = ? AND status IN ('open','closed') AND application_id IS NULL",
     )
     .get(guildId, userId).n;
 }
@@ -119,11 +138,11 @@ function listOpenByUser(guildId, userId) {
 function listByGuild(guildId, { status, limit = 100 } = {}) {
   if (status) {
     return db
-      .prepare('SELECT * FROM tickets WHERE guild_id = ? AND status = ? ORDER BY id DESC LIMIT ?')
+      .prepare('SELECT * FROM tickets WHERE guild_id = ? AND status = ? AND application_id IS NULL ORDER BY id DESC LIMIT ?')
       .all(guildId, status, limit);
   }
   return db
-    .prepare('SELECT * FROM tickets WHERE guild_id = ? ORDER BY id DESC LIMIT ?')
+    .prepare('SELECT * FROM tickets WHERE guild_id = ? AND application_id IS NULL ORDER BY id DESC LIMIT ?')
     .all(guildId, limit);
 }
 
@@ -135,7 +154,7 @@ function stats(guildId) {
          SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END) AS closed,
          SUM(CASE WHEN status = 'deleted' THEN 1 ELSE 0 END) AS deleted,
          COUNT(*) AS total
-       FROM tickets WHERE guild_id = ?`,
+       FROM tickets WHERE guild_id = ? AND application_id IS NULL`,
     )
     .get(guildId);
   return {
@@ -189,6 +208,8 @@ module.exports = {
   setCloseAnswers,
   create,
   createModmail,
+  createApplicationChat,
+  getActiveByApplication,
   findActiveModmailForUser,
   findActiveModmail,
   get,

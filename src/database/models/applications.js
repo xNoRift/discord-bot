@@ -33,7 +33,7 @@ function listTypes(guildId, { onlyEnabled = false } = {}) {
 }
 
 function updateType(id, patch) {
-  const allowed = ['name', 'emoji', 'description', 'accept_role_id', 'enabled', 'position'];
+  const allowed = ['name', 'emoji', 'description', 'accept_role_id', 'enabled', 'position', 'chat_category_id', 'auto_chat'];
   const keys = Object.keys(patch).filter((k) => allowed.includes(k));
   if (!keys.length) return getType(id);
   const setSql = keys.map((k) => `${k} = @${k}`).join(', ');
