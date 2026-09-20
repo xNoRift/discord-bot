@@ -477,6 +477,15 @@ CREATE TABLE IF NOT EXISTS level_rewards (
   UNIQUE (guild_id, level, role_id)
 );
 
+-- Eigene Level-Stufen: xp = Gesamt-XP, ab der Level "level" erreicht ist.
+-- Ohne Zeilen gilt die Standard-Formel (levels.xpForNext).
+CREATE TABLE IF NOT EXISTS level_thresholds (
+  guild_id TEXT NOT NULL,
+  level    INTEGER NOT NULL,
+  xp       INTEGER NOT NULL,
+  PRIMARY KEY (guild_id, level)
+);
+
 -- ---------- Neuigkeiten ----------
 CREATE TABLE IF NOT EXISTS news_posts (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,

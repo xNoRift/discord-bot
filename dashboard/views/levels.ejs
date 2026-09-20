@@ -44,15 +44,27 @@
 </form>
 
 <div class="col-2">
-  <div class="card">
-    <div class="card__head"><h2><%- icon('gift') %> Level-Belohnungen</h2></div>
-    <p class="card__sub">Wer dieses Level erreicht, bekommt die Rolle (der Bot muss in der Rollenliste darüber stehen).</p>
-    <form id="rewardForm" class="row-inline" style="flex-wrap:wrap;margin-bottom:12px;">
-      <input id="rwLevel" type="number" min="1" max="500" placeholder="Level" style="max-width:110px;" />
-      <select id="rwRole" data-type="role" style="max-width:220px;"></select>
-      <button class="btn btn--primary btn--sm" type="submit"><%- icon('plus', 'icon--sm') %> Hinzufügen</button>
-    </form>
-    <div id="rewardList"><div class="loading">Lädt…</div></div>
+  <div class="card" id="xpCard">
+    <div class="card__head"><h2><%- icon('star') %> XP vergeben</h2></div>
+    <p class="card__sub">Gib einem Mitglied XP, ziehe XP ab oder setze den Stand direkt. Level und Belohnungs-Rollen werden sofort angepasst; verliert jemand ein Level, bekommt er die Rolle dieses Levels wieder abgenommen.</p>
+    <div class="field">
+      <label>Mitglied</label>
+      <input id="xpSearch" type="search" placeholder="Name oder ID" autocomplete="off" />
+    </div>
+    <div id="xpResults"></div>
+    <div id="xpTarget" class="xp-row xp-target" hidden></div>
+    <div class="col-2">
+      <div class="field">
+        <label>Aktion</label>
+        <select id="xpMode">
+          <option value="add">XP hinzufügen</option>
+          <option value="remove">XP abziehen</option>
+          <option value="set">XP setzen auf …</option>
+        </select>
+      </div>
+      <div class="field"><label>XP</label><input id="xpAmount" type="number" min="0" max="100000000" placeholder="z. B. 500" /></div>
+    </div>
+    <button class="btn btn--primary" id="xpApply" type="button" disabled>Anwenden</button>
   </div>
 
   <div class="card">
@@ -64,6 +76,49 @@
     <div id="board"><div class="loading">Lädt…</div></div>
   </div>
 </div>
+
+<div class="col-2">
+  <div class="card" id="curveForm">
+    <div class="card__head"><h2><%- icon('chart') %> Level-Stufen</h2></div>
+    <p class="card__sub">Lege fest, ab wie viel XP (insgesamt) ein Mitglied welches Level erreicht. Änderungen speicherst du unten in der Leiste; die Level aller Mitglieder werden dann neu berechnet.</p>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Eigene Level-Stufen verwenden</b><span>Aus: Standard-Kurve, unbegrenzt viele Level. Ein: du bestimmst die XP pro Level selbst – das letzte Level ist dann das Höchstlevel.</span></div>
+      <label class="toggle"><input type="checkbox" name="curveCustom" /><span class="toggle__track"></span></label>
+    </div>
+    <div id="curveBody"><div class="loading">Lädt…</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('gift') %> Level-Belohnungen</h2></div>
+    <p class="card__sub">Wer dieses Level erreicht, bekommt die Rolle (der Bot muss in der Rollenliste darüber stehen).</p>
+    <form id="rewardForm" class="row-inline" style="flex-wrap:wrap;margin-bottom:12px;">
+      <input id="rwLevel" type="number" min="1" max="500" placeholder="Level" style="max-width:110px;" />
+      <select id="rwRole" data-type="role" style="max-width:220px;"></select>
+      <button class="btn btn--primary btn--sm" type="submit"><%- icon('plus', 'icon--sm') %> Hinzufügen</button>
+    </form>
+    <div id="rewardList"><div class="loading">Lädt…</div></div>
+  </div>
+</div>
+
+<style>
+  .xp-row { display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--line); }
+  .xp-row:last-child { border-bottom:0; }
+  .xp-row img { width:36px; height:36px; border-radius:50%; flex:none; }
+  .xp-row .spacer { flex:1; }
+  .xp-row small { color:var(--text-2); display:block; }
+  .xp-target { background:var(--bg-2, rgba(255,255,255,.04)); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:14px; }
+  #xpResults { margin-bottom:10px; }
+  .curve-tools { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 10px; }
+  .curve-list { max-height:460px; overflow-y:auto; border:1px solid var(--line); border-radius:10px; padding:4px 10px; }
+  .col-2 > .card { min-width:0; }
+  .curve-row { display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px; padding:6px 0; border-bottom:1px solid var(--line); }
+  .curve-row:last-child { border-bottom:0; }
+  .curve-row__lvl { width:64px; font-weight:600; flex:none; }
+  .curve-row input { width:140px; max-width:100%; }
+  .curve-row__diff { color:var(--text-2); font-size:.85rem; min-width:90px; }
+  .curve-row input.is-invalid { border-color:var(--danger, #f0616d); }
+  .curve-note { color:var(--text-2); font-size:.85rem; margin-top:10px; }
+</style>
 
 <%- include('partials/app-shell-close') %>
 <script src="/static/js/levels.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>

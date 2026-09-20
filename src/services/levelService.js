@@ -18,12 +18,46 @@ function csv(v) {
 
 async function applyRewards(guild, member, level) {
   const rewards = levels.listRewards(guild.id).filter((r) => r.level <= level);
+  let failed = 0;
   for (const r of rewards) {
     if (member.roles.cache.has(r.role_id)) continue;
-    await member.roles.add(r.role_id, `Level ${r.level} erreicht`).catch((err) =>
-      logger.warn(`[levels] Rolle ${r.role_id} nicht vergeben: ${err.message}`),
-    );
+    await member.roles.add(r.role_id, `Level ${r.level} erreicht`).catch((err) => {
+      failed++;
+      logger.warn(`[levels] Rolle ${r.role_id} nicht vergeben: ${err.message}`);
+    });
   }
+  return failed;
+}
+
+/** Entzieht die Rollen der Level (newLevel, oldLevel], die kein niedrigeres Level ebenfalls vergibt. */
+async function revokeRewards(guild, member, oldLevel, newLevel) {
+  const all = levels.listRewards(guild.id);
+  const keep = new Set(all.filter((r) => r.level <= newLevel).map((r) => r.role_id));
+  let failed = 0;
+  for (const r of all) {
+    if (r.level <= newLevel || r.level > oldLevel || keep.has(r.role_id)) continue;
+    if (!member.roles.cache.has(r.role_id)) continue;
+    await member.roles.remove(r.role_id, `Unter Level ${r.level} gefallen`).catch((err) => {
+      failed++;
+      logger.warn(`[levels] Rolle ${r.role_id} nicht entzogen: ${err.message}`);
+    });
+  }
+  return failed;
+}
+
+/**
+ * Manuelle XP-Verwaltung aus dem Dashboard: mode = add | remove | set.
+ * Passt Level und Belohnungs-Rollen an (Level-Verlust entzieht die Rollen der verlorenen Level).
+ * @returns {Promise<{previousXp:number, xp:number, level:number, oldLevel:number, roleFailures:number}>}
+ */
+async function adjustXp(guild, member, mode, amount) {
+  const previousXp = levels.get(guild.id, member.id)?.xp ?? 0;
+  const target = mode === 'add' ? previousXp + amount : mode === 'remove' ? previousXp - amount : amount;
+  const res = levels.setXp(guild.id, member.id, target);
+  const roleFailures = res.level >= res.oldLevel
+    ? await applyRewards(guild, member, res.level)
+    : await revokeRewards(guild, member, res.oldLevel, res.level);
+  return { previousXp, xp: res.xp, level: res.level, oldLevel: res.oldLevel, roleFailures };
 }
 
 async function handleLevelUp(guild, member, res, cfg, fallbackChannel) {
@@ -88,4 +122,4 @@ setInterval(() => {
   for (const [k, t] of cooldowns) if (t < cutoff) cooldowns.delete(k);
 }, 600_000).unref?.();
 
-module.exports = { onMessage, onVoice };
+module.exports = { onMessage, onVoice, adjustXp };

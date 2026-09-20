@@ -1571,12 +1571,13 @@ router.patch('/guilds/:guildId/modules/:module', actionLimiter, (req, res) => {
 /* ---------------- Beteiligungs-Belohnungen (Level) ---------------- */
 
 const levelsModel = require('../../src/database/models/levels');
+const levelService = require('../../src/services/levelService');
 
 router.get('/guilds/:guildId/levels/leaderboard', (req, res) => {
   const limit = Math.min(100, Math.max(1, num(req.query.limit, 20)));
   const rows = levelsModel.top(req.params.guildId, limit).map((r, i) => {
     const m = req.guild.members.cache.get(r.user_id);
-    const { into, needed } = levelsModel.levelFromXp(r.xp);
+    const { into, needed } = levelsModel.levelInfo(req.params.guildId, r.xp);
     return {
       rank: i + 1,
       userId: r.user_id,
@@ -1584,12 +1585,102 @@ router.get('/guilds/:guildId/levels/leaderboard', (req, res) => {
       avatarUrl: m ? m.displayAvatarURL({ size: 64 }) : null,
       xp: r.xp,
       level: r.level,
-      progress: Math.round((into / needed) * 100),
+      progress: needed ? Math.round((into / needed) * 100) : 100,
+      maxLevel: !needed,
       messages: r.messages,
       voiceMinutes: r.voice_minutes,
     };
   });
   res.json({ total: levelsModel.count(req.params.guildId), rows });
+});
+
+// Mitglieder-Suche für die XP-Verwaltung (Name oder ID) inkl. aktuellem XP-Stand.
+router.get(
+  '/guilds/:guildId/levels/search',
+  asyncHandler(async (req, res) => {
+    const q = String(req.query.q || '').trim();
+    if (!q) return res.json([]);
+    let members = [];
+    try {
+      if (/^\d{5,25}$/.test(q)) {
+        const m = await req.guild.members.fetch({ user: q, force: true }).catch(() => null);
+        if (m) members = [m];
+      } else {
+        members = [...(await req.guild.members.fetch({ query: q, limit: 10 })).values()];
+      }
+    } catch (err) {
+      return res.status(400).json({ error: discordErr(err) });
+    }
+    res.json(
+      members
+        .filter((m) => !m.user.bot)
+        .map((m) => {
+          const row = levelsModel.get(req.params.guildId, m.id);
+          return {
+            id: m.id,
+            name: m.displayName,
+            tag: m.user.username,
+            avatarUrl: m.displayAvatarURL({ size: 64 }),
+            xp: row?.xp ?? 0,
+            level: row?.level ?? 0,
+          };
+        }),
+    );
+  }),
+);
+
+// XP manuell vergeben / entziehen / setzen.
+router.post(
+  '/guilds/:guildId/levels/users/:userId/xp',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    if (!/^\d{5,25}$/.test(req.params.userId)) return res.status(400).json({ error: 'Ungültige ID.' });
+    const mode = String(req.body.mode || '');
+    if (!['add', 'remove', 'set'].includes(mode)) return res.status(400).json({ error: 'Ungültige Aktion.' });
+    const amount = Number.parseInt(req.body.amount, 10);
+    if (!Number.isFinite(amount) || amount < 0 || amount > levelsModel.MAX_XP) {
+      return res.status(400).json({ error: `XP muss eine Zahl zwischen 0 und ${levelsModel.MAX_XP.toLocaleString('de-DE')} sein.` });
+    }
+    if (mode !== 'set' && amount === 0) return res.status(400).json({ error: 'Bitte mehr als 0 XP angeben.' });
+    const member = await req.guild.members.fetch({ user: req.params.userId, force: true }).catch(() => null);
+    if (!member) return res.status(404).json({ error: 'Mitglied nicht auf dem Server gefunden.' });
+    if (member.user.bot) return res.status(400).json({ error: 'Bots sammeln keine XP.' });
+    res.json(await levelService.adjustXp(req.guild, member, mode, amount));
+  }),
+);
+
+// Level-Stufen: ab wie viel Gesamt-XP welches Level gilt.
+function curveState(guildId) {
+  const curve = levelsModel.getCurve(guildId);
+  return { custom: Boolean(curve), curve, defaults: levelsModel.defaultCurve(20), maxLevels: levelsModel.MAX_CURVE_LEVELS };
+}
+
+router.get('/guilds/:guildId/levels/curve', (req, res) => {
+  res.json(curveState(req.params.guildId));
+});
+
+router.put('/guilds/:guildId/levels/curve', actionLimiter, (req, res) => {
+  const raw = req.body.curve;
+  if (!Array.isArray(raw) || !raw.length) return res.status(400).json({ error: 'Mindestens eine Level-Stufe angeben.' });
+  if (raw.length > levelsModel.MAX_CURVE_LEVELS) {
+    return res.status(400).json({ error: `Maximal ${levelsModel.MAX_CURVE_LEVELS} Level-Stufen.` });
+  }
+  const curve = raw.map((v) => Number(v));
+  for (let i = 0; i < curve.length; i++) {
+    if (!Number.isInteger(curve[i]) || curve[i] < 1 || curve[i] > levelsModel.MAX_XP) {
+      return res.status(400).json({ error: `Level ${i + 1}: XP muss eine ganze Zahl zwischen 1 und ${levelsModel.MAX_XP.toLocaleString('de-DE')} sein.` });
+    }
+    if (i > 0 && curve[i] <= curve[i - 1]) {
+      return res.status(400).json({ error: `Level ${i + 1} braucht mehr XP als Level ${i} (${curve[i - 1]}).` });
+    }
+  }
+  levelsModel.setCurve(req.params.guildId, curve);
+  res.json(curveState(req.params.guildId));
+});
+
+router.delete('/guilds/:guildId/levels/curve', actionLimiter, (req, res) => {
+  levelsModel.setCurve(req.params.guildId, null);
+  res.json(curveState(req.params.guildId));
 });
 
 router.get('/guilds/:guildId/levels/rewards', (req, res) => {

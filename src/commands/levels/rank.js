@@ -17,14 +17,14 @@ module.exports = {
     const user = interaction.options.getUser('nutzer') || interaction.user;
     const row = levels.get(interaction.guildId, user.id);
     if (!row) return interaction.reply({ content: `${user.username} hat noch keine XP gesammelt.`, flags: MessageFlags.Ephemeral });
-    const { level, into, needed } = levels.levelFromXp(row.xp);
+    const { level, into, needed } = levels.levelInfo(interaction.guildId, row.xp);
     const embed = new EmbedBuilder()
       .setColor(config.branding.color)
       .setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
       .addFields(
         { name: 'Level', value: String(level), inline: true },
         { name: 'Rang', value: `#${levels.rankOf(interaction.guildId, user.id)}`, inline: true },
-        { name: 'XP', value: `${into} / ${needed} (gesamt ${row.xp})`, inline: true },
+        { name: 'XP', value: needed ? `${into} / ${needed} (gesamt ${row.xp})` : `Höchstes Level erreicht (gesamt ${row.xp})`, inline: true },
         { name: 'Nachrichten', value: String(row.messages), inline: true },
         { name: 'Sprachzeit', value: `${row.voice_minutes} Min.`, inline: true },
       );
