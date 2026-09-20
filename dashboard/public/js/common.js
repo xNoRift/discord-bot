@@ -731,14 +731,14 @@ function applyToForm(form, data) {
  *   </div>
  */
 function renderModuleStatus(enabled, opts = {}) {
-  const box = document.getElementById('moduleStatus');
+  const box = document.getElementById(opts.statusId || 'moduleStatus');
   if (!box) return;
   box.classList.toggle('is-off', !enabled);
-  document.getElementById('msTitle').textContent = enabled ? 'Modul aktiviert' : 'Modul deaktiviert';
-  document.getElementById('msText').textContent = enabled
+  box.querySelector('.module-status__text b').textContent = enabled ? 'Modul aktiviert' : 'Modul deaktiviert';
+  box.querySelector('.module-status__text span').textContent = enabled
     ? opts.on || 'Dieses Modul ist aktiviert. Ein Klick auf den Button deaktiviert es.'
     : opts.off || 'Dieses Modul ist deaktiviert. Aktiviere es, damit die Funktion greift.';
-  const btn = document.getElementById('msToggle');
+  const btn = box.querySelector('button');
   btn.textContent = enabled ? 'Deaktivieren' : 'Aktivieren';
   btn.className = 'btn btn--sm ' + (enabled ? 'btn--outline-green' : 'btn--success');
 }
@@ -787,7 +787,7 @@ async function moduleForm(module, form, opts = {}) {
       if (el.type === 'checkbox') el.checked = Boolean(cfg[el.name]);
       else el.value = cfg[el.name] ?? '';
     }
-    if (document.getElementById('moduleStatus')) renderModuleStatus(Boolean(cfg.enabled), opts);
+    if (document.getElementById(opts.statusId || 'moduleStatus')) renderModuleStatus(Boolean(cfg.enabled), opts);
     await renderRolePickers(form);
     form.sbMarkClean?.();
     if (opts.afterLoad) opts.afterLoad(cfg);
@@ -801,7 +801,8 @@ async function moduleForm(module, form, opts = {}) {
   };
   await fill();
   trackForm(form, save, { reset: fill });
-  const btn = document.getElementById('msToggle');
+  const statusBox = document.getElementById(opts.statusId || 'moduleStatus');
+  const btn = statusBox ? statusBox.querySelector('button') : null;
   if (btn && 'enabled' in cfg) {
     btn.addEventListener('click', async () => {
       try {

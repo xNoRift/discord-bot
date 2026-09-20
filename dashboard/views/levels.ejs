@@ -31,6 +31,16 @@
     </div>
     <div class="field"><label>Level-Up-Nachricht</label><input name="announceMessage" maxlength="300" /><small>Platzhalter: <code>{user}</code> <code>{username}</code> <code>{level}</code></small></div>
   </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('star') %> Server-Tag-Belohnung</h2></div>
+    <p class="card__sub">Belohne Mitglieder, die den Server-Tag dieses Servers in ihrem Discord-Profil tragen, mit einer Rolle. Sie verlieren die Rolle wieder, wenn sie den Tag ablegen (Abgleich alle 10 Minuten).</p>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Server-Tag-Belohnung aktivieren</b><span>Vergibt die Rolle automatisch an Mitglieder mit dem Server-Tag</span></div>
+      <label class="toggle"><input type="checkbox" name="tagRewardEnabled" /><span class="toggle__track"></span></label>
+    </div>
+    <div class="field" style="max-width:420px;"><label>Rolle</label><select name="tagRoleId" data-type="role"></select></div>
+  </div>
 </form>
 
 <div class="col-2">

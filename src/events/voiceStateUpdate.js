@@ -3,6 +3,7 @@
 const tempVoiceService = require('../services/tempVoiceService');
 const musicService = require('../services/musicService');
 const levelService = require('../services/levelService');
+const voiceSupportService = require('../services/voiceSupportService');
 const logger = require('../utils/logger');
 
 module.exports = {
@@ -12,6 +13,12 @@ module.exports = {
       await tempVoiceService.onVoiceUpdate(oldState, newState);
     } catch (err) {
       logger.error('[voiceStateUpdate] Temp-Voice:', err.message);
+    }
+
+    try {
+      await voiceSupportService.onVoice(oldState, newState);
+    } catch (err) {
+      logger.warn('[voiceStateUpdate] Voice-Support:', err.message);
     }
 
     try {

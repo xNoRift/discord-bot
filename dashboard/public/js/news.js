@@ -66,7 +66,10 @@ document.getElementById('newsList').addEventListener('click', async (e) => {
     const [chans, roles] = await Promise.all([Dash.getChannels(), getRoles()]);
     CHAN = chans;
     document.getElementById('nsPing').insertAdjacentHTML('beforeend', roles.filter((r) => !r.managed).map((r) => `<option value="${r.id}">@${escapeHtml(r.name)}</option>`).join(''));
-    const mf = await Dash.moduleForm('news', document.getElementById('newsDefaults'), {});
+    const mf = await Dash.moduleForm('news', document.getElementById('newsDefaults'), {
+      on: 'Das Neuigkeiten-Modul ist aktiv. Du kannst Ankündigungen veröffentlichen.',
+      off: 'Das Neuigkeiten-Modul ist deaktiviert. Aktiviere es, um Ankündigungen zu veröffentlichen.',
+    });
     const sel = document.getElementById('nsChannel');
     sel.value = mf.cfg.defaultChannelId || sel.value;
     await loadList();

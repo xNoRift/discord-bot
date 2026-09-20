@@ -31,6 +31,8 @@ function renderName(format, member, guild) {
     String(format || '{user} • Voice')
       .replaceAll('{user}', member.displayName || member.user.username)
       .replaceAll('{username}', member.user.username)
+      .replaceAll('{display}', member.displayName || member.user.username)
+      .replaceAll('{count}', String(member.guild.memberCount ?? ''))
       .replaceAll('{server}', guild.name)
       .trim()
       .slice(0, 100) || `${member.user.username} • Voice`
@@ -217,6 +219,7 @@ async function createFor(member, settings) {
     type: ChannelType.GuildVoice,
     parent: parentId,
     userLimit: limit,
+    bitrate: Math.min(guild.maximumBitrate || 96000, Math.max(8000, (Number(settings.tempvoice_bitrate) || 64) * 1000)),
     reason: `Temp-Voice für ${member.user.tag}`,
     permissionOverwrites: [
       {

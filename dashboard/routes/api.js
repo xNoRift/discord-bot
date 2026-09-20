@@ -1573,6 +1573,8 @@ router.post(
   actionLimiter,
   asyncHandler(async (req, res) => {
     const b = req.body || {};
+    const newsCfg = moduleSettings.get(req.guild.id, 'news');
+    if (!newsCfg.enabled) return res.status(400).json({ error: 'Das Neuigkeiten-Modul ist deaktiviert. Bitte oben aktivieren.' });
     const title = String(b.title || '').trim().slice(0, 256);
     const body = String(b.body || '').trim().slice(0, 4000);
     if (!title && !body) return res.status(400).json({ error: 'Bitte einen Titel oder Text angeben.' });
@@ -1592,6 +1594,12 @@ router.post(
     if (ping === '@everyone' || ping === '@here') {
       content = ping;
       allowedMentions.parse = ['everyone'];
+    } else if (ping === 'default') {
+      const ids = String(newsCfg.pingRoleIds || '').split(',').map((x) => x.trim()).filter((id) => req.guild.roles.cache.has(id));
+      if (ids.length) {
+        content = ids.map((id) => `<@&${id}>`).join(' ');
+        allowedMentions.roles = ids;
+      }
     } else if (/^\d{5,25}$/.test(ping) && req.guild.roles.cache.has(ping)) {
       content = `<@&${ping}>`;
       allowedMentions.roles = [ping];
@@ -1619,6 +1627,41 @@ router.delete(
     }
     newsModel.remove(post.id);
     res.json({ ok: true });
+  }),
+);
+
+/* ---------------- Server-Statistiken (Stat-Kanäle) ---------------- */
+
+const statsChannelService = require('../../src/services/statsChannelService');
+
+router.post(
+  '/guilds/:guildId/stats/create',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      const created = await statsChannelService.create(req.guild);
+      await statsChannelService.update(req.guild);
+      res.json({ ok: true, created, settings: moduleSettings.get(req.guild.id, 'stats') });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
+/* ---------------- Verifizierung ---------------- */
+
+const verificationService = require('../../src/services/verificationService');
+
+router.post(
+  '/guilds/:guildId/verification/post',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      const msg = await verificationService.postPanel(req.guild);
+      res.json({ ok: true, url: msg.url });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
   }),
 );
 

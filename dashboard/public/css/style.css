@@ -1083,5 +1083,5 @@ input[type="range"]::-moz-range-thumb {
 .embed-preview__title{font-weight:700}
 .embed-preview__thumb{position:absolute;top:10px;right:12px;width:56px;height:56px;border-radius:8px;background:var(--line)}
 .embed-preview__text{padding-right:64px;white-space:pre-wrap;word-break:break-word}
-.embed-preview__img{max-width:100%;border-radius:6px}
+.embed-preview__img{display:grid;place-items:center;height:90px;border-radius:6px;background:var(--line);font-size:.8rem;opacity:.8}
 .embed-preview__foot{font-size:.75rem;opacity:.7}

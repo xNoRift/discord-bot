@@ -6,6 +6,27 @@
   <p>Kennzahlen zu <strong><%= guild.name %></strong>.</p>
 </div>
 
+<div class="module-status" id="moduleStatus">
+  <span class="module-status__dot"></span>
+  <span class="module-status__text"><b id="msTitle">…</b><span id="msText"></span></span>
+  <button class="btn btn--ghost btn--sm" id="msToggle">…</button>
+</div>
+
+<form id="statsForm" class="card">
+  <div class="card__head"><h2><%- icon('hash') %> Statistik-Kanäle</h2></div>
+  <p class="card__sub">Der Bot legt Sprachkanäle an, die Kennzahlen im Namen anzeigen (z. B. „👥 Mitglieder: 128"). Sie sind nicht betretbar und werden alle 10 Minuten aktualisiert.</p>
+  <div class="field" style="max-width:420px;"><label>Kategorie</label><select name="categoryId" data-type="category"></select><small>In dieser Kategorie werden die Kanäle erstellt. Leer = ganz oben.</small></div>
+  <div class="setting-row"><div class="setting-row__text"><b>Mitglieder</b><span>Zeigt die Anzahl der Mitglieder</span></div><label class="toggle"><input type="checkbox" name="showMembers" /><span class="toggle__track"></span></label></div>
+  <div class="setting-row"><div class="setting-row__text"><b>Boosts</b><span>Zeigt die Anzahl der Server-Boosts</span></div><label class="toggle"><input type="checkbox" name="showBoosts" /><span class="toggle__track"></span></label></div>
+  <div class="setting-row"><div class="setting-row__text"><b>Bots</b><span>Zeigt die Anzahl der Bots (benötigt den „Server Members"-Intent für genaue Werte)</span></div><label class="toggle"><input type="checkbox" name="showBots" /><span class="toggle__track"></span></label></div>
+  <div class="setting-row"><div class="setting-row__text"><b>Rollen</b><span>Zeigt die Anzahl der Rollen</span></div><label class="toggle"><input type="checkbox" name="showRoles" /><span class="toggle__track"></span></label></div>
+  <div class="row-inline" style="margin-top:12px;">
+    <button type="button" class="btn btn--primary btn--sm" id="statsCreate"><%- icon('plus', 'icon--sm') %> Kanäle erstellen / aktualisieren</button>
+    <span class="muted" id="statsStatus"></span>
+  </div>
+  <small class="muted">Erst speichern (Leiste unten), dann Kanäle erstellen. Abgewählte Statistiken werden dabei wieder entfernt.</small>
+</form>
+
 <div class="kpi-grid">
   <div class="kpi kpi--blue"><div class="kpi__ico"><%- icon('users') %></div><div class="kpi__label">Mitglieder</div><div class="kpi__value" id="sMembers">…</div></div>
   <div class="kpi"><div class="kpi__ico"><%- icon('hash') %></div><div class="kpi__label">Kanäle</div><div class="kpi__value" id="sChannels">…</div></div>

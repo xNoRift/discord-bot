@@ -6,9 +6,18 @@
   <p>Veröffentliche Ankündigungen als schönes Embed direkt aus dem Dashboard in einen Kanal deiner Wahl.</p>
 </div>
 
+<div class="module-status" id="moduleStatus">
+  <span class="module-status__dot"></span>
+  <span class="module-status__text"><b id="msTitle">…</b><span id="msText"></span></span>
+  <button class="btn btn--ghost btn--sm" id="msToggle">…</button>
+</div>
+
 <form id="newsDefaults" class="card">
-  <div class="card__head"><h2><%- icon('settings') %> Einstellungen</h2></div>
-  <div class="field" style="max-width:360px;"><label>Standard-Kanal</label><select name="defaultChannelId" data-type="text"></select><small>Wird beim Verfassen vorausgewählt.</small></div>
+  <div class="card__head"><h2><%- icon('settings') %> Kanäle und Rollen</h2></div>
+  <div class="col-2">
+    <div class="field"><label>Kanal</label><div class="field-hint">Kanal, in dem Ankündigungen standardmäßig gesendet werden</div><select name="defaultChannelId" data-type="text"></select></div>
+    <div class="field"><label>Benachrichtigungsrollen</label><div class="field-hint">Rollen, die bei „Standard-Rollen" erwähnt werden</div><div class="rolepick"><input type="hidden" name="pingRoleIds" /></div></div>
+  </div>
 </form>
 
 <div class="col-2">
@@ -21,7 +30,7 @@
       <div class="col-2">
         <div class="field"><label>Farbe</label><div class="row-inline"><input type="color" id="nsColor" value="#7c5cff" style="max-width:70px;" /></div></div>
         <div class="field"><label>Erwähnung</label>
-          <select id="nsPing"><option value="none">Keine</option><option value="@everyone">@everyone</option><option value="@here">@here</option></select>
+          <select id="nsPing"><option value="none">Keine</option><option value="default">Standard-Rollen (siehe oben)</option><option value="@everyone">@everyone</option><option value="@here">@here</option></select>
         </div>
       </div>
       <div class="field"><label>Bild-URL (optional)</label><input id="nsImage" type="url" placeholder="https://…" /></div>

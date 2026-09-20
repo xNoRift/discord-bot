@@ -35,12 +35,17 @@
       <div class="field">
         <label>Namensvorlage</label>
         <input name="tempvoice_name_format" type="text" maxlength="100" placeholder="{user} • Voice" />
-        <div class="field-hint">Platzhalter: <code>{user}</code> · <code>{username}</code> · <code>{server}</code></div>
+        <div class="field-hint">Platzhalter: <code>{user}</code> / <code>{display}</code> (Anzeigename) · <code>{username}</code> · <code>{server}</code> · <code>{count}</code> (Mitglieder)</div>
       </div>
       <div class="field">
         <label>Standard User-Limit</label>
         <input name="tempvoice_user_limit" type="number" min="0" max="99" placeholder="0 = kein Limit" />
       </div>
+    </div>
+    <div class="field" style="max-width:320px;">
+      <label>Bitrate (kbps)</label>
+      <input name="tempvoice_bitrate" type="number" min="8" max="384" placeholder="64" />
+      <div class="field-hint">Sprachqualität neuer Kanäle. Höhere Werte hängen vom Boost-Level des Servers ab (Standard 64, ohne Boost max. 96).</div>
     </div>
   </div>
 

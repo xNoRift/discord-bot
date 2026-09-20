@@ -45,7 +45,7 @@ function renderPreview() {
     (f('joinTitle').value ? '<div class="embed-preview__title">' + escapeHtml(sample(f('joinTitle').value)) + '</div>' : '') +
     '<div class="embed-preview__text">' + escapeHtml(text) + '</div>' +
     (f('joinThumbnail').checked ? '<div class="embed-preview__thumb"></div>' : '') +
-    (img ? '<img class="embed-preview__img" src="' + escapeHtml(img) + '" alt="">' : '') +
+    (img ? '<div class="embed-preview__img">Großes Bild</div>' : '') +
     (f('joinFooter').value || f('joinTimestamp').checked
       ? '<div class="embed-preview__foot">' + escapeHtml(sample(f('joinFooter').value)) + (f('joinFooter').value && f('joinTimestamp').checked ? ' • ' : '') + (f('joinTimestamp').checked ? 'Heute' : '') + '</div>'
       : '');

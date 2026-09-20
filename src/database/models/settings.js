@@ -69,6 +69,7 @@ const EDITABLE_FIELDS = [
   'tempvoice_category_id',
   'tempvoice_name_format',
   'tempvoice_user_limit',
+  'tempvoice_bitrate',
   'tempvoice_interface_channel_id',
   'tempvoice_interface_message_id',
   // Musik

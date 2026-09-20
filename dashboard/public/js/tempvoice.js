@@ -20,6 +20,7 @@ async function saveTv() {
       tempvoice_category_id: a.tempvoice_category_id || null,
       tempvoice_name_format: a.tempvoice_name_format || null,
       tempvoice_user_limit: Math.max(0, Math.min(99, parseInt(a.tempvoice_user_limit, 10) || 0)),
+      tempvoice_bitrate: Math.max(8, Math.min(384, parseInt(a.tempvoice_bitrate, 10) || 64)),
       tempvoice_interface_channel_id: a.tempvoice_interface_channel_id || null,
     });
     toast('Temp-Voice gespeichert.', 'success');

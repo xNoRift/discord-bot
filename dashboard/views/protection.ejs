@@ -6,6 +6,42 @@
   <p>Schütze deinen Server vor Raids, Spam, Werbung und Fake-Accounts.</p>
 </div>
 
+<div class="tabs" id="protTabs" style="margin-bottom:16px;">
+  <button type="button" class="tab is-active" data-tab="verify"><%- icon('users', 'icon--sm') %> Verifizierung</button>
+  <button type="button" class="tab" data-tab="rules"><%- icon('shield', 'icon--sm') %> Protection Rules</button>
+</div>
+
+<section data-panel="verify">
+  <div class="module-status" id="verifyStatus">
+    <span class="module-status__dot"></span>
+    <span class="module-status__text"><b>…</b><span></span></span>
+    <button class="btn btn--ghost btn--sm" type="button">…</button>
+  </div>
+
+  <form id="verifyForm" class="form">
+    <div class="card">
+      <div class="card__head"><h2><%- icon('users') %> Verifizierung per Button</h2></div>
+      <p class="card__sub">Neue Mitglieder klicken auf einen Button und erhalten dadurch eine Rolle. Sperre alle anderen Kanäle für @everyone und gib nur der Verifizierungs-Rolle Zugriff – so kommen Bots und Raider nicht durch.</p>
+      <div class="col-2">
+        <div class="field"><label>Kanal für die Nachricht</label><select name="channelId" data-type="text"></select></div>
+        <div class="field"><label>Rolle nach der Verifizierung</label><select name="roleId" data-type="role"></select></div>
+      </div>
+      <div class="field" style="max-width:420px;"><label>„Unverifiziert"-Rolle entfernen (optional)</label><select name="removeRoleId" data-type="role"></select><small>Wird beim Verifizieren automatisch abgenommen.</small></div>
+      <div class="col-2">
+        <div class="field"><label>Titel</label><input name="title" maxlength="256" data-emoji /></div>
+        <div class="field"><label>Button-Text</label><input name="buttonLabel" maxlength="40" /></div>
+      </div>
+      <div class="field"><label>Text</label><textarea name="message" rows="3" maxlength="1500" data-emoji></textarea></div>
+      <div class="row-inline">
+        <button type="button" class="btn btn--primary btn--sm" id="verifyPost"><%- icon('send', 'icon--sm') %> Nachricht senden / aktualisieren</button>
+        <span class="muted" id="verifyMsg"></span>
+      </div>
+      <small class="muted">Erst speichern (Leiste unten), dann senden. Die Bot-Rolle muss über der Verifizierungs-Rolle stehen.</small>
+    </div>
+  </form>
+</section>
+
+<section data-panel="rules" hidden>
 <div class="module-status" id="moduleStatus">
   <span class="module-status__dot"></span>
   <span class="module-status__text"><b id="msTitle">…</b><span id="msText"></span></span>
@@ -69,6 +105,8 @@
     <li>Es werden keine Nachrichteninhalte gespeichert; die Zähler liegen nur kurz im Arbeitsspeicher.</li>
   </ul>
 </div>
+
+</section>
 
 <%- include('partials/app-shell-close') %>
 <script src="/static/js/protection.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
