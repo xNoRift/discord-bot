@@ -37,7 +37,7 @@ function render(state) {
         <div style="flex:1;min-width:200px;">
           <div style="font-size:1.1rem;font-weight:700;">${escapeHtml(c.title)}</div>
           <div class="muted" style="margin-top:4px;">
-            ${c.source === 'youtube' ? 'YouTube' : c.source === 'radio' ? 'Radio' : 'Stream'} ·
+            ${{ youtube: 'YouTube', spotify: 'Spotify', radio: 'Radio' }[c.source] || 'Stream'} ·
             ${fmtDur(c.duration, c.live)}${c.requestedBy ? ` · von ${escapeHtml(c.requestedBy)}` : ''}
             ${state.paused ? ' · <b>pausiert</b>' : ''}${state.loop ? ' · 🔁' : ''}
           </div>
@@ -139,7 +139,7 @@ document.getElementById('playForm').addEventListener('submit', async (e) => {
   btn.disabled = true;
   try {
     const r = await apiFor('POST', '/music/play', { query: q });
-    toast(r.added > 1 ? `${r.added} Titel hinzugefügt.` : r.startedNow ? `Spiele: ${r.title}` : `Zur Warteschlange: ${r.title}`, 'success');
+    toast(r.added > 1 ? `${r.added} Titel${r.label ? ` aus „${r.label}“` : ''} hinzugefügt.` : r.startedNow ? `Spiele: ${r.title}` : `Zur Warteschlange: ${r.title}`, 'success');
     e.target.query.value = '';
     render(r.state);
   } catch (err) {

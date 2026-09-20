@@ -78,6 +78,37 @@ async function info(input) {
   };
 }
 
+/**
+ * Beste YouTube-Übereinstimmung für einen Songtitel (z. B. aus Spotify): holt die
+ * Top-5-Treffer und nimmt den, dessen Länge der erwarteten am nächsten kommt
+ * (max. 15 s Abweichung) – sonst den ersten Nicht-Live-Treffer.
+ */
+async function searchBest(query, expectedSec = 0) {
+  let entries = [];
+  try {
+    const raw = await run(['--flat-playlist', '--no-warnings', '-J', `ytsearch5:${query}`]);
+    entries = (JSON.parse(raw).entries || []).filter((e) => e && e.id && !e.is_live);
+  } catch {
+    /* unten: Fallback auf Einzelsuche */
+  }
+  if (!entries.length) return info(query);
+  let pick = entries[0];
+  if (expectedSec > 0) {
+    const scored = entries
+      .filter((e) => e.duration)
+      .map((e) => ({ e, diff: Math.abs(e.duration - expectedSec) }))
+      .sort((a, b) => a.diff - b.diff);
+    if (scored.length && scored[0].diff <= 15) pick = scored[0].e;
+  }
+  return {
+    title: pick.title || 'Unbekannt',
+    url: pick.url && pick.url.startsWith('http') ? pick.url : `https://www.youtube.com/watch?v=${pick.id}`,
+    duration: Math.round(pick.duration || 0),
+    live: false,
+    thumbnail: pick.thumbnails && pick.thumbnails[pick.thumbnails.length - 1]?.url,
+  };
+}
+
 /** Playlist auflösen (bis limit). */
 async function playlist(url, limit = 100) {
   const raw = await run(['--yes-playlist', '--flat-playlist', '--no-warnings', '-J', '--playlist-end', String(limit), url]);
@@ -111,4 +142,4 @@ function stream(url) {
   return p.stdout;
 }
 
-module.exports = { available, info, playlist, stream };
+module.exports = { available, info, searchBest, playlist, stream };

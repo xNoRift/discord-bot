@@ -920,7 +920,7 @@ router.post(
         id: member.id,
         tag: req.session.user.username,
       });
-      res.json({ ok: true, added: r.added, title: r.first?.title || null, startedNow: r.startedNow, state: musicState(req.guild) });
+      res.json({ ok: true, added: r.added, title: r.first?.title || null, label: r.label || null, startedNow: r.startedNow, state: musicState(req.guild) });
     } catch (err) {
       res.status(err.status || 400).json({ error: err.message });
     }

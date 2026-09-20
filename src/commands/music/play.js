@@ -8,7 +8,7 @@ const { requireVoice, canControl } = require('../../utils/music');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('play')
-    .setDescription('Spielt einen Song ab (YouTube-Suche, YouTube-Link, Radio-Sender oder Stream-URL).')
+    .setDescription('Spielt einen Song ab (YouTube-Suche/-Link, Spotify-Link, Radio-Sender oder Stream-URL).')
     .addStringOption((o) => o.setName('suche').setDescription('Suchbegriff / Link / Sendername').setRequired(true)),
   async execute(interaction) {
     if (!canControl(interaction.member, interaction.settings)) {
@@ -32,7 +32,7 @@ module.exports = {
       );
       const msg =
         r.added > 1
-          ? `➕ **${r.added}** Titel zur Warteschlange hinzugefügt.`
+          ? `➕ **${r.added}** Titel${r.label ? ` aus **${r.label}**` : ''} zur Warteschlange hinzugefügt.`
           : r.startedNow
             ? `▶️ Spiele jetzt: **${r.first.title}**`
             : `➕ Zur Warteschlange: **${r.first.title}**`;

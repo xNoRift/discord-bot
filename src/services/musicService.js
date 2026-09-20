@@ -1,6 +1,7 @@
 'use strict';
 
 const ytdlp = require('./ytdlp');
+const spotify = require('./spotify');
 const logger = require('../utils/logger');
 const settingsModel = require('../database/models/settings');
 const stationsModel = require('../database/models/musicStations');
@@ -18,7 +19,8 @@ try {
 
 /**
  * Musik-Service: eine Session pro Server (im Speicher).
- * Quellen: YouTube (Suche/Link, via yt-dlp) und Radio/direkte Stream-URLs (via FFmpeg).
+ * Quellen: YouTube (Suche/Link, via yt-dlp), Spotify-Links (Titelliste von Spotify,
+ * Ton von YouTube) und Radio/direkte Stream-URLs (via FFmpeg).
  *
  * Die Voice-Pakete (@discordjs/voice, ffmpeg-static, prism-media) werden
  * defensiv geladen: fehlen sie oder ist Node zu alt (<22), bleibt der Rest
@@ -180,6 +182,7 @@ class Session {
       this.resource.volume?.setVolume(this.volume);
       this.player.play(this.resource);
       this._tuneEncoder();
+      this._resolveTrack(this.queue[0])?.catch(() => null); // nächsten Spotify-Titel vorab suchen -> keine Pause dazwischen
       this._announce(
         `▶️ **${this.current.title}**` +
           (this.current.live ? ' _(Live)_' : ` \`${fmtDuration(this.current.duration)}\``) +
@@ -195,9 +198,25 @@ class Session {
   // Lautheits-Normalisierung: leise/laute Tracks werden angeglichen (der hörbar größte Gewinn).
   static AUDIO_FILTER = 'dynaudnorm=f=250:g=15:p=0.9:m=12';
 
+  /** Spotify-Titel -> passendes YouTube-Video suchen (einmalig, Ergebnis bleibt am Track). */
+  _resolveTrack(track) {
+    if (!track || track.source !== 'spotify' || track.streamUrl) return null;
+    track.resolving ||= ytdlp
+      .searchBest(track.search, track.duration)
+      .then((v) => {
+        track.streamUrl = v.url;
+        track.thumbnail = track.thumbnail || v.thumbnail || null;
+      })
+      .finally(() => {
+        track.resolving = null;
+      });
+    return track.resolving;
+  }
+
   async _createResource(track) {
-    if (track.source === 'youtube') {
-      const src = ytdlp.stream(track.url);
+    if (track.source === 'spotify') await this._resolveTrack(track);
+    if (track.source === 'youtube' || track.source === 'spotify') {
+      const src = ytdlp.stream(track.streamUrl || track.url);
       const ff = new prism.FFmpeg({
         args: [
           '-thread_queue_size', '4096',
@@ -368,11 +387,33 @@ function getOrCreate(guild) {
   return s;
 }
 
-/** Query auflösen -> Liste von Tracks. */
+/**
+ * Query auflösen -> Liste von Tracks (+ optional Name der Playlist/des Albums).
+ * @returns {Promise<{ tracks: object[], label: string|null }>}
+ */
 async function resolveTracks(guildId, query, requestedBy) {
   const q = String(query || '').trim();
   if (!q) throw new Error('Bitte einen Suchbegriff oder Link angeben.');
   const noYt = 'YouTube ist auf diesem Server nicht verfügbar (yt-dlp fehlt). Radio-Sender und direkte Stream-URLs funktionieren.';
+
+  // Spotify: Titelliste von Spotify holen, Ton kommt später pro Titel von YouTube
+  const sp = spotify.parse(q);
+  if (sp) {
+    if (!ytdlp.available()) {
+      throw new Error('Spotify-Links werden über YouTube abgespielt – dafür fehlt auf diesem Server yt-dlp.');
+    }
+    const list = await spotify.fetchTracks(sp);
+    const tracks = list.tracks.map((t) => ({
+      title: t.artist ? `${t.title} – ${t.artist}` : t.title,
+      url: t.url,
+      source: 'spotify',
+      search: `${t.artist} ${t.title}`.trim(),
+      duration: t.duration,
+      live: false,
+      requestedBy,
+    }));
+    return { tracks, label: sp.type === 'track' ? null : list.name };
+  }
 
   if (/^https?:\/\//i.test(q)) {
     const isYouTube = /(?:youtube\.com|youtu\.be|music\.youtube\.com)/i.test(q);
@@ -382,40 +423,43 @@ async function resolveTracks(guildId, query, requestedBy) {
       if (isPlaylist) {
         const items = await ytdlp.playlist(q);
         if (!items.length) throw new Error('Playlist ist leer oder nicht abrufbar.');
-        return items.map((t) => ({ ...t, source: 'youtube', requestedBy }));
+        return { tracks: items.map((t) => ({ ...t, source: 'youtube', requestedBy })), label: null };
       }
       const v = await ytdlp.info(q);
-      return [{ ...v, source: 'youtube', requestedBy }];
+      return { tracks: [{ ...v, source: 'youtube', requestedBy }], label: null };
     }
     // Nicht-YouTube-URL -> als Stream behandeln
-    return [{ title: 'Stream', url: q, source: 'url', duration: 0, live: true, requestedBy }];
+    return { tracks: [{ title: 'Stream', url: q, source: 'url', duration: 0, live: true, requestedBy }], label: null };
   }
 
   // Radio-Sendername?
   const station = findStation(guildId, q);
   if (station) {
-    return [{ title: `📻 ${station.name}`, url: station.url, source: 'radio', duration: 0, live: true, requestedBy }];
+    return {
+      tracks: [{ title: `📻 ${station.name}`, url: station.url, source: 'radio', duration: 0, live: true, requestedBy }],
+      label: null,
+    };
   }
 
   // YouTube-Suche
   if (!ytdlp.available()) throw new Error(noYt + `\nTipp: „${q}" als Radio-Sendername? Verfügbar: ${allStations(guildId).slice(0, 6).map((s) => s.name).join(', ')} …`);
   const v = await ytdlp.info(q);
-  return [{ ...v, source: 'youtube', requestedBy }];
+  return { tracks: [{ ...v, source: 'youtube', requestedBy }], label: null };
 }
 
 /**
  * Hauptfunktion: Titel/Sender zur Warteschlange hinzufügen (und ggf. starten).
- * @returns {{ added: number, first: object|null, startedNow: boolean }}
+ * @returns {{ added: number, first: object|null, startedNow: boolean, label: string|null }}
  */
 async function play_(guild, voiceChannel, textChannelId, query, requestedBy) {
   assertMusicAllowed(guild.id);
   const session = getOrCreate(guild);
   await session.connect(voiceChannel, textChannelId);
-  const tracks = await resolveTracks(guild.id, query, requestedBy);
+  const { tracks, label } = await resolveTracks(guild.id, query, requestedBy);
   const wasIdle = !session.current;
   const added = session.enqueue(tracks);
   await session.startIfIdle();
-  return { added, first: tracks[0] || null, startedNow: wasIdle };
+  return { added, first: tracks[0] || null, startedNow: wasIdle, label };
 }
 
 async function playStation(guild, voiceChannel, textChannelId, stationQuery, requestedBy) {

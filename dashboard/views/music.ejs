@@ -3,7 +3,7 @@
 
 <div class="page-head">
   <div class="page-head__row"><h1><%- icon('music') %> Musik</h1></div>
-  <p>YouTube &amp; Radio auf <strong><%= guild.name %></strong>. <b>Du musst selbst in einem Sprachkanal auf diesem Server sein</b>, damit der Bot beitreten kann.</p>
+  <p>YouTube, Spotify &amp; Radio auf <strong><%= guild.name %></strong>. <b>Du musst selbst in einem Sprachkanal auf diesem Server sein</b>, damit der Bot beitreten kann.</p>
 </div>
 
 <div class="module-status" id="moduleStatus">
@@ -47,11 +47,12 @@
   </div>
   <form id="playForm" class="form">
     <div class="field">
-      <label>YouTube-Suche, YouTube-Link, Sendername oder Stream-URL</label>
+      <label>YouTube-Suche, YouTube-/Spotify-Link, Sendername oder Stream-URL</label>
       <div class="row-inline">
-        <input name="query" type="text" maxlength="400" placeholder="z. B. lofi hip hop  /  https://youtu.be/…  /  Synthwave" />
+        <input name="query" type="text" maxlength="400" placeholder="z. B. lofi hip hop  /  https://youtu.be/…  /  https://open.spotify.com/playlist/…" />
         <button class="btn btn--primary btn--sm" type="submit"><%- icon('music', 'icon--sm') %> Abspielen</button>
       </div>
+      <div class="field-hint">Spotify: Playlists (öffentlich, max. 100 Titel), Alben und einzelne Titel. Der Ton kommt pro Titel von YouTube.</div>
     </div>
     <div class="field">
       <label>Oder direkt ein Radio-Sender</label>
