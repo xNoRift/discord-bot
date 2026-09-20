@@ -60,7 +60,7 @@ Aufgebaut wie ein Bewerbungs-Bot: **Bewerbungen** (Formulare) · **Panels** · *
 - **Nachrichten:** Texte bei Annahme, Ablehnung, Bestätigung und Abschluss mit Platzhaltern; Statistik anzeigen, Antworten ausblenden
 - **Rollen:** bei Annahme/Ablehnung vergeben oder entfernen, Rollen während der Prüfung, Ping-Rollen, Bewerbungs-Manager-Rollen
 - **Sonstiges:** Team-Thread pro Einreichung, Aktion beim Verlassen des Servers (nichts / ablehnen / löschen)
-- **Panels:** Embed frei gestalten (Titel, Text, Farbe, Bild), Buttons oder Auswahlmenü, mehrere Bewerbungen pro Panel, Vorschau
+- **Panels:** Embed frei gestalten (Titel, Text, Farbauswahl, Bilder per Drag & Drop), Buttons oder Auswahlmenü, mehrere Bewerbungen pro Panel, Vorschau
 - **Einreichungen:** Statistik, Filter (Bewerbung, Status, Nutzer-ID, Sortierung), Annehmen/Ablehnen mit Nachricht
 - **💬 Bewerber-Chat:** per Button (Discord oder Dashboard) öffnet das Team einen privaten Chat mit dem Bewerber –
   technisch ein Ticket (Übernehmen, Schließen mit Transkript, Wieder-öffnen, Löschen). Die Discord-Kategorie dafür ist

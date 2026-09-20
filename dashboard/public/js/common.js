@@ -854,7 +854,159 @@ async function moduleForm(module, form, opts = {}) {
   return { get cfg() { return cfg; }, reload: fill };
 }
 
+/* ---------------- Bild-Upload (Drag & Drop) und Farbauswahl ---------------- */
+
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+/** Bild hochladen -> öffentliche URL. */
+function uploadImage(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !IMAGE_TYPES.includes(file.type)) return reject(new Error('Bitte ein Bild (PNG, JPG, GIF oder WebP) wählen.'));
+    if (file.size > MAX_IMAGE_BYTES) return reject(new Error('Das Bild ist zu groß (max. 8 MB).'));
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Die Datei konnte nicht gelesen werden.'));
+    reader.onload = () => apiFor('POST', '/uploads', { data: reader.result }, { timeout: 120000 }).then((r) => resolve(r.url), (err) => {
+      // Ein Reverse-Proxy (nginx) mit kleinem Limit antwortet mit einer HTML-Fehlerseite
+      const m = String(err.message || '');
+      reject(/413|entity too large|<html/i.test(m) ? new Error('Das Bild ist für den Server zu groß. Nimm ein kleineres Bild (unter 1 MB) oder erhöhe „client_max_body_size“ in nginx.') : err);
+    });
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Ersetzt die value-Eigenschaft eines Feldes, damit Änderungen per Code (el.value = …) die Anzeige aktualisieren. */
+function watchValue(input, onChange) {
+  const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  Object.defineProperty(input, 'value', {
+    configurable: true,
+    get() { return desc.get.call(this); },
+    set(v) { desc.set.call(this, v); onChange(); },
+  });
+}
+const fireInput = (el) => el.dispatchEvent(new Event('input', { bubbles: true }));
+
+/**
+ * <input data-image name="…"> wird zu einer Drop-Fläche: Bild hineinziehen, anklicken oder mit Strg+V einfügen.
+ * Das Feld selbst bleibt (versteckt) bestehen und enthält die URL – bestehende Formular-Logik ändert sich nicht.
+ */
+function enhanceImageInput(input) {
+  if (input.dataset.imageReady) return;
+  input.dataset.imageReady = '1';
+  input.hidden = true;
+
+  const box = document.createElement('div');
+  box.className = 'imgdrop';
+  box.tabIndex = 0;
+  box.innerHTML = `
+    <div class="imgdrop__thumb" hidden><img alt="" /></div>
+    <div class="imgdrop__text"><b></b><span>PNG, JPG, GIF oder WebP · max. 8 MB</span></div>
+    <button type="button" class="btn btn--ghost btn--sm imgdrop__clear" hidden>Entfernen</button>
+    <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden />`;
+  input.insertAdjacentElement('afterend', box);
+  const fileInput = box.querySelector('input[type=file]');
+  const thumb = box.querySelector('.imgdrop__thumb');
+  const img = thumb.querySelector('img');
+  const title = box.querySelector('.imgdrop__text b');
+  const clear = box.querySelector('.imgdrop__clear');
+
+  const refresh = () => {
+    const url = input.value.trim();
+    const has = /^https?:\/\//i.test(url);
+    thumb.hidden = !has;
+    clear.hidden = !has;
+    if (has) img.src = url;
+    title.textContent = has ? 'Bild ersetzen: hierher ziehen oder klicken' : 'Bild hierher ziehen oder klicken';
+  };
+  watchValue(input, refresh);
+
+  const setBusy = (busy) => { box.classList.toggle('is-busy', busy); if (busy) title.textContent = 'Wird hochgeladen …'; else refresh(); };
+  const handle = async (file) => {
+    if (!file) return;
+    setBusy(true);
+    try {
+      const url = await uploadImage(file);
+      input.value = url; // löst refresh aus
+      fireInput(input);
+      toast('Bild hochgeladen.', 'success');
+    } catch (e) { toast(e.message || 'Upload fehlgeschlagen.', 'error'); }
+    setBusy(false);
+  };
+
+  box.addEventListener('click', (e) => { if (!e.target.closest('.imgdrop__clear')) fileInput.click(); });
+  box.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
+  fileInput.addEventListener('change', () => { handle(fileInput.files[0]); fileInput.value = ''; });
+  clear.addEventListener('click', (e) => { e.stopPropagation(); input.value = ''; fireInput(input); });
+  ['dragenter', 'dragover'].forEach((ev) => box.addEventListener(ev, (e) => { e.preventDefault(); box.classList.add('is-over'); }));
+  ['dragleave', 'drop'].forEach((ev) => box.addEventListener(ev, (e) => { e.preventDefault(); box.classList.remove('is-over'); }));
+  box.addEventListener('drop', (e) => handle([...(e.dataTransfer?.files || [])].find((f) => IMAGE_TYPES.includes(f.type)) || e.dataTransfer?.files?.[0]));
+  box.addEventListener('paste', (e) => { const f = [...(e.clipboardData?.files || [])][0]; if (f) { e.preventDefault(); handle(f); } });
+  refresh();
+}
+
+const COLOR_PRESETS = ['#5865f2', '#7c5cff', '#3498db', '#1abc9c', '#57f287', '#fee75c', '#f26522', '#ed4245', '#eb459e', '#9b59b6', '#ffffff', '#2b2d31'];
+const HEX_RE = /^#?([0-9a-fA-F]{6})$/;
+
+/**
+ * <input data-color name="…"> bekommt eine Farbauswahl (Farbfeld + Schnellwahl); das Textfeld mit dem Hex-Wert bleibt bestehen.
+ * Optional: data-color-default="#5865f2" (Farbe, die das Farbfeld bei leerem Wert zeigt).
+ */
+function enhanceColorInput(input) {
+  if (input.dataset.colorReady) return;
+  input.dataset.colorReady = '1';
+  const fallback = input.dataset.colorDefault || '#5865f2';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'colorpick';
+  input.insertAdjacentElement('beforebegin', wrap);
+  const row = document.createElement('div');
+  row.className = 'row-inline';
+  const pick = document.createElement('input');
+  pick.type = 'color';
+  pick.className = 'colorpick__native';
+  pick.title = 'Farbe wählen';
+  row.append(pick, input);
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'btn btn--ghost btn--sm';
+  reset.textContent = 'Standard';
+  reset.title = 'Farbe zurücksetzen';
+  row.append(reset);
+  const sw = document.createElement('div');
+  sw.className = 'colorpick__swatches';
+  sw.innerHTML = COLOR_PRESETS.map((c) => `<button type="button" class="colorpick__swatch" data-c="${c}" style="background:${c}" title="${c}" aria-label="${c}"></button>`).join('');
+  wrap.append(row, sw);
+  if (!input.placeholder) input.placeholder = `${fallback} (leer = Standard)`;
+  input.maxLength = 7;
+
+  const norm = (v) => { const m = String(v || '').trim().match(HEX_RE); return m ? '#' + m[1].toLowerCase() : ''; };
+  const refresh = () => {
+    const c = norm(input.value);
+    pick.value = c || fallback;
+    sw.querySelectorAll('.colorpick__swatch').forEach((b) => b.classList.toggle('is-active', b.dataset.c === c));
+  };
+  watchValue(input, refresh);
+  const set = (v) => { input.value = v; fireInput(input); };
+  pick.addEventListener('input', () => set(pick.value));
+  sw.addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (b) set(b.dataset.c); });
+  reset.addEventListener('click', () => set(''));
+  input.addEventListener('input', refresh);
+  refresh();
+}
+
+function enhanceWidgets(root) {
+  (root || document).querySelectorAll('input[data-image]:not([data-image-ready])').forEach(enhanceImageInput);
+  (root || document).querySelectorAll('input[data-color]:not([data-color-ready])').forEach(enhanceColorInput);
+}
+enhanceWidgets(document);
+// Auch dynamisch erzeugte Formulare (Editoren) automatisch ausstatten
+new MutationObserver((muts) => {
+  for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1) enhanceWidgets(n.matches?.('input') ? n.parentNode : n);
+}).observe(document.body, { childList: true, subtree: true });
+
 window.Dash = {
+  uploadImage,
+  enhanceWidgets,
   moduleForm,
   renderRolePickers,
   api,

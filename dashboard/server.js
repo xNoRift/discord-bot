@@ -66,9 +66,25 @@ function createApp() {
 
   // Größeres Limit nur für Avatar-Uploads (Bild als Base64).
   const bigJson = express.json({ limit: '12mb' });
-  app.use((req, res, next) => (/\/avatar$/.test(req.path) ? bigJson(req, res, next) : next()));
+  app.use((req, res, next) => (/\/(avatar|uploads)$/.test(req.path) ? bigJson(req, res, next) : next()));
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
+
+  // Öffentlich ausgelieferte Uploads (Embed-Bilder): VOR der Session, damit Discord sie ohne Cookies abrufen kann
+  app.use(
+    '/uploads',
+    express.static(require('../src/services/uploadService').uploadsDir(), {
+      index: false,
+      dotfiles: 'ignore',
+      maxAge: '7d',
+      immutable: true,
+      setHeaders(res) {
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; sandbox");
+      },
+    }),
+  );
 
   app.use(
     session({

@@ -113,8 +113,8 @@ function embedBlock(prefix, e, { footer = false } = {}) {
           ${footer ? `<div class="field"><label>Fußzeile</label>${counted(prefix + '_footer', e.footer, 2048)}</div>` : '<div></div>'}
         </div>
         <div class="fgrid fgrid--2">
-          <div class="field"><label>Bild (groß)</label><input name="${prefix}_image" value="${esc(e.image || '')}" placeholder="https://…"></div>
-          <div class="field"><label>Vorschaubild (klein)</label><input name="${prefix}_thumb" value="${esc(e.thumb || '')}" placeholder="https://…"></div>
+          <div class="field"><label>Bild (groß)</label><input name="${prefix}_image" data-image value="${esc(e.image || '')}"></div>
+          <div class="field"><label>Vorschaubild (klein)</label><input name="${prefix}_thumb" data-image value="${esc(e.thumb || '')}"></div>
         </div>
       </details>
     </div>

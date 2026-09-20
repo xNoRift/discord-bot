@@ -425,9 +425,14 @@ $('newPanelBtn').addEventListener('click', async () => {
 
 function panelPreview(f) {
   const color = /^#?[0-9a-fA-F]{6}$/.test(f.color) ? '#' + f.color.replace('#', '') : '#5865f2';
+  const isUrl = (u) => /^https?:\/\//i.test(u || '');
   return `<div style="border-left:4px solid ${color};background:var(--bg-2);border-radius:6px;padding:10px 12px;max-width:440px;">
-    <b>${escapeHtml(f.title || 'Bewerbungen')}</b>
-    <div style="white-space:pre-wrap;margin-top:4px;">${escapeHtml(f.description || 'Wähle eine Bewerbung, um zu beginnen!')}</div>
+    <div style="display:flex;gap:12px;align-items:flex-start;">
+      <div style="flex:1;min-width:0;"><b>${escapeHtml(f.title || 'Bewerbungen')}</b>
+        <div style="white-space:pre-wrap;margin-top:4px;">${escapeHtml(f.description || 'Wähle eine Bewerbung, um zu beginnen!')}</div></div>
+      ${isUrl(f.thumbnailUrl) ? `<img src="${escapeHtml(f.thumbnailUrl)}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:6px;flex-shrink:0;" />` : ''}
+    </div>
+    ${isUrl(f.imageUrl) ? `<img src="${escapeHtml(f.imageUrl)}" alt="" style="width:100%;max-height:220px;object-fit:cover;border-radius:6px;margin-top:10px;" />` : ''}
     ${f.footer ? `<div class="muted" style="margin-top:8px;font-size:.8rem;">${escapeHtml(f.footer)}</div>` : ''}
   </div>
   <div style="margin-top:8px;">${f.panelType === 'select'
@@ -468,9 +473,9 @@ async function openPanelEditor(panelId) {
             <div class="field"><label>Titel</label><input name="title" maxlength="256" value="${escapeHtml(c.title)}" placeholder="Bewerbungen" /></div>
             <div class="field"><label>Beschreibung</label><textarea name="description" rows="5" maxlength="4000" placeholder="Wähle eine Bewerbung, um zu beginnen!">${escapeHtml(c.description)}</textarea></div>
             <div class="field"><label>Fußzeile</label><input name="footer" maxlength="2048" value="${escapeHtml(c.footer)}" /></div>
-            <div class="field"><label>Farbe (Hex)</label><input name="color" maxlength="7" placeholder="#5865f2" value="${escapeHtml(c.color ? '#' + c.color : '')}" /></div>
-            <div class="field"><label>Bild-URL (https)</label><input name="imageUrl" maxlength="500" value="${escapeHtml(c.imageUrl)}" /></div>
-            <div class="field"><label>Thumbnail-URL (https)</label><input name="thumbnailUrl" maxlength="500" value="${escapeHtml(c.thumbnailUrl)}" /></div>
+            <div class="field"><label>Farbe (Hex)</label><input name="color" data-color maxlength="7" value="${escapeHtml(c.color ? '#' + c.color : '')}" /></div>
+            <div class="field"><label>Großes Bild</label><input name="imageUrl" data-image value="${escapeHtml(c.imageUrl)}" /></div>
+            <div class="field"><label>Vorschaubild (klein)</label><input name="thumbnailUrl" data-image value="${escapeHtml(c.thumbnailUrl)}" /></div>
           </div>
           <div><h3 style="margin:0 0 8px;">Vorschau</h3><p class="muted" style="margin-top:0;">So ähnlich sieht das Panel in Discord aus (Buttons und Menü sind hier nicht klickbar).</p><div id="panelPreview"></div></div>
         </div>

@@ -65,6 +65,18 @@ cp /root/DiscordBotV1/data/database.sqlite ~/backup-$(date +%F).sqlite
   (sonst: `invalid ELF header`).
 - `data/` liegt nur auf dem Server und wird nie überschrieben.
 
+## Bild-Uploads (einmalig, als root)
+
+Bilder für Embeds (Panels, Ticket-Embeds, Willkommen, Neuigkeiten) werden per Drag & Drop im Dashboard hochgeladen und unter
+`/uploads/…` öffentlich ausgeliefert (Speicherort: `data/uploads/`). nginx erlaubt standardmäßig nur 1 MB pro Anfrage –
+dafür einmalig das Limit erhöhen:
+
+```bash
+grep -rn client_max_body_size /etc/nginx/     # falls hier schon ein Wert steht, dort auf 12m ändern
+echo 'client_max_body_size 12m;' > /etc/nginx/conf.d/upload-size.conf
+nginx -t && systemctl reload nginx
+```
+
 ## Server absichern (einmalig, als root)
 
 ```bash

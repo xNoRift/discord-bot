@@ -240,6 +240,16 @@ router.post(
   }),
 );
 
+/** Bild hochladen (Embed-Bilder, Banner …) -> öffentliche URL. Body: { data: "data:image/png;base64,…" } */
+router.post(
+  '/guilds/:guildId/uploads',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const { url, bytes } = require('../../src/services/uploadService').saveImage(req.params.guildId, req.body.data);
+    res.json({ ok: true, url, bytes });
+  }),
+);
+
 router.post(
   '/guilds/:guildId/bot-member/avatar',
   actionLimiter,
