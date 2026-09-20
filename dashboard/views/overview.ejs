@@ -6,6 +6,43 @@
   <p>Status und Aktivität von <strong><%= guild.name %></strong>.</p>
 </div>
 
+<div class="ov-top">
+  <form class="card" id="generalForm">
+    <div class="card__head"><h2><%- icon('settings') %> Allgemeine Einstellungen</h2></div>
+    <div class="col-2">
+      <div class="field"><label>Embed-Farbe</label><div class="field-hint">Farbe, die in Embed-Nachrichten vom Bot benutzt werden</div>
+        <div class="row-inline"><input type="color" id="gcColor" style="max-width:70px;" /><input name="embed_color" id="gcColorText" placeholder="#7c5cff (leer = Standard)" /></div>
+      </div>
+      <div class="field"><label>Sprache</label><div class="field-hint">Sprache, die der Bot auf dem Server nutzt</div>
+        <select name="bot_language"><option value="de">Deutsch</option><option value="en">English</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Zeitzone</label><div class="field-hint">Zeitzone, in der sich der Server befindet</div>
+      <select name="timezone">
+        <option value="Europe/Berlin">Europe/Berlin</option><option value="Europe/London">Europe/London</option>
+        <option value="Europe/Vienna">Europe/Vienna</option><option value="Europe/Zurich">Europe/Zurich</option>
+        <option value="America/New_York">America/New_York</option><option value="UTC">UTC</option>
+      </select>
+    </div>
+  </form>
+  <div class="ov-side">
+    <div class="card">
+      <div class="card__head"><h2><%- icon('chat') %> Support</h2></div>
+      <p class="muted">Hier bekommst du Hilfe zum Bot und zum Dashboard. Häufige Probleme und erste Schritte findest du auf der Support-Seite.</p>
+      <% if (links && links.supportDiscord) { %>
+        <a class="btn btn--outline" href="<%= links.supportDiscord %>" target="_blank" rel="noopener"><%- icon('chat', 'icon--sm') %> Support-Server</a>
+      <% } else { %>
+        <a class="btn btn--outline" href="/dashboard/<%= guild.id %>/support"><%- icon('chat', 'icon--sm') %> Zur Support-Seite</a>
+      <% } %>
+    </div>
+    <div class="card">
+      <div class="card__head"><h2><%- icon('file') %> Dokumentation</h2></div>
+      <p class="muted">Zu jedem Modul findest du hier eine Übersicht und Hilfestellung zum Einrichten.</p>
+      <a class="btn btn--outline" href="<%= (links && links.docs) || dashboardUrl + '/#funktionen' %>" target="_blank" rel="noopener"><%- icon('file', 'icon--sm') %> Dokumentation öffnen</a>
+    </div>
+  </div>
+</div>
+
 <div class="kpi-grid">
   <div class="kpi kpi--green">
     <div class="kpi__ico"><%- icon('power') %></div>

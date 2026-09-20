@@ -10,51 +10,40 @@ const appModel = require('../../src/database/models/applications');
 const router = express.Router();
 
 const NAV = [
-  { items: [{ key: 'overview', label: 'Übersicht', icon: 'home', path: '' }] },
   {
-    label: 'Community',
     items: [
+      { key: 'overview', label: 'Übersicht', icon: 'home', path: '' },
       { key: 'welcome', label: 'Willkommen', icon: 'bell', path: '/welcome' },
-      { key: 'music', label: 'Musik', icon: 'sparkles', path: '/music' },
-      { key: 'tempvoice', label: 'Temp-Voice', icon: 'hash', path: '/tempvoice' },
-      { key: 'games', label: 'Spiele', icon: 'sparkles', path: '/games' },
-      { key: 'giveaways', label: 'Giveaways', icon: 'gift', path: '/giveaways' },
-      { key: 'suggestions', label: 'Vorschläge', icon: 'bulb', path: '/suggestions' },
-      { key: 'social', label: 'Benachrichtigungen', icon: 'bell', path: '/social' },
-    ],
-  },
-  {
-    label: 'Support & Team',
-    items: [
-      { key: 'tickets', label: 'Tickets', icon: 'ticket', path: '/tickets' },
-      { key: 'applications', label: 'Bewerbungen', icon: 'clipboard', path: '/applications' },
-      { key: 'team', label: 'Teamverwaltung', icon: 'users', path: '/team' },
-    ],
-  },
-  {
-    label: 'Moderation',
-    items: [
+      { key: 'support', label: 'Support', icon: 'chat', path: '/support' },
+      { key: 'tickets', label: 'Ticket', icon: 'ticket', path: '/tickets' },
       { key: 'moderation', label: 'Moderation', icon: 'shield', path: '/moderation' },
-      { key: 'logs', label: 'Logs', icon: 'file', path: '/logs' },
-    ],
-  },
-  {
-    label: 'Server',
-    items: [
+      { key: 'tempvoice', label: 'Private Kanäle', icon: 'hash', path: '/tempvoice' },
+      { key: 'statistics', label: 'Server Statistiken', icon: 'chart', path: '/statistics' },
+      { key: 'team', label: 'Teamverwaltung', icon: 'users', path: '/team' },
+      { key: 'social', label: 'Social-Media', icon: 'send', path: '/social' },
+      { key: 'suggestions', label: 'Vorschläge', icon: 'bulb', path: '/suggestions' },
+      { key: 'giveaways', label: 'Giveaways', icon: 'gift', path: '/giveaways' },
+      { key: 'applications', label: 'Bewerbungen', icon: 'clipboard', path: '/applications' },
+      { key: 'music', label: 'Musik', icon: 'sparkles', path: '/music' },
+      { key: 'games', label: 'Spiele', icon: 'sparkles', path: '/games' },
       { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
+      { key: 'logs', label: 'Logs', icon: 'file', path: '/logs' },
       { key: 'members', label: 'Mitglieder', icon: 'users', path: '/members', ownerOnly: true },
       { key: 'structure', label: 'Server-Struktur', icon: 'layers', path: '/structure', ownerOnly: true },
-      { key: 'statistics', label: 'Statistiken', icon: 'chart', path: '/statistics' },
       { key: 'settings', label: 'Einstellungen', icon: 'settings', path: '/settings' },
     ],
   },
 ];
 
-const FOOTER_NAV = [
-  { key: 'impressum', label: 'Impressum', icon: 'scale', path: '/impressum' },
-  { key: 'datenschutz', label: 'Datenschutz', icon: 'lock', path: '/datenschutz' },
-  { key: 'support', label: 'Support', icon: 'chat', path: '/support' },
-];
+function footerNav() {
+  const items = [
+    { key: 'impressum', label: 'Impressum', icon: 'scale', path: '/impressum' },
+    { key: 'datenschutz', label: 'Datenschutzerklärung', icon: 'lock', path: '/datenschutz' },
+  ];
+  if (config.links.supportDiscord) items.push({ key: 'support-discord', label: 'Support-Discord', icon: 'chat', href: config.links.supportDiscord });
+  items.push({ key: 'docs', label: 'Dokumentation', icon: 'file', href: config.links.docs || config.dashboard.url + '/#funktionen' });
+  return items;
+}
 
 const CRUMB = {
   overview: { crumb: 'Übersicht', crumbIcon: 'home' },
@@ -63,20 +52,20 @@ const CRUMB = {
   structure: { crumb: 'Server-Struktur', crumbIcon: 'layers' },
   welcome: { crumb: 'Willkommen', crumbIcon: 'bell' },
   music: { crumb: 'Musik', crumbIcon: 'music' },
-  tempvoice: { crumb: 'Temp-Voice', crumbIcon: 'hash' },
+  tempvoice: { crumb: 'Private Kanäle', crumbIcon: 'hash' },
   games: { crumb: 'Spiele', crumbIcon: 'sparkles' },
-  tickets: { crumb: 'Tickets', crumbIcon: 'ticket' },
+  tickets: { crumb: 'Ticket', crumbIcon: 'ticket' },
   giveaways: { crumb: 'Giveaways', crumbIcon: 'gift' },
   applications: { crumb: 'Bewerbungen', crumbIcon: 'clipboard' },
   moderation: { crumb: 'Moderation', crumbIcon: 'shield' },
-  statistics: { crumb: 'Statistiken', crumbIcon: 'chart' },
+  statistics: { crumb: 'Server Statistiken', crumbIcon: 'chart' },
   team: { crumb: 'Teamverwaltung', crumbIcon: 'users' },
   settings: { crumb: 'Einstellungen', crumbIcon: 'settings' },
   logs: { crumb: 'Logs', crumbIcon: 'file' },
   suggestions: { crumb: 'Vorschläge', crumbIcon: 'bulb' },
-  social: { crumb: 'Benachrichtigungen', crumbIcon: 'bell' },
+  social: { crumb: 'Social-Media', crumbIcon: 'send' },
   impressum: { crumb: 'Impressum', crumbIcon: 'scale' },
-  datenschutz: { crumb: 'Datenschutz', crumbIcon: 'lock' },
+  datenschutz: { crumb: 'Datenschutzerklärung', crumbIcon: 'lock' },
   support: { crumb: 'Support', crumbIcon: 'chat' },
   servers: { crumb: 'Server auswählen', crumbIcon: 'server' },
 };
@@ -88,7 +77,8 @@ function pageLocals(req, active, extra = {}) {
     dashboardUrl: config.dashboard.url,
     brandName: config.branding.name,
     nav: NAV,
-    footerNav: FOOTER_NAV,
+    footerNav: footerNav(),
+    links: config.links,
     active,
     guild: req.guild ? { id: req.guild.id, name: req.guild.name, icon: req.guild.icon } : null,
     navBadges: {},

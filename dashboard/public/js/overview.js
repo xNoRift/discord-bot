@@ -36,5 +36,28 @@ async function load() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+/* ---------- Allgemeine Einstellungen (Speicher-Leiste) ---------- */
+const generalForm = document.getElementById('generalForm');
+const gcColor = document.getElementById('gcColor');
+const gcText = document.getElementById('gcColorText');
+
+async function loadGeneral() {
+  const s = await apiFor('GET', '/settings');
+  gcText.value = s.embed_color || '';
+  gcColor.value = /^#?[0-9a-f]{6}$/i.test(s.embed_color || '') ? (s.embed_color[0] === '#' ? s.embed_color : '#' + s.embed_color) : '#7c5cff';
+  generalForm.timezone.value = s.timezone || 'Europe/Berlin';
+  generalForm.bot_language.value = s.bot_language || 'de';
+  generalForm.sbMarkClean?.();
+}
+gcColor.addEventListener('input', () => { gcText.value = gcColor.value; gcText.dispatchEvent(new Event('input', { bubbles: true })); });
+
+async function saveGeneral() {
+  try {
+    await apiFor('PATCH', '/settings', { embed_color: gcText.value.trim(), timezone: generalForm.timezone.value, bot_language: generalForm.bot_language.value });
+    toast('Einstellungen gespeichert.', 'success');
+  } catch (e) { toast(e.message, 'error'); throw e; }
+}
+loadGeneral().then(() => Dash.trackForm(generalForm, saveGeneral, { reset: loadGeneral })).catch((e) => toast(e.message, 'error'));
+
 load();
 setInterval(load, 20000);

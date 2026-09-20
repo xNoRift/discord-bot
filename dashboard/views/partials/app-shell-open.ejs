@@ -35,9 +35,13 @@
         <div class="sidebar__divider"></div>
         <div class="sidebar__section">
           <% (footerNav || []).forEach(function (item) { %>
-            <a class="nav-item <%= active === item.key ? 'is-active' : '' %>" href="/dashboard/<%= guild.id %><%= item.path %>">
-              <%- icon(item.icon) %><span><%= item.label %></span>
-            </a>
+            <% if (item.href) { %>
+              <a class="nav-item" href="<%= item.href %>" target="_blank" rel="noopener"><%- icon(item.icon) %><span><%= item.label %></span><span class="nav-item__ext" aria-hidden="true">↗</span></a>
+            <% } else { %>
+              <a class="nav-item <%= active === item.key ? 'is-active' : '' %>" href="/dashboard/<%= guild.id %><%= item.path %>">
+                <%- icon(item.icon) %><span><%= item.label %></span>
+              </a>
+            <% } %>
           <% }); %>
         </div>
       <% } else { %>

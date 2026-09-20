@@ -59,6 +59,12 @@ const config = {
     intentMessageContent: bool('INTENT_MESSAGE_CONTENT', true), // Zähl-Spiel / Spiele
   },
 
+  // Externe Links im Dashboard-Menü (leer = Eintrag wird ausgeblendet bzw. Standard genutzt)
+  links: {
+    supportDiscord: optional('SUPPORT_DISCORD_URL'),
+    docs: optional('DOCS_URL'),
+  },
+
   // Social-Media-Benachrichtigungen
   social: {
     // Twitch: kostenlose App unter https://dev.twitch.tv/console/apps registrieren.
