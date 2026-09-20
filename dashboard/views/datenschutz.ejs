@@ -7,11 +7,14 @@
   <h3>Welche Daten werden verarbeitet?</h3>
   <ul class="muted">
     <li>Beim Login via Discord OAuth2: deine Discord-User-ID, Benutzername, Avatar sowie die Liste deiner Server (Scopes <code>identify</code>, <code>guilds</code>).</li>
-    <li>OAuth-Tokens werden ausschließlich serverseitig gespeichert und niemals an das Frontend übertragen.</li>
+    <li>OAuth-Tokens werden ausschließlich serverseitig gespeichert, in der Datenbank <b>verschlüsselt</b> (AES-256-GCM) und niemals an das Frontend übertragen.</li>
+    <li>Beim Login werden IP-Adresse und Browser-Kennung im Login-Protokoll gespeichert (nur für den Bot-Besitzer sichtbar, zur Erkennung von Missbrauch).</li>
     <li>Pro Server: Konfiguration (Kanäle, Rollen, Texte), Tickets, Giveaways, Bewerbungen und ein Aktivitätsprotokoll.</li>
   </ul>
   <h3>Speicherung</h3>
   <p class="muted">Alle Daten liegen in einer lokalen SQLite-Datenbank auf dem Server, auf dem der Bot läuft. Es findet keine Weitergabe an Dritte statt.</p>
+  <h3>Aufbewahrungsdauer</h3>
+  <p class="muted">Aktivitätsprotokoll und Login-Protokoll werden nach 90 Tagen automatisch gelöscht. OAuth-Tokens und der zwischengespeicherte Serverlisten-Auszug inaktiver Nutzer werden nach 30 Tagen ohne Login gelöscht. Tägliche Sicherungskopien der Datenbank werden 14 Tage aufbewahrt.</p>
   <h3>Deine Rechte</h3>
   <p class="muted">Du kannst die Löschung deiner Dashboard-Daten verlangen. Kontakt siehe <a href="/dashboard/<%= guild.id %>/impressum">Impressum</a>.</p>
   <h3>Cookies</h3>

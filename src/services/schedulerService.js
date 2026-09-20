@@ -4,6 +4,7 @@ const giveawayService = require('./giveawayService');
 const temporaryRoleService = require('./temporaryRoleService');
 const ticketService = require('./ticketService');
 const socialService = require('./socialService');
+const maintenanceService = require('./maintenanceService');
 const logger = require('../utils/logger');
 
 /**
@@ -27,6 +28,7 @@ async function start() {
     socialService.sweep().catch((err) => logger.error('[scheduler] social sweep:', err.message));
   }, 60_000);
 
+  maintenanceService.start();
   logger.success('[scheduler] gestartet (Sweep alle 60s)');
 }
 

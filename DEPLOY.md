@@ -64,3 +64,25 @@ cp /root/DiscordBotV1/data/database.sqlite ~/backup-$(date +%F).sqlite
 - `node_modules` wird auf dem Server IMMER mit `npm ci` erzeugt – niemals von Windows hochladen
   (sonst: `invalid ELF header`).
 - `data/` liegt nur auf dem Server und wird nie überschrieben.
+
+## Server absichern (einmalig, als root)
+
+```bash
+# Nur die nötigen Ports offen: SSH, HTTP, HTTPS  (Port 3000 NICHT öffnen – nginx leitet weiter)
+apt install -y ufw fail2ban unattended-upgrades
+ufw default deny incoming && ufw default allow outgoing
+ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp
+ufw --force enable
+systemctl enable --now fail2ban        # sperrt IPs nach fehlgeschlagenen SSH-Logins
+dpkg-reconfigure -plow unattended-upgrades   # automatische Sicherheits-Updates
+
+# Geheimnisse & Daten nur für den Besitzer lesbar
+chmod 600 /root/DiscordBotV1/.env
+chmod 700 /root/DiscordBotV1/data
+chmod 600 /root/DiscordBotV1/data/*.sqlite* 2>/dev/null
+```
+
+In der `.env` setzen: `NODE_ENV=production`, `SECURE_COOKIES=true`, `DASHBOARD_OWNER_ONLY=true`,
+`BOT_OWNER_IDS=<deine ID>`, `DATA_ENCRYPTION_KEY=<langer Zufallswert>`.
+Automatische Backups landen täglich in `data/backups/` (14 Tage). Zusätzlich gelegentlich
+`data/backups/` auf den eigenen PC kopieren (z. B. per WinSCP), damit ein Serverausfall nicht alles mitnimmt.
