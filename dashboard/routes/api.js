@@ -1622,6 +1622,181 @@ router.delete(
   }),
 );
 
+/* ---------------- Club-Management ---------------- */
+
+const clubsModel = require('../../src/database/models/clubs');
+
+function snowflake(v) {
+  const m = String(v || '').match(/\d{5,25}/);
+  return m ? m[0] : null;
+}
+
+function serializeClub(guild, c) {
+  return {
+    ...c,
+    members: clubsModel.members(c.id).map((m) => {
+      const gm = guild.members.cache.get(m.user_id);
+      return { userId: m.user_id, rank: m.rank, name: gm ? gm.displayName : null, avatarUrl: gm ? gm.displayAvatarURL({ size: 64 }) : null };
+    }),
+  };
+}
+
+async function addRole(guild, userId, roleId) {
+  if (!roleId) return;
+  const gm = await guild.members.fetch(userId).catch(() => null);
+  await gm?.roles.add(roleId, 'Club-Mitglied').catch(() => null);
+}
+async function dropRole(guild, userId, roleId) {
+  if (!roleId) return;
+  const gm = await guild.members.fetch(userId).catch(() => null);
+  await gm?.roles.remove(roleId, 'Club verlassen').catch(() => null);
+}
+
+router.get('/guilds/:guildId/clubs', (req, res) => {
+  res.json(clubsModel.list(req.params.guildId).map((c) => serializeClub(req.guild, c)));
+});
+
+router.post(
+  '/guilds/:guildId/clubs',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const cfg = moduleSettings.get(req.params.guildId, 'clubs');
+    if (!cfg.enabled) return res.status(400).json({ error: 'Das Club-Modul ist deaktiviert.' });
+    const b = req.body || {};
+    const name = String(b.name || '').trim().slice(0, 60);
+    if (!name) return res.status(400).json({ error: 'Bitte einen Club-Namen angeben.' });
+    if (clubsModel.list(req.params.guildId).length >= 100) return res.status(400).json({ error: 'Maximal 100 Clubs pro Server.' });
+    const leaderId = snowflake(b.leaderId);
+    if (!leaderId) return res.status(400).json({ error: 'Bitte die Nutzer-ID des Club-Leiters angeben.' });
+    if (clubsModel.ledBy(req.params.guildId, leaderId) >= cfg.maxClubsPerUser) {
+      return res.status(400).json({ error: `Diese Person leitet bereits ${cfg.maxClubsPerUser} Club(s) (Maximum).` });
+    }
+    const leader = await req.guild.members.fetch(leaderId).catch(() => null);
+    if (!leader) return res.status(400).json({ error: 'Dieses Mitglied wurde auf dem Server nicht gefunden.' });
+
+    let role = null;
+    let channel = null;
+    try {
+      if (cfg.createRole) {
+        role = await req.guild.roles.create({ name: `${b.emoji ? b.emoji + ' ' : ''}${name}`.slice(0, 100), mentionable: true, reason: 'Club erstellt' });
+      }
+      if (cfg.createChannel) {
+        const parent = cfg.categoryId && req.guild.channels.cache.get(cfg.categoryId)?.type === ChannelType.GuildCategory ? cfg.categoryId : undefined;
+        const overwrites = [{ id: req.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] }];
+        if (role) overwrites.push({ id: role.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
+        overwrites.push({ id: req.guild.members.me.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels] });
+        channel = await req.guild.channels.create({
+          name: name.toLowerCase().replace(/[^a-z0-9äöüß]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 90) || 'club',
+          type: ChannelType.GuildText,
+          parent,
+          permissionOverwrites: overwrites,
+          reason: 'Club erstellt',
+        });
+      }
+    } catch (err) {
+      await role?.delete().catch(() => null);
+      return res.status(400).json({ error: 'Rolle/Kanal konnte nicht erstellt werden: ' + discordErr(err) });
+    }
+
+    const club = clubsModel.create({
+      guildId: req.params.guildId,
+      name,
+      description: b.description ? String(b.description).slice(0, 300) : null,
+      emoji: b.emoji ? String(b.emoji).slice(0, 16) : null,
+      leaderId,
+      roleId: role?.id,
+      channelId: channel?.id,
+    });
+    clubsModel.addMember(club.id, leaderId, 'leader');
+    await addRole(req.guild, leaderId, role?.id);
+    res.json(serializeClub(req.guild, club));
+  }),
+);
+
+router.patch(
+  '/guilds/:guildId/clubs/:id',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const club = clubsModel.get(num(req.params.id));
+    if (!club || club.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    const b = req.body || {};
+    const patch = {};
+    if (b.name !== undefined && String(b.name).trim()) patch.name = String(b.name).trim().slice(0, 60);
+    if (b.description !== undefined) patch.description = String(b.description).slice(0, 300) || null;
+    if (b.emoji !== undefined) patch.emoji = String(b.emoji).slice(0, 16) || null;
+    if (b.leaderId !== undefined) {
+      const lid = snowflake(b.leaderId);
+      if (!lid) return res.status(400).json({ error: 'Ungültige Nutzer-ID.' });
+      const gm = await req.guild.members.fetch(lid).catch(() => null);
+      if (!gm) return res.status(400).json({ error: 'Dieses Mitglied wurde auf dem Server nicht gefunden.' });
+      patch.leader_id = lid;
+      if (club.leader_id && club.leader_id !== lid && clubsModel.getMember(club.id, club.leader_id)) clubsModel.addMember(club.id, club.leader_id, 'officer');
+      clubsModel.addMember(club.id, lid, 'leader');
+      await addRole(req.guild, lid, club.role_id);
+    }
+    const updated = clubsModel.update(club.id, patch);
+    if (patch.name && club.role_id) await req.guild.roles.cache.get(club.role_id)?.setName(`${updated.emoji ? updated.emoji + ' ' : ''}${patch.name}`.slice(0, 100)).catch(() => null);
+    res.json(serializeClub(req.guild, updated));
+  }),
+);
+
+router.delete(
+  '/guilds/:guildId/clubs/:id',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const club = clubsModel.get(num(req.params.id));
+    if (!club || club.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    if (req.query.discord === '1') {
+      await req.guild.roles.cache.get(club.role_id)?.delete('Club aufgelöst').catch(() => null);
+      await req.guild.channels.cache.get(club.channel_id)?.delete('Club aufgelöst').catch(() => null);
+    }
+    clubsModel.remove(club.id);
+    res.json({ ok: true });
+  }),
+);
+
+router.post(
+  '/guilds/:guildId/clubs/:id/members',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const club = clubsModel.get(num(req.params.id));
+    if (!club || club.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    const uid = snowflake(req.body?.userId);
+    if (!uid) return res.status(400).json({ error: 'Bitte eine gültige Nutzer-ID angeben.' });
+    const gm = await req.guild.members.fetch(uid).catch(() => null);
+    if (!gm) return res.status(400).json({ error: 'Dieses Mitglied wurde auf dem Server nicht gefunden.' });
+    if (clubsModel.members(club.id).length >= 200) return res.status(400).json({ error: 'Maximal 200 Mitglieder pro Club.' });
+    const rank = ['officer', 'member'].includes(req.body?.rank) ? req.body.rank : 'member';
+    if (uid === club.leader_id) return res.status(400).json({ error: 'Der Leiter ist bereits Mitglied.' });
+    clubsModel.addMember(club.id, uid, rank);
+    await addRole(req.guild, uid, club.role_id);
+    res.json(serializeClub(req.guild, club));
+  }),
+);
+
+router.patch('/guilds/:guildId/clubs/:id/members/:userId', actionLimiter, (req, res) => {
+  const club = clubsModel.get(num(req.params.id));
+  if (!club || club.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+  const m = clubsModel.getMember(club.id, req.params.userId);
+  if (!m || m.rank === 'leader') return res.status(400).json({ error: 'Rang dieses Mitglieds kann nicht geändert werden.' });
+  const rank = req.body?.rank === 'officer' ? 'officer' : 'member';
+  clubsModel.addMember(club.id, m.user_id, rank);
+  res.json(serializeClub(req.guild, club));
+});
+
+router.delete(
+  '/guilds/:guildId/clubs/:id/members/:userId',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const club = clubsModel.get(num(req.params.id));
+    if (!club || club.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    if (req.params.userId === club.leader_id) return res.status(400).json({ error: 'Der Leiter kann nicht entfernt werden – erst einen neuen Leiter festlegen.' });
+    clubsModel.removeMember(club.id, req.params.userId);
+    await dropRole(req.guild, req.params.userId, club.role_id);
+    res.json(serializeClub(req.guild, club));
+  }),
+);
+
 /* ---------------- Applications ---------------- */
 
 router.get('/guilds/:guildId/application-types', (req, res) => {
