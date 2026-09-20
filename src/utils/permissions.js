@@ -22,12 +22,26 @@ function isManager(member) {
   );
 }
 
-/** Darf Tickets bearbeiten: Support-Rolle oder Manager. */
-function isSupport(member, settings) {
+/**
+ * Darf Tickets bearbeiten: Support-Rolle, Manager oder – wenn ein Ticket übergeben wird –
+ * eine der Rollen, die für die Kategorie dieses Tickets zuständig sind.
+ */
+function isSupport(member, settings, ticket) {
   if (!member) return false;
   if (isManager(member)) return true;
   const roleId = settings?.ticket_support_role_id;
-  return Boolean(roleId && member.roles.cache.has(roleId));
+  if (roleId && member.roles.cache.has(roleId)) return true;
+  if (ticket?.category_id) {
+    const ticketPanels = require('../database/models/ticketPanels');
+    const cat = ticketPanels.getCategory(ticket.category_id);
+    if (cat) {
+      const ids = [cat.support_role_id, ...String(ticketPanels.categoryCfg(cat).supportRoleIds || '').split(',')]
+        .map((x) => String(x || '').trim())
+        .filter(Boolean);
+      if (ids.some((id) => member.roles.cache.has(id))) return true;
+    }
+  }
+  return false;
 }
 
 /** Darf Bewerbungen bearbeiten: Team-Rolle oder Manager. */

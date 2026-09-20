@@ -2,6 +2,98 @@
 
 const db = require('../db');
 
+/* ---------------- Erweiterte Einstellungen (JSON) ---------------- */
+
+const SHOW_VALUES = ['creator', 'category', 'time'];
+const NULLABLE = new Set(['claimCategoryEnabled']);
+
+const embedDefaults = () => ({ title: '', description: '', color: '', imageUrl: '', thumbnailUrl: '', footer: '' });
+const autoDefaults = () => ({
+  autoClose: { enabled: false, hours: 24 },
+  autoAlert: { enabled: false, hours: 12 },
+  autoTeamAlert: { enabled: false, hours: 12 },
+  autoUnclaim: { enabled: false, hours: 12 },
+  closeUnresponsive: { enabled: false, hours: 12 },
+  autoClaim: false,
+  closeAfterRequest: false,
+});
+const panelCfgDefaults = () => ({
+  allowUserAdd: false,
+  nameFormat: '',
+  showLoad: false,
+  openEmbed: embedDefaults(),
+  ratingPublicChannelId: '',
+  ratingShow: [...SHOW_VALUES],
+  logEnabled: true,
+  transcripts: false,
+  claimCategoryEnabled: null, // null = automatisch (aktiv, sobald eine Claim-Kategorie gesetzt ist)
+  auto: autoDefaults(),
+});
+const categoryCfgDefaults = () => ({
+  onBehalf: false,
+  supportRoleIds: '',
+  openEmbedOverride: false,
+  openEmbed: embedDefaults(),
+  autoOverride: false,
+  auto: autoDefaults(),
+});
+
+function coerceLike(key, def, value) {
+  if (NULLABLE.has(key)) {
+    if (value === true || value === 'true') return true;
+    if (value === false || value === 'false') return false;
+    return null;
+  }
+  if (typeof def === 'boolean') return value === true || value === 'true' || value === 1 || value === '1';
+  if (typeof def === 'number') {
+    const n = Number.parseInt(value, 10);
+    return Number.isFinite(n) ? Math.min(720, Math.max(1, n)) : def;
+  }
+  if (Array.isArray(def)) return Array.isArray(value) ? value.filter((x) => SHOW_VALUES.includes(x)) : def;
+  if (def && typeof def === 'object') return applyPatch(def, value);
+  return String(value ?? '').trim().slice(0, 4000);
+}
+
+/** Übernimmt nur Schlüssel, die im Standard-Objekt vorkommen, und prüft deren Typ. */
+function applyPatch(base, patch) {
+  const out = {};
+  for (const [k, def] of Object.entries(base)) {
+    const has = patch && typeof patch === 'object' && Object.prototype.hasOwnProperty.call(patch, k);
+    out[k] = has ? coerceLike(k, def, patch[k]) : def;
+  }
+  return out;
+}
+
+function parseCfg(factory, raw) {
+  let parsed = {};
+  if (raw && typeof raw === 'object') parsed = raw;
+  else if (typeof raw === 'string' && raw) {
+    try { parsed = JSON.parse(raw); } catch { parsed = {}; }
+  }
+  return applyPatch(factory(), parsed);
+}
+
+/** Führt ein Teil-Update in die bestehenden Einstellungen ein und liefert den JSON-String zum Speichern. */
+function mergeCfg(factory, currentRaw, patch) {
+  return JSON.stringify(applyPatch(parseCfg(factory, currentRaw), patch));
+}
+
+const panelCfg = (panel) => parseCfg(panelCfgDefaults, panel?.cfg);
+const categoryCfg = (cat) => parseCfg(categoryCfgDefaults, cat?.cfg);
+const mergePanelCfg = (panel, patch) => mergeCfg(panelCfgDefaults, panel?.cfg, patch);
+const mergeCategoryCfg = (cat, patch) => mergeCfg(categoryCfgDefaults, cat?.cfg, patch);
+
+/** Wirksame Automationen: Kategorie-Überschreibung > Panel; altes Feld autoclose_hours bleibt gültig. */
+function effectiveAuto(panel, cat) {
+  const pc = panelCfg(panel);
+  const cc = categoryCfg(cat);
+  const auto = JSON.parse(JSON.stringify(cc.autoOverride ? cc.auto : pc.auto));
+  if (!cc.autoOverride && !auto.autoClose.enabled && Number(panel?.autoclose_hours) > 0) {
+    auto.autoClose = { enabled: true, hours: Number(panel.autoclose_hours) };
+  }
+  return auto;
+}
+
 /**
  * Ticket-Panels und ihre Kategorien.
  * Ein Server kann mehrere Panels haben, jedes Panel mehrere Kategorien
@@ -51,7 +143,7 @@ function updatePanel(id, patch) {
     'name', 'title', 'description', 'color', 'use_select', 'panel_layout', 'button_label',
     'channel_id', 'message_id', 'log_channel_id', 'rating_enabled',
     'rating_channel_id', 'claim_category_id', 'autoclose_hours',
-    'image_url', 'thumbnail_url',
+    'image_url', 'thumbnail_url', 'cfg',
   ];
   const keys = Object.keys(patch).filter((k) => allowed.includes(k));
   if (!keys.length) return getPanel(id);
@@ -113,6 +205,7 @@ function updateCategory(id, patch) {
     'welcome_message',
     'name_format',
     'position',
+    'cfg',
   ];
   const keys = Object.keys(patch).filter((k) => allowed.includes(k));
   if (!keys.length) return getCategory(id);
@@ -129,48 +222,73 @@ function deleteCategory(id) {
 
 /* ---------------- Formularfelder pro Kategorie ---------------- */
 
-function listQuestions(categoryId) {
+const FORMS = ['open', 'close', 'rating'];
+
+/** Optionen (JSON) einer Frage als Array bereitstellen. */
+function parseQuestion(q) {
+  if (!q) return q;
+  let options = [];
+  try { options = q.options ? JSON.parse(q.options) : []; } catch { options = []; }
+  return { ...q, form: q.form || 'open', options: Array.isArray(options) ? options : [] };
+}
+
+/** Felder eines Formulars ('open' | 'close' | 'rating') einer Kategorie. */
+function listQuestions(categoryId, form = 'open') {
+  return db
+    .prepare(
+      "SELECT * FROM ticket_category_questions WHERE category_id = ? AND COALESCE(form, 'open') = ? ORDER BY position ASC, id ASC",
+    )
+    .all(categoryId, form)
+    .map(parseQuestion);
+}
+
+function listAllQuestions(categoryId) {
   return db
     .prepare('SELECT * FROM ticket_category_questions WHERE category_id = ? ORDER BY position ASC, id ASC')
-    .all(categoryId);
+    .all(categoryId)
+    .map(parseQuestion);
 }
 
 function getQuestion(id) {
-  return db.prepare('SELECT * FROM ticket_category_questions WHERE id = ?').get(id);
+  return parseQuestion(db.prepare('SELECT * FROM ticket_category_questions WHERE id = ?').get(id));
 }
 
-function countQuestions(categoryId) {
+function countQuestions(categoryId, form = 'open') {
   return db
-    .prepare('SELECT COUNT(*) AS n FROM ticket_category_questions WHERE category_id = ?')
-    .get(categoryId).n;
+    .prepare("SELECT COUNT(*) AS n FROM ticket_category_questions WHERE category_id = ? AND COALESCE(form, 'open') = ?")
+    .get(categoryId, form).n;
 }
 
-function addQuestion({ categoryId, label, style = 'short', placeholder = null, required = true, minLength = 0, maxLength = 400 }) {
+function addQuestion({ categoryId, label, style = 'short', placeholder = null, required = true, minLength = 0, maxLength = 400, form = 'open', options = null, description = null }) {
   const maxPos = db
     .prepare('SELECT COALESCE(MAX(position), -1) AS p FROM ticket_category_questions WHERE category_id = ?')
     .get(categoryId).p;
   const info = db
     .prepare(
-      `INSERT INTO ticket_category_questions (category_id, label, style, placeholder, required, min_length, max_length, position)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO ticket_category_questions (category_id, label, style, placeholder, required, min_length, max_length, position, form, options, description)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(categoryId, label, style, placeholder, required ? 1 : 0, minLength, maxLength, maxPos + 1);
-  return db.prepare('SELECT * FROM ticket_category_questions WHERE id = ?').get(info.lastInsertRowid);
+    .run(
+      categoryId, label, style, placeholder, required ? 1 : 0, minLength, maxLength, maxPos + 1,
+      FORMS.includes(form) ? form : 'open', options ? JSON.stringify(options) : null, description,
+    );
+  return getQuestion(info.lastInsertRowid);
 }
 
 function updateQuestion(id, patch) {
-  const allowed = ['label', 'style', 'placeholder', 'required', 'min_length', 'max_length', 'position'];
+  const allowed = ['label', 'style', 'placeholder', 'required', 'min_length', 'max_length', 'position', 'options', 'description'];
   const keys = Object.keys(patch).filter((k) => allowed.includes(k));
-  if (!keys.length) return db.prepare('SELECT * FROM ticket_category_questions WHERE id = ?').get(id);
+  if (!keys.length) return getQuestion(id);
   const setSql = keys.map((k) => `${k} = @${k}`).join(', ');
   const params = { id };
   for (const k of keys) {
     let v = patch[k];
     if (typeof v === 'boolean') v = v ? 1 : 0;
+    if (k === 'options' && Array.isArray(v)) v = JSON.stringify(v);
     params[k] = v === '' ? null : v;
   }
   db.prepare(`UPDATE ticket_category_questions SET ${setSql} WHERE id = @id`).run(params);
-  return db.prepare('SELECT * FROM ticket_category_questions WHERE id = ?').get(id);
+  return getQuestion(id);
 }
 
 function deleteQuestion(id) {
@@ -179,24 +297,34 @@ function deleteQuestion(id) {
 
 function categoryWithQuestions(id) {
   const c = getCategory(id);
-  return c ? { ...c, questions: listQuestions(id) } : null;
+  return c ? { ...c, cfg: categoryCfg(c), questions: listAllQuestions(id) } : null;
 }
+
+const forDashboardPanel = (p) => ({ ...p, cfg: panelCfg(p) });
+const forDashboardCategory = (c) => ({ ...c, cfg: categoryCfg(c), questions: listAllQuestions(c.id) });
 
 /** Panel inklusive Kategorien (mit Formularfeldern) für Dashboard-Ausgabe. */
 function panelWithCategories(id) {
   const panel = getPanel(id);
   if (!panel) return null;
-  return { ...panel, categories: listCategories(id).map((c) => ({ ...c, questions: listQuestions(c.id) })) };
+  return { ...forDashboardPanel(panel), categories: listCategories(id).map(forDashboardCategory) };
 }
 
 function listPanelsWithCategories(guildId) {
   return listPanels(guildId).map((p) => ({
-    ...p,
-    categories: listCategories(p.id).map((c) => ({ ...c, questions: listQuestions(c.id) })),
+    ...forDashboardPanel(p),
+    categories: listCategories(p.id).map(forDashboardCategory),
   }));
 }
 
 module.exports = {
+  panelCfg,
+  categoryCfg,
+  mergePanelCfg,
+  mergeCategoryCfg,
+  effectiveAuto,
+  listAllQuestions,
+  FORMS,
   createPanel,
   getPanel,
   getPanelByMessage,

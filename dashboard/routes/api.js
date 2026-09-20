@@ -1078,6 +1078,7 @@ router.patch(
     if (b.rating_channel_id !== undefined) patch.rating_channel_id = b.rating_channel_id || null;
     if (b.claim_category_id !== undefined) patch.claim_category_id = b.claim_category_id || null;
     if (b.autoclose_hours !== undefined) patch.autoclose_hours = Math.max(0, num(b.autoclose_hours, 0));
+    if (b.cfg && typeof b.cfg === 'object') patch.cfg = ticketPanels.mergePanelCfg(ownedPanel(req), b.cfg);
     const updated = ticketPanels.updatePanel(num(req.params.panelId), patch);
     res.json(ticketPanels.panelWithCategories(updated.id));
   }),
@@ -1152,6 +1153,7 @@ router.patch(
     }
     if (req.body.enabled !== undefined) patch.enabled = req.body.enabled ? 1 : 0;
     if (req.body.maxOpen !== undefined) patch.max_open = Math.max(0, num(req.body.maxOpen, 0));
+    if (req.body.cfg && typeof req.body.cfg === 'object') patch.cfg = ticketPanels.mergeCategoryCfg(cat, req.body.cfg);
     res.json(ticketPanels.updateCategory(cat.id, patch));
   }),
 );
@@ -1169,6 +1171,19 @@ router.delete(
 
 /* --- Öffnen-Formular pro Kategorie --- */
 
+const QUESTION_TYPES = ['short', 'paragraph', 'select', 'radio', 'checkbox', 'user', 'role', 'channel', 'mentionable'];
+
+/** Optionen als Array von { label, value } aus Text (eine pro Zeile) oder Array lesen. */
+function parseOptions(input) {
+  const list = Array.isArray(input) ? input : String(input || '').split(/\r?\n/);
+  return list
+    .map((o) => (typeof o === 'string' ? o : o?.label))
+    .map((o) => String(o || '').trim().slice(0, 100))
+    .filter(Boolean)
+    .slice(0, 25)
+    .map((label) => ({ label, value: label }));
+}
+
 function ownedCategory(req) {
   if (!ownedPanel(req)) return null;
   const cat = ticketPanels.getCategory(num(req.params.catId));
@@ -1179,14 +1194,18 @@ router.post(
   '/guilds/:guildId/ticket-panels/:panelId/categories/:catId/questions',
   asyncHandler(async (req, res) => {
     if (!ownedCategory(req)) return res.status(404).json({ error: 'Kategorie nicht gefunden.' });
-    if (ticketPanels.countQuestions(num(req.params.catId)) >= 5) {
-      return res.status(400).json({ error: 'Maximal 5 Felder pro Kategorie (Discord-Limit).' });
+    const form = ticketPanels.FORMS.includes(req.body.form) ? req.body.form : 'open';
+    if (ticketPanels.countQuestions(num(req.params.catId), form) >= 5) {
+      return res.status(400).json({ error: 'Maximal 5 Felder pro Formular (Discord-Limit).' });
     }
     if (!req.body.label) return res.status(400).json({ error: 'Feldname erforderlich.' });
     const q = ticketPanels.addQuestion({
       categoryId: num(req.params.catId),
+      form,
       label: String(req.body.label).slice(0, 45),
-      style: req.body.style === 'paragraph' ? 'paragraph' : 'short',
+      style: QUESTION_TYPES.includes(req.body.style) ? req.body.style : 'short',
+      options: req.body.options !== undefined ? parseOptions(req.body.options) : null,
+      description: req.body.description ? String(req.body.description).slice(0, 100) : null,
       placeholder: req.body.placeholder ? String(req.body.placeholder).slice(0, 100) : null,
       required: req.body.required !== false,
       minLength: Math.max(0, num(req.body.minLength, 0)),
@@ -1209,7 +1228,9 @@ router.patch(
     if (!ownedQuestion(req)) return res.status(404).json({ error: 'Formularfeld nicht gefunden.' });
     const patch = {};
     if (req.body.label !== undefined) patch.label = String(req.body.label).slice(0, 45);
-    if (req.body.style !== undefined) patch.style = req.body.style === 'paragraph' ? 'paragraph' : 'short';
+    if (req.body.style !== undefined) patch.style = QUESTION_TYPES.includes(req.body.style) ? req.body.style : 'short';
+    if (req.body.options !== undefined) patch.options = parseOptions(req.body.options);
+    if (req.body.description !== undefined) patch.description = String(req.body.description).slice(0, 100);
     if (req.body.placeholder !== undefined) patch.placeholder = String(req.body.placeholder).slice(0, 100);
     if (req.body.required !== undefined) patch.required = req.body.required ? 1 : 0;
     if (req.body.position !== undefined) patch.position = num(req.body.position, 0);

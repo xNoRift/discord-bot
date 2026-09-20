@@ -50,7 +50,7 @@ module.exports = {
 
     const sub = interaction.options.getSubcommand();
     const member = interaction.member;
-    const support = isSupport(member, interaction.settings);
+    const support = isSupport(member, interaction.settings, ticket);
     const isOpener = interaction.user.id === ticket.opener_id;
     const isClaimer = ticket.claimed_by === interaction.user.id;
 
@@ -65,10 +65,12 @@ module.exports = {
       return deny('Nur das Support-Team oder wer das Ticket übernommen hat, kann es freigeben.');
     }
     if (sub === 'close') {
-      if (interaction.settings?.ticket_close_restricted === 1 && !support) {
-        return deny('Auf diesem Server dürfen nur Support-Mitglieder Tickets schließen.');
+      const denied = ticketService.closePermissionError(member, ticket, interaction.settings);
+      if (denied) return deny(denied);
+      const closeQs = ticketService.closeFormQuestions(ticket);
+      if (closeQs.length) {
+        return interaction.showModal(ticketService.buildQuestionsModal(`ticket:closeform:${ticket.id}`, 'Ticket schließen', closeQs));
       }
-      if (!support && !isOpener) return deny('Nur der Ersteller oder das Support-Team kann dieses Ticket schließen.');
     }
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });

@@ -116,6 +116,18 @@ ensureColumn('guild_settings', 'tempvoice_category_id', 'TEXT');
 ensureColumn('guild_settings', 'tempvoice_name_format', "TEXT DEFAULT '{user} • Voice'");
 ensureColumn('guild_settings', 'tempvoice_user_limit', 'INTEGER DEFAULT 0');
 ensureColumn('guild_settings', 'tempvoice_bitrate', 'INTEGER DEFAULT 64');
+
+// Ticket-System: erweiterte Einstellungen (JSON) und Formular-Felder
+ensureColumn('ticket_panels', 'cfg', 'TEXT');
+ensureColumn('ticket_categories', 'cfg', 'TEXT');
+ensureColumn('ticket_category_questions', 'form', "TEXT DEFAULT 'open'");
+ensureColumn('ticket_category_questions', 'options', 'TEXT');
+ensureColumn('ticket_category_questions', 'description', 'TEXT');
+ensureColumn('tickets', 'alerted_at', 'INTEGER');
+ensureColumn('tickets', 'team_alerted_at', 'INTEGER');
+ensureColumn('tickets', 'close_request_by', 'TEXT');
+ensureColumn('tickets', 'close_request_at', 'INTEGER');
+ensureColumn('tickets', 'close_answers', 'TEXT');
 ensureColumn('guild_settings', 'tempvoice_interface_channel_id', 'TEXT');
 ensureColumn('guild_settings', 'tempvoice_interface_message_id', 'TEXT');
 ensureColumn('temp_voice_channels', 'panel_message_id', 'TEXT');

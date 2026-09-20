@@ -5,13 +5,14 @@ const { MessageFlags } = require('discord.js');
 const embeds = require('../../utils/embeds');
 const i18n = require('../../utils/i18n');
 const ticketService = require('../../services/ticketService');
+const ticketsModel = require('../../database/models/tickets');
 const { isSupport } = require('../../utils/permissions');
 
 module.exports = {
   prefix: 'ticket:reopen',
   async execute(interaction) {
     const tg = i18n.forGuild(interaction.guildId);
-    if (!isSupport(interaction.member, interaction.settings)) {
+    if (!isSupport(interaction.member, interaction.settings, ticketsModel.getByChannel(interaction.channelId))) {
       return interaction.reply({
         embeds: [embeds.error(undefined, tg('tickets.replies.perm_reopen'))],
         flags: MessageFlags.Ephemeral,

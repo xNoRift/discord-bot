@@ -64,6 +64,7 @@ async function log(opts) {
     targetId,
     meta,
     overrideChannelId,
+    suppressDiscord,
   } = opts;
 
   // 1) Dashboard-Aktivitaetslog
@@ -80,7 +81,8 @@ async function log(opts) {
     logger.error('[log] activity.add fehlgeschlagen:', err.message);
   }
 
-  // 2) Discord-Channel
+  // 2) Discord-Channel (kann pro Aufruf unterdrückt werden, z. B. wenn das Panel Logs deaktiviert hat)
+  if (suppressDiscord) return;
   try {
     const settings = settingsModel.get(guildId);
     const channelId = overrideChannelId || resolveChannelId(settings, category);

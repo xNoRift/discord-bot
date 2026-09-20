@@ -25,15 +25,7 @@ module.exports = {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const questions = ticketPanels.listQuestions(categoryId).slice(0, 5);
-    const answers = questions.map((q) => {
-      let value = '';
-      try {
-        value = interaction.fields.getTextInputValue(`q_${q.id}`);
-      } catch {
-        value = '';
-      }
-      return { question: q.label, answer: value };
-    });
+    const answers = ticketService.readModalAnswers(interaction.fields, questions);
 
     try {
       const { channel } = await ticketService.createTicket(interaction.guild, interaction.member, {

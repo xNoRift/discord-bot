@@ -7,6 +7,13 @@ const {
   ChannelType,
   EmbedBuilder,
   StringSelectMenuBuilder,
+  UserSelectMenuBuilder,
+  RoleSelectMenuBuilder,
+  ChannelSelectMenuBuilder,
+  MentionableSelectMenuBuilder,
+  RadioGroupBuilder,
+  CheckboxBuilder,
+  LabelBuilder,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -22,6 +29,7 @@ const config = require('../../config/config');
 const logger = require('../utils/logger');
 const i18n = require('../utils/i18n');
 const { discordTimestamp } = require('../utils/time');
+const { isSupport } = require('../utils/permissions');
 
 /**
  * Ticketsystem mit MEHREREN Panels pro Server und MEHREREN Kategorien pro Panel.
@@ -49,6 +57,46 @@ function ticketLogOverride(ticket) {
   return panel?.log_channel_id || undefined;
 }
 
+/** Ticket-Log schreiben; ist „Ticket Aktivitäten loggen“ am Panel aus, bleibt nur der Dashboard-Verlauf. */
+function ticketLog(ticket, opts) {
+  const panel = ticket?.panel_id ? ticketPanels.getPanel(ticket.panel_id) : null;
+  if (panel && ticketPanels.panelCfg(panel).logEnabled === false) {
+    return logService.log({ ...opts, suppressDiscord: true });
+  }
+  return logService.log(opts);
+}
+
+/** Ist das Verschieben übernommener Tickets aktiv? (Standard: an, sobald eine Kategorie gesetzt ist) */
+function claimCategoryOn(panel) {
+  return Boolean(panel?.claim_category_id) && ticketPanels.panelCfg(panel).claimCategoryEnabled !== false;
+}
+
+/** Darf dieses Mitglied das Ticket schließen? Liefert eine Fehlermeldung oder null. */
+function closePermissionError(member, ticket, settings) {
+  const tg = i18n.forGuild(ticket.guild_id);
+  const support = isSupport(member, settings, ticket);
+  if (settings?.ticket_close_restricted === 1 && !support) return tg('tickets.errors.perm_close_restricted');
+  if (!support && member.id !== ticket.opener_id) return tg('tickets.errors.perm_close');
+  return null;
+}
+
+/** Fragen des Schließen-Formulars der Ticket-Kategorie (leer = direkt schließen). */
+function closeFormQuestions(ticket) {
+  return ticket?.category_id ? ticketPanels.listQuestions(ticket.category_id, 'close') : [];
+}
+
+/** Auslastung je Kategorie als Textzeilen für das Panel-Embed. */
+function loadLines(categories) {
+  return categories
+    .map((c) => {
+      const open = ticketsModel.countOpenByCategory(c.id);
+      const max = c.max_open > 0 ? String(c.max_open) : '∞';
+      return `${c.emoji ? c.emoji + ' ' : ''}**${c.label}** – ${open}/${max}`;
+    })
+    .join('\n')
+    .slice(0, 1024);
+}
+
 /**
  * Baut die Panel-Nachricht aus einem Panel + seinen Kategorien.
  * @param {object} panel       ticket_panels-Zeile
@@ -65,7 +113,10 @@ function buildPanelMessage(panel, categories) {
   if (/^https?:\/\//i.test(panel.thumbnail_url || '')) embed.setThumbnail(panel.thumbnail_url);
 
   // Die Kategorie-Beschreibungen stehen im Auswahlmenü bzw. auf den Buttons –
-  // nicht mehr zusätzlich als Feldliste im Embed.
+  // nicht mehr zusätzlich als Feldliste im Embed. Optional: Ticketauslastung.
+  if (categories.length && ticketPanels.panelCfg(panel).showLoad) {
+    embed.addFields({ name: 'Auslastung', value: loadLines(categories) });
+  }
 
   const components = [];
 
@@ -165,6 +216,28 @@ async function postOrUpdatePanel(guild, panelId, channelId) {
   return message;
 }
 
+const loadTimers = new Map();
+
+/** Zeichnet die Panel-Nachricht neu (Ticketauslastung), gebündelt, damit Discord nicht überlastet wird. */
+function scheduleLoadRefresh(guild, panelId) {
+  clearTimeout(loadTimers.get(panelId));
+  loadTimers.set(
+    panelId,
+    setTimeout(async () => {
+      loadTimers.delete(panelId);
+      try {
+        const panel = ticketPanels.getPanel(panelId);
+        if (!panel?.message_id || !panel.channel_id) return;
+        const channel = guild.channels.cache.get(panel.channel_id);
+        const message = channel ? await channel.messages.fetch(panel.message_id).catch(() => null) : null;
+        if (message) await rerenderPanelMessage(message, panelId);
+      } catch (err) {
+        logger.warn(`[ticket] Auslastung aktualisieren: ${err.message}`);
+      }
+    }, 5000),
+  );
+}
+
 /* ---------------- Ticket-Erstellung ---------------- */
 
 function buildManagementRow(ticket) {
@@ -216,7 +289,109 @@ async function rerenderPanelMessage(message, panelId) {
  * Wird sowohl fürs Ticket-Öffnen-Formular einer Kategorie als auch für
  * andere Formular-Modals (z. B. Giveaway-Ticket-Buttons) verwendet.
  */
+const isTextQuestion = (q) => !q.style || q.style === 'short' || q.style === 'paragraph';
+
+/** Optionen einer Auswahl/Radio-Frage als { label, value }-Liste (max. 25). */
+function questionOptions(q) {
+  return (Array.isArray(q.options) ? q.options : [])
+    .map((o) => (typeof o === 'string' ? { label: o, value: o } : { label: o.label, value: o.value ?? o.label }))
+    .filter((o) => o.label)
+    .slice(0, 25)
+    .map((o) => ({ label: String(o.label).slice(0, 100), value: String(o.value).slice(0, 100) }));
+}
+
+/** Baut ein Modal mit gemischten Feldtypen (Label-Komponenten). */
+function buildRichModal(customId, title, questions) {
+  const modal = new ModalBuilder().setCustomId(customId).setTitle(String(title).slice(0, 45));
+  questions.slice(0, 5).forEach((q) => {
+    const id = `q_${q.id}`;
+    const label = new LabelBuilder().setLabel(String(q.label).slice(0, 45));
+    if (q.description) label.setDescription(String(q.description).slice(0, 100));
+    const required = Boolean(q.required);
+    const placeholder = q.placeholder ? String(q.placeholder).slice(0, 100) : null;
+
+    switch (q.style) {
+      case 'select': {
+        const menu = new StringSelectMenuBuilder().setCustomId(id).setRequired(required).addOptions(questionOptions(q));
+        if (placeholder) menu.setPlaceholder(placeholder);
+        label.setStringSelectMenuComponent(menu);
+        break;
+      }
+      case 'radio':
+        label.setRadioGroupComponent(new RadioGroupBuilder().setCustomId(id).setRequired(required).addOptions(questionOptions(q).slice(0, 10)));
+        break;
+      case 'checkbox':
+        label.setCheckboxComponent(new CheckboxBuilder().setCustomId(id));
+        break;
+      case 'user': {
+        const menu = new UserSelectMenuBuilder().setCustomId(id).setRequired(required);
+        if (placeholder) menu.setPlaceholder(placeholder);
+        label.setUserSelectMenuComponent(menu);
+        break;
+      }
+      case 'role': {
+        const menu = new RoleSelectMenuBuilder().setCustomId(id).setRequired(required);
+        if (placeholder) menu.setPlaceholder(placeholder);
+        label.setRoleSelectMenuComponent(menu);
+        break;
+      }
+      case 'channel': {
+        const menu = new ChannelSelectMenuBuilder().setCustomId(id).setRequired(required);
+        if (placeholder) menu.setPlaceholder(placeholder);
+        label.setChannelSelectMenuComponent(menu);
+        break;
+      }
+      case 'mentionable': {
+        const menu = new MentionableSelectMenuBuilder().setCustomId(id).setRequired(required);
+        if (placeholder) menu.setPlaceholder(placeholder);
+        label.setMentionableSelectMenuComponent(menu);
+        break;
+      }
+      default: {
+        const input = new TextInputBuilder().setCustomId(id).setStyle(q.style === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short).setRequired(required);
+        if (placeholder) input.setPlaceholder(placeholder);
+        if (q.min_length) input.setMinLength(Math.min(q.min_length, 1000));
+        if (q.max_length) input.setMaxLength(Math.min(Math.max(q.max_length, 1), 4000));
+        label.setTextInputComponent(input);
+      }
+    }
+    modal.addLabelComponents(label);
+  });
+  return modal;
+}
+
+/**
+ * Liest die Antworten eines abgeschickten Formular-Modals als [{ question, answer }].
+ * `answer` ist immer ein lesbarer Text (Erwähnungen für Nutzer/Rollen/Kanäle).
+ */
+function readModalAnswers(fields, questions) {
+  return questions.slice(0, 5).map((q) => {
+    const id = `q_${q.id}`;
+    let answer = '';
+    try {
+      switch (q.style) {
+        case 'select': answer = fields.getStringSelectValues(id).join(', '); break;
+        case 'radio': answer = fields.getRadioGroup(id) || ''; break;
+        case 'checkbox': answer = fields.getCheckbox(id) ? '✅ Ja' : '❌ Nein'; break;
+        case 'user': answer = [...(fields.getSelectedUsers(id)?.values() ?? [])].map((u) => `<@${u.id}>`).join(' '); break;
+        case 'role': answer = [...(fields.getSelectedRoles(id)?.values() ?? [])].map((r) => `<@&${r.id}>`).join(' '); break;
+        case 'channel': answer = [...(fields.getSelectedChannels(id)?.values() ?? [])].map((c) => `<#${c.id}>`).join(' '); break;
+        case 'mentionable': {
+          const m = fields.getSelectedMentionables(id);
+          answer = m ? [...m.users.values()].map((u) => `<@${u.id}>`).concat([...m.roles.values()].map((r) => `<@&${r.id}>`)).join(' ') : '';
+          break;
+        }
+        default: answer = fields.getTextInputValue(id);
+      }
+    } catch {
+      answer = '';
+    }
+    return { question: q.label, answer };
+  });
+}
+
 function buildQuestionsModal(customId, title, questions) {
+  if (!questions.slice(0, 5).every(isTextQuestion)) return buildRichModal(customId, title, questions);
   const modal = new ModalBuilder().setCustomId(customId).setTitle(String(title).slice(0, 45));
 
   questions.slice(0, 5).forEach((q) => {
@@ -241,8 +416,8 @@ function buildTicketModal(category, questions) {
   return buildQuestionsModal(`ticket:form:${category.id}`, `Ticket: ${category.label}`, questions);
 }
 
-function renderWelcome(template, { member, guild, ticketNumber, category, prize }) {
-  return (template || config.defaults.ticketWelcome)
+function fillPlaceholders(text, { member, guild, ticketNumber, category, prize }) {
+  return String(text || '')
     .replaceAll('{user}', `<@${member.id}>`)
     .replaceAll('{user.tag}', member.user.tag)
     .replaceAll('{username}', member.user.username)
@@ -250,6 +425,34 @@ function renderWelcome(template, { member, guild, ticketNumber, category, prize 
     .replaceAll('{category}', category || '')
     .replaceAll('{prize}', prize || '')
     .replaceAll('{number}', String(ticketNumber));
+}
+
+function renderWelcome(template, ctx) {
+  return fillPlaceholders(template || config.defaults.ticketWelcome, ctx);
+}
+
+/** Kanalname aus einer Vorlage – unterstützt {…} und die Platzhalter %CASEID%, %PREFIX%, %USERNAME% … */
+function renderChannelName(format, { member, number, cat }) {
+  const pad = String(number).padStart(4, '0');
+  const nick = member.nickname || member.user.username;
+  const display = member.displayName || member.user.username;
+  return (
+    String(format)
+      .replaceAll('{number}', pad)
+      .replaceAll('%CASEID%', pad)
+      .replaceAll('%PREFIX%', cat?.prefix || 'ticket')
+      .replaceAll('{user}', member.user.username)
+      .replaceAll('%USERNAME%', member.user.username)
+      .replaceAll('%USER_ID%', member.id)
+      .replaceAll('%USER_NICK_NAME%', nick)
+      .replaceAll('%DISPLAY_NAME%', display)
+      .replaceAll('{category}', cat?.label || 'ticket')
+      .toLowerCase()
+      .replace(/[^a-z0-9\-_]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 90) || `ticket-${pad}`
+  );
 }
 
 /**
@@ -283,14 +486,26 @@ async function createTicket(guild, member, opts = {}) {
     throw new Error(tg('tickets.errors.category_disabled'));
   }
   const panel = cat ? ticketPanels.getPanel(cat.panel_id) : null;
+  const pcfg = ticketPanels.panelCfg(panel);
+  const ccfg = ticketPanels.categoryCfg(cat);
 
   // Werte auflösen: Kategorie > Override (z. B. Giveaway-Einstellungen) > Server-Standard
   const discordCategoryId = cat?.discord_category_id || ov.discordCategoryId || settings.ticket_category_id;
   const supportRoleId = cat?.support_role_id || ov.supportRoleId || settings.ticket_support_role_id;
   const welcomeTemplate = cat?.welcome_message || ov.welcomeMessage || settings.ticket_welcome_message;
-  const nameFormat = cat?.prefix
-    ? `${cat.prefix}-{user}`
-    : cat?.name_format || ov.nameFormat || settings.ticket_name_format || 'ticket-{user}';
+  const nameFormat =
+    cat?.name_format ||
+    pcfg.nameFormat ||
+    (cat?.prefix ? `${cat.prefix}-{user}` : ov.nameFormat || settings.ticket_name_format || 'ticket-{user}');
+
+  // Alle zuständigen Rollen: Haupt-Rolle + zusätzliche Rollen der Kategorie
+  const roleIds = [
+    ...new Set(
+      [supportRoleId, ...String(ccfg.supportRoleIds || '').split(',').map((x) => x.trim())].filter(
+        (id) => id && guild.roles.cache.has(id),
+      ),
+    ),
+  ];
 
   if (!discordCategoryId) {
     throw new Error(tg('tickets.errors.no_discord_category'));
@@ -316,17 +531,13 @@ async function createTicket(guild, member, opts = {}) {
     }
   }
 
+  // Auslastung der Kategorie (0 = unbegrenzt)
+  if (cat && cat.max_open > 0 && ticketsModel.countOpenByCategory(cat.id) >= cat.max_open) {
+    throw new Error('Diese Kategorie ist gerade ausgelastet. Bitte versuche es später erneut.');
+  }
+
   const number = settingsModel.incrementTicketCounter(guild.id);
-  const name =
-    nameFormat
-      .replaceAll('{number}', String(number).padStart(4, '0'))
-      .replaceAll('{user}', member.user.username)
-      .replaceAll('{category}', cat?.label || 'ticket')
-      .toLowerCase()
-      .replace(/[^a-z0-9\-_]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 90) || `ticket-${String(number).padStart(4, '0')}`;
+  const name = renderChannelName(nameFormat, { member, number, cat });
 
   const supportPerms = [
     PermissionsBitField.Flags.ViewChannel,
@@ -351,9 +562,7 @@ async function createTicket(guild, member, opts = {}) {
     },
   ];
 
-  if (supportRoleId && guild.roles.cache.has(supportRoleId)) {
-    overwrites.push({ id: supportRoleId, allow: supportPerms });
-  }
+  for (const id of roleIds) overwrites.push({ id, allow: supportPerms });
 
   const channel = await guild.channels.create({
     name,
@@ -374,10 +583,14 @@ async function createTicket(guild, member, opts = {}) {
   });
   ticketsModel.touch(ticket.id);
 
+  // Eröffnungs-Embed: Kategorie-Überschreibung > Panel-Embed > Standard
+  const ctx = { member, guild, ticketNumber: number, category: cat?.label, prize: ov.prize };
+  const oe = ccfg.openEmbedOverride ? ccfg.openEmbed : pcfg.openEmbed;
+  const defaultTitle = cat ? tg('tickets.welcome.title_cat', { number, category: cat.label }) : tg('tickets.welcome.title', { number });
   const welcomeEmbed = new EmbedBuilder()
-    .setColor(panelColor(panel, settings))
-    .setTitle(cat ? tg('tickets.welcome.title_cat', { number, category: cat.label }) : tg('tickets.welcome.title', { number }))
-    .setDescription(renderWelcome(welcomeTemplate, { member, guild, ticketNumber: number, category: cat?.label, prize: ov.prize }))
+    .setColor(parseColor(oe.color) ?? panelColor(panel, settings))
+    .setTitle((oe.title ? fillPlaceholders(oe.title, ctx) : defaultTitle).slice(0, 256))
+    .setDescription(renderWelcome(oe.description || welcomeTemplate, ctx).slice(0, 4000))
     .addFields(
       { name: tg('tickets.welcome.field_opener'), value: `<@${member.id}>`, inline: true },
       { name: tg('tickets.welcome.field_created'), value: discordTimestamp(Date.now(), 'F'), inline: true },
@@ -385,10 +598,13 @@ async function createTicket(guild, member, opts = {}) {
       ...(ov.prize ? [{ name: 'Preis', value: String(ov.prize).slice(0, 1024), inline: true }] : []),
     )
     .setTimestamp();
+  if (/^https:\/\//i.test(oe.imageUrl || '')) welcomeEmbed.setImage(oe.imageUrl);
+  if (/^https:\/\//i.test(oe.thumbnailUrl || '')) welcomeEmbed.setThumbnail(oe.thumbnailUrl);
+  if (oe.footer) welcomeEmbed.setFooter({ text: fillPlaceholders(oe.footer, ctx).slice(0, 2048) });
 
   const pings = [`<@${member.id}>`];
   if (settings.ticket_team_ping !== 0) {
-    if (supportRoleId) pings.push(`<@&${supportRoleId}>`);
+    for (const id of roleIds) pings.push(`<@&${id}>`);
     if (cat?.ping_role_id) pings.push(`<@&${cat.ping_role_id}>`);
   }
 
@@ -412,7 +628,7 @@ async function createTicket(guild, member, opts = {}) {
     await channel.send({ embeds: [answerEmbed] }).catch(() => null);
   }
 
-  await logService.log({
+  await ticketLog(ticket, {
     guildId: guild.id,
     category: 'ticket',
     type: 'ticket_create',
@@ -427,6 +643,8 @@ async function createTicket(guild, member, opts = {}) {
     overrideChannelId: ticketLogOverride(ticket),
     meta: { ticketId: ticket.id, channelId: channel.id, categoryId: cat?.id ?? null },
   });
+
+  if (pcfg.showLoad && panel) scheduleLoadRefresh(guild, panel.id);
 
   return { channel, ticket };
 }
@@ -457,7 +675,7 @@ async function claimTicket(channel, member) {
 
   // Übernommene Tickets ggf. in eine andere Discord-Kategorie verschieben
   const panel = ticket.panel_id ? ticketPanels.getPanel(ticket.panel_id) : null;
-  if (panel?.claim_category_id) {
+  if (claimCategoryOn(panel)) {
     await channel.setParent(panel.claim_category_id, { lockPermissions: false }).catch(() => null);
   }
 
@@ -465,7 +683,7 @@ async function claimTicket(channel, member) {
     .send({ embeds: [embeds.info(tg('tickets.claim.channel_title'), tg('tickets.claim.channel_desc', { user: member.id }))] })
     .catch(() => null);
 
-  await logService.log({
+  await ticketLog(ticket, {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_claim',
@@ -496,7 +714,7 @@ async function unclaimTicket(channel, member) {
   const settings = settingsModel.get(channel.guild.id);
   const backCategoryId = cat?.discord_category_id || settings.ticket_category_id;
   const panel = ticket.panel_id ? ticketPanels.getPanel(ticket.panel_id) : null;
-  if (panel?.claim_category_id && backCategoryId && channel.parentId === panel.claim_category_id) {
+  if (claimCategoryOn(panel) && backCategoryId && channel.parentId === panel.claim_category_id) {
     await channel.setParent(backCategoryId, { lockPermissions: false }).catch(() => null);
   }
 
@@ -504,7 +722,7 @@ async function unclaimTicket(channel, member) {
     .send({ embeds: [embeds.warning(tg('tickets.unclaim.channel_title'), tg('tickets.unclaim.channel_desc', { user: member.id }))] })
     .catch(() => null);
 
-  await logService.log({
+  await ticketLog(ticket, {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_unclaim',
@@ -541,7 +759,7 @@ async function renameTicket(channel, member, rawName) {
     throw new Error(tg('tickets.errors.rename_failed', { msg: err.message }));
   });
 
-  await logService.log({
+  await ticketLog(ticket, {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_rename',
@@ -581,7 +799,7 @@ async function addMemberToTicket(channel, actor, targetUser) {
     .send({ embeds: [embeds.success(tg('tickets.member.added_title'), tg('tickets.member.added_desc', { target: targetUser.id, actor: actor.id }))] })
     .catch(() => null);
 
-  await logService.log({
+  await ticketLog(ticket, {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_user_add',
@@ -613,7 +831,7 @@ async function removeMemberFromTicket(channel, actor, targetUser) {
     .send({ embeds: [embeds.warning(tg('tickets.member.removed_title'), tg('tickets.member.removed_desc', { target: targetUser.id, actor: actor.id }))] })
     .catch(() => null);
 
-  await logService.log({
+  await ticketLog(ticket, {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_user_remove',
@@ -630,13 +848,25 @@ async function removeMemberFromTicket(channel, actor, targetUser) {
   });
 }
 
-async function closeTicket(channel, member) {
+/**
+ * @param {import('discord.js').TextChannel} channel
+ * @param {import('discord.js').GuildMember} member
+ * @param {{ answers?: {question:string, answer:string}[] }} [opts]  Antworten des Schließen-Formulars
+ */
+async function closeTicket(channel, member, opts = {}) {
   const tg = i18n.forGuild(channel.guild.id);
   const ticket = ticketsModel.getByChannel(channel.id);
   if (!ticket) throw new Error(tg('tickets.errors.not_a_ticket'));
   if (ticket.status === 'closed') throw new Error(tg('tickets.errors.already_closed'));
 
   const updated = ticketsModel.close(ticket.id, member.id);
+  ticketsModel.setCloseRequest(ticket.id, null);
+  const closeAnswers = (Array.isArray(opts.answers) ? opts.answers : []).filter((a) => a.answer && a.answer.trim());
+  if (closeAnswers.length) ticketsModel.setCloseAnswers(ticket.id, closeAnswers);
+  const answerFields = closeAnswers.slice(0, 10).map((a) => ({
+    name: String(a.question).slice(0, 256),
+    value: String(a.answer).slice(0, 1024),
+  }));
 
   // Ersteller darf nicht mehr schreiben, Kanal bleibt sichtbar.
   await channel.permissionOverwrites
@@ -647,11 +877,15 @@ async function closeTicket(channel, member) {
   await updateManagementMessage(channel, updated);
   await channel
     .send({
-      embeds: [embeds.warning(tg('tickets.close.channel_title'), tg('tickets.close.channel_desc', { user: member.id }))],
+      embeds: [
+        embeds
+          .warning(tg('tickets.close.channel_title'), tg('tickets.close.channel_desc', { user: member.id }))
+          .addFields(answerFields),
+      ],
     })
     .catch(() => null);
 
-  await logService.log({
+  await ticketLog(ticket, {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_close',
@@ -663,11 +897,21 @@ async function closeTicket(channel, member) {
       { name: 'Geschlossen von', value: `<@${member.id}>`, inline: true },
       ticket.claimed_by ? { name: 'Übernommen von', value: `<@${ticket.claimed_by}>`, inline: true } : null,
       { name: 'Erstellt am', value: discordTimestamp(ticket.created_at, 'F'), inline: true },
+      ...answerFields,
     ].filter(Boolean),
     actorId: member.id,
     overrideChannelId: ticketLogOverride(ticket),
     meta: { ticketId: ticket.id },
   });
+
+  // Transkript (wenn am Panel aktiviert)
+  const closePanel = ticket.panel_id ? ticketPanels.getPanel(ticket.panel_id) : null;
+  if (closePanel && ticketPanels.panelCfg(closePanel).transcripts) {
+    await require('./transcriptService')
+      .send(channel, ticketsModel.get(ticket.id))
+      .catch((err) => logger.warn(`[ticket] Transkript #${ticket.number}: ${err.message}`));
+  }
+  if (closePanel && ticketPanels.panelCfg(closePanel).showLoad) scheduleLoadRefresh(channel.guild, closePanel.id);
 
   await maybeRequestRating(channel, ticket).catch(() => null);
   if (ticket.is_modmail) {
@@ -693,7 +937,7 @@ async function reopenTicket(channel, member) {
     .send({ embeds: [embeds.success(tg('tickets.reopen.channel_title'), tg('tickets.reopen.channel_desc', { user: member.id }))] })
     .catch(() => null);
 
-  await logService.log({
+  await ticketLog(ticket, {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_reopen',
@@ -720,7 +964,7 @@ async function deleteTicket(channel, member) {
 
   ticketsModel.markDeleted(ticket.id, member.id);
 
-  await logService.log({
+  await ticketLog(ticket, {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_delete',
@@ -779,30 +1023,57 @@ async function maybeRequestRating(channel, ticket) {
 /**
  * Verarbeitet eine Bewertung (Button "ticket:rate:<ticketId>:<stars>").
  */
-async function submitRating(guild, ticketId, stars, member) {
+async function submitRating(guild, ticketId, stars, member, answers = []) {
   const tg = i18n.forGuild(guild.id);
   const ticket = ticketsModel.get(ticketId);
   if (!ticket) throw new Error(tg('tickets.errors.no_ticket_found'));
   const panel = ticket.panel_id ? ticketPanels.getPanel(ticket.panel_id) : null;
-  const targetId = panel?.rating_channel_id || panel?.log_channel_id;
-  if (targetId) {
-    const ch =
-      guild.channels.cache.get(targetId) ?? (await guild.channels.fetch(targetId).catch(() => null));
-    if (ch?.isTextBased()) {
-      await ch
-        .send({
-          embeds: [
-            embeds
-              .brand('⭐ Ticket-Bewertung', `${'⭐'.repeat(stars)} (${stars}/5)`)
-              .addFields(
-                { name: 'Ticket', value: `#${ticket.number}`, inline: true },
-                { name: 'Von', value: `<@${member.id}>`, inline: true },
-              ),
-          ],
-        })
-        .catch(() => null);
-    }
+  const pcfg = ticketPanels.panelCfg(panel);
+  const form = (Array.isArray(answers) ? answers : []).filter((a) => a.answer && a.answer.trim());
+  const formFields = form.slice(0, 10).map((a) => ({ name: String(a.question).slice(0, 256), value: String(a.answer).slice(0, 1024) }));
+
+  const send = async (channelId, embed) => {
+    if (!channelId) return;
+    const ch = guild.channels.cache.get(channelId) ?? (await guild.channels.fetch(channelId).catch(() => null));
+    if (ch?.isTextBased()) await ch.send({ embeds: [embed] }).catch(() => null);
+  };
+
+  // Team-Kanal: Angezeigte Werte laut Panel-Einstellung (Ersteller, Kategorie, Bearbeitungszeit)
+  const teamEmbed = embeds
+    .brand('⭐ Ticket-Bewertung', `${'⭐'.repeat(stars)} (${stars}/5)`)
+    .addFields(
+      { name: 'Ticket', value: `#${ticket.number}`, inline: true },
+      ...(pcfg.ratingShow.includes('creator') ? [{ name: 'Ersteller', value: `<@${ticket.opener_id}>`, inline: true }] : []),
+      ...(pcfg.ratingShow.includes('category') && ticket.category_label ? [{ name: 'Kategorie', value: ticket.category_label, inline: true }] : []),
+      ...(pcfg.ratingShow.includes('time') && ticket.created_at
+        ? [{ name: 'Bearbeitungszeit', value: formatDuration((ticket.closed_at || Date.now()) - ticket.created_at), inline: true }]
+        : []),
+      { name: 'Bewertet von', value: `<@${member.id}>`, inline: true },
+      ...formFields,
+    );
+  await send(panel?.rating_channel_id || panel?.log_channel_id, teamEmbed);
+
+  // Öffentlicher Kanal: nur Sterne und Kommentare, ohne Namen des Teams
+  if (pcfg.ratingPublicChannelId) {
+    const publicEmbed = embeds
+      .brand('⭐ Neue Bewertung', `${'⭐'.repeat(stars)} (${stars}/5)`)
+      .addFields(
+        ...(pcfg.ratingShow.includes('category') && ticket.category_label ? [{ name: 'Kategorie', value: ticket.category_label, inline: true }] : []),
+        ...(pcfg.ratingShow.includes('time') && ticket.created_at
+          ? [{ name: 'Bearbeitungszeit', value: formatDuration((ticket.closed_at || Date.now()) - ticket.created_at), inline: true }]
+          : []),
+        ...formFields,
+      );
+    await send(pcfg.ratingPublicChannelId, publicEmbed);
   }
+}
+
+function formatDuration(ms) {
+  const min = Math.max(1, Math.round(ms / 60000));
+  if (min < 60) return `${min} Min.`;
+  const h = Math.floor(min / 60);
+  if (h < 48) return `${h} Std. ${min % 60} Min.`;
+  return `${Math.floor(h / 24)} Tage ${h % 24} Std.`;
 }
 
 /* ---------------- Auto-Close ---------------- */
@@ -839,6 +1110,10 @@ async function autoCloseSweep() {
 module.exports = {
   buildPanelMessage,
   buildQuestionsModal,
+  readModalAnswers,
+  closePermissionError,
+  closeFormQuestions,
+  scheduleLoadRefresh,
   postOrUpdatePanel,
   createTicket,
   claimTicket,

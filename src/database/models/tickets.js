@@ -62,10 +62,28 @@ function findActiveModmail(guildId, userId) {
 
 /** Aktivitätszeitstempel aktualisieren (für Auto-Close). */
 function touch(id) {
-  db.prepare('UPDATE tickets SET last_activity_at = ? WHERE id = ?').run(Date.now(), id);
+  db.prepare('UPDATE tickets SET last_activity_at = ?, alerted_at = NULL, team_alerted_at = NULL WHERE id = ?').run(Date.now(), id);
 }
 function touchByChannel(channelId) {
-  db.prepare('UPDATE tickets SET last_activity_at = ? WHERE channel_id = ?').run(Date.now(), channelId);
+  db.prepare('UPDATE tickets SET last_activity_at = ?, alerted_at = NULL, team_alerted_at = NULL WHERE channel_id = ?').run(Date.now(), channelId);
+}
+
+/** Zustände der Automationen (Erinnerung an den Ersteller / an das Team). */
+function setAlerted(id, ts) {
+  db.prepare('UPDATE tickets SET alerted_at = ? WHERE id = ?').run(ts ?? null, id);
+}
+function setTeamAlerted(id, ts) {
+  db.prepare('UPDATE tickets SET team_alerted_at = ? WHERE id = ?').run(ts ?? null, id);
+}
+
+/** Close-Request: Team fragt den Ersteller, ob das Ticket geschlossen werden kann. */
+function setCloseRequest(id, userId) {
+  db.prepare('UPDATE tickets SET close_request_by = ?, close_request_at = ? WHERE id = ?').run(userId ?? null, userId ? Date.now() : null, id);
+}
+
+/** Antworten des Schließen-Formulars (JSON). */
+function setCloseAnswers(id, answers) {
+  db.prepare('UPDATE tickets SET close_answers = ? WHERE id = ?').run(answers && answers.length ? JSON.stringify(answers) : null, id);
 }
 
 /** Offene Tickets, deren letzte Aktivität älter als `beforeTs` ist. */
@@ -83,6 +101,13 @@ function countOpenByUser(guildId, userId) {
       "SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND opener_id = ? AND status IN ('open','closed')",
     )
     .get(guildId, userId).n;
+}
+
+/** Offene (und geschlossene, aber nicht gelöschte) Tickets einer Kategorie – für Auslastung. */
+function countOpenByCategory(categoryId) {
+  return db
+    .prepare("SELECT COUNT(*) AS n FROM tickets WHERE category_id = ? AND status = 'open'")
+    .get(categoryId).n;
 }
 
 function listOpenByUser(guildId, userId) {
@@ -157,6 +182,11 @@ function markDeleted(id, userId) {
 }
 
 module.exports = {
+  countOpenByCategory,
+  setAlerted,
+  setTeamAlerted,
+  setCloseRequest,
+  setCloseAnswers,
   create,
   createModmail,
   findActiveModmailForUser,

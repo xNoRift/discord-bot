@@ -17,7 +17,7 @@ module.exports = {
   prefix: 'ticket:delete',
   async execute(interaction) {
     const tg = i18n.forGuild(interaction.guildId);
-    if (!isSupport(interaction.member, interaction.settings)) {
+    if (!isSupport(interaction.member, interaction.settings, ticketsModel.getByChannel(interaction.channelId))) {
       return interaction.reply({
         embeds: [embeds.error(undefined, tg('tickets.replies.perm_delete'))],
         flags: MessageFlags.Ephemeral,

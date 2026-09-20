@@ -14,7 +14,7 @@ module.exports = {
     const tg = i18n.forGuild(interaction.guildId);
     const ticket = ticketsModel.getByChannel(interaction.channelId);
     const isClaimer = ticket && ticket.claimed_by === interaction.user.id;
-    if (!isClaimer && !isSupport(interaction.member, interaction.settings)) {
+    if (!isClaimer && !isSupport(interaction.member, interaction.settings, ticket)) {
       return interaction.reply({
         embeds: [embeds.error(undefined, tg('tickets.replies.perm_unclaim_full'))],
         flags: MessageFlags.Ephemeral,
