@@ -17,7 +17,13 @@ async function saveModForm() {
   catch (err) { toast(err.message, 'error'); throw err; }
 }
 
-loadModForm()
+
+Dash.moduleForm('moderation', document.getElementById('modCfg'), {
+  on: 'Das Moderations-Modul ist aktiv. Die Slash-Befehle /warn, /mute, /kick und /ban funktionieren.',
+  off: 'Das Moderations-Modul ist deaktiviert. Die Slash-Befehle sind gesperrt, das Dashboard funktioniert weiter.',
+})
+  // Erst danach das Log-Kanal-Formular laden, damit beide die Auswahllisten nicht gegenseitig überschreiben.
+  .then(() => loadModForm())
   .then(() => Dash.trackForm(modForm, saveModForm, { reset: loadModForm }))
   .catch((e) => toast(e.message, 'error'));
 

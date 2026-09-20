@@ -1070,3 +1070,9 @@ input[type="range"]::-moz-range-thumb {
 @media (max-width: 980px) { .ov-top { grid-template-columns: 1fr; } }
 .nav-item__ext { margin-left: auto; opacity: .55; font-size: .8rem; }
 .nav-item { border-radius: 12px; }
+
+/* Rollen-Mehrfachauswahl */
+.rolepick__chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.rolepick__chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px 4px 10px;border-radius:999px;background:var(--surface-2,rgba(255,255,255,.06));border:1px solid var(--line);font-size:.85rem}
+.rolepick__chip button{background:none;border:0;color:var(--text-2,inherit);cursor:pointer;font-size:1rem;line-height:1;padding:0}
+.rolepick__chip button:hover{color:var(--danger,#ff5d6c)}

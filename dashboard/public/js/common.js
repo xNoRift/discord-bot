@@ -370,7 +370,7 @@ async function fillSelectors(selected = {}) {
 
   for (const sel of selects) {
     const type = sel.dataset.type;
-    const current = selected[sel.name] ?? sel.dataset.value ?? '';
+    const current = selected[sel.name] ?? sel.dataset.value ?? sel.value ?? '';
     let options = '<option value="">— nicht gesetzt —</option>';
 
     if (type === 'role' && roles) {
@@ -393,6 +393,39 @@ async function fillSelectors(selected = {}) {
 
     sel.innerHTML = options;
     if (current) sel.value = current;
+  }
+}
+
+/**
+ * Rollen-Mehrfachauswahl: <div class="rolepick"><input type="hidden" name="feld"></div>
+ * Der Wert ist eine kommagetrennte Liste von Rollen-IDs. Aufrufen nach dem Befüllen des Formulars.
+ */
+async function renderRolePickers(root) {
+  const boxes = [...(root || document).querySelectorAll('.rolepick')];
+  if (!boxes.length) return;
+  const roles = await getRoles();
+  const byId = new Map(roles.map((r) => [r.id, r]));
+  for (const box of boxes) {
+    const input = box.querySelector('input[type=hidden]');
+    if (!input) continue;
+    const ids = String(input.value || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const free = roles.filter((r) => !ids.includes(r.id));
+    box.querySelectorAll('.rolepick__ui').forEach((n) => n.remove());
+    const ui = document.createElement('div');
+    ui.className = 'rolepick__ui';
+    ui.innerHTML = '<div class="rolepick__chips">' + ids.map((id) =>
+      '<span class="rolepick__chip">' + escapeHtml(byId.get(id)?.name || id) +
+      '<button type="button" data-rm="' + escapeHtml(id) + '" aria-label="Entfernen">×</button></span>').join('') + '</div>' +
+      '<select class="rolepick__add"><option value="">＋ Rolle hinzufügen …</option>' +
+      free.map((r) => '<option value="' + r.id + '">' + escapeHtml(r.name) + '</option>').join('') + '</select>';
+    box.appendChild(ui);
+    const commit = (next) => {
+      input.value = next.join(',');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      renderRolePickers(box.parentElement || box);
+    };
+    ui.querySelector('.rolepick__add').addEventListener('change', (e) => { if (e.target.value) commit([...ids, e.target.value]); });
+    ui.querySelectorAll('[data-rm]').forEach((b) => b.addEventListener('click', () => commit(ids.filter((x) => x !== b.dataset.rm))));
   }
 }
 
@@ -755,6 +788,7 @@ async function moduleForm(module, form, opts = {}) {
       else el.value = cfg[el.name] ?? '';
     }
     if (document.getElementById('moduleStatus')) renderModuleStatus(Boolean(cfg.enabled), opts);
+    await renderRolePickers(form);
     form.sbMarkClean?.();
     if (opts.afterLoad) opts.afterLoad(cfg);
   };
@@ -782,6 +816,7 @@ async function moduleForm(module, form, opts = {}) {
 
 window.Dash = {
   moduleForm,
+  renderRolePickers,
   api,
   apiFor,
   toast,

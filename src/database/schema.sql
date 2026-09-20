@@ -512,3 +512,14 @@ CREATE TABLE IF NOT EXISTS club_members (
   PRIMARY KEY (club_id, user_id),
   FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE
 );
+
+-- ---------- Moderation: Verwarnungen ----------
+CREATE TABLE IF NOT EXISTS mod_warns (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id     TEXT NOT NULL,
+  user_id      TEXT NOT NULL,
+  moderator_id TEXT,
+  reason       TEXT,
+  created_at   INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_mod_warns_user ON mod_warns(guild_id, user_id);

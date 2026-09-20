@@ -3,6 +3,8 @@
 const { PermissionFlagsBits } = require('discord.js');
 const logService = require('./logService');
 const config = require('../../config/config');
+const moduleSettings = require('../database/models/moduleSettings');
+const modWarns = require('../database/models/modWarns');
 
 /**
  * Einfache Moderations-Aktionen fürs Dashboard: Timeout, Kick, Ban
@@ -27,12 +29,43 @@ function assertHierarchy(me, member) {
   }
 }
 
+const idList = (str) => String(str || '').split(',').map((x) => x.trim()).filter(Boolean);
+
+/** Ist das Mitglied laut Moderations-Einstellungen von Mod-Aktionen ausgenommen? */
+function assertNotIgnored(cfg, member) {
+  const ignored = idList(cfg.ignoredRoleIds);
+  if (ignored.some((id) => member.roles.cache.has(id))) {
+    throw new Error('Dieses Mitglied hat eine ignorierte Rolle und kann nicht moderiert werden.');
+  }
+}
+
+const NEEDS = {
+  mute: ['muteRoleIds', PermissionFlagsBits.ModerateMembers],
+  warn: ['warnRoleIds', PermissionFlagsBits.ModerateMembers],
+  kick: ['kickRoleIds', PermissionFlagsBits.KickMembers],
+  ban: ['banRoleIds', PermissionFlagsBits.BanMembers],
+};
+
+/**
+ * Darf dieses Mitglied die Aktion per Slash-Befehl ausführen?
+ * Sind für die Aktion Rollen gesetzt, zählen nur diese (plus Administratoren);
+ * sonst gilt das passende Discord-Recht.
+ */
+function canUse(member, action, cfg) {
+  if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
+  const [key, flag] = NEEDS[action];
+  const roles = idList(cfg[key]);
+  if (roles.length) return roles.some((id) => member.roles.cache.has(id));
+  return member.permissions.has(flag);
+}
+
 async function act(guild, { action, userId, reason, minutes, actorTag }) {
   if (!ACTIONS.includes(action)) throw new Error('Unbekannte Aktion.');
   if (!/^\d{5,25}$/.test(String(userId || ''))) throw new Error('Bitte eine gültige Discord-User-ID angeben.');
   const why = String(reason || '').trim().slice(0, 400) || 'Kein Grund angegeben';
   const auditReason = `${why} — via Dashboard${actorTag ? ` (${actorTag})` : ''}`;
 
+  const cfg = moduleSettings.get(guild.id, 'moderation');
   const me = guild.members.me ?? (await guild.members.fetchMe());
   let summary;
 
@@ -41,12 +74,15 @@ async function act(guild, { action, userId, reason, minutes, actorTag }) {
     const member = await guild.members.fetch(userId).catch(() => null);
     if (!member) throw new Error('Mitglied ist nicht auf dem Server.');
     assertHierarchy(me, member);
+    assertNotIgnored(cfg, member);
     if (action === 'untimeout') {
       await member.timeout(null, auditReason);
       summary = `Timeout für ${member.user.tag} aufgehoben`;
     } else {
       const mins = Math.max(1, Math.min(MAX_TIMEOUT_MIN, Number.parseInt(minutes, 10) || 10));
       await member.timeout(mins * 60 * 1000, auditReason);
+      if (cfg.dmOnAction) await member.send(`Du wurdest auf **${guild.name}** für ${mins} Min. stummgeschaltet.
+Grund: ${why}`).catch(() => null);
       summary = `${member.user.tag} für ${mins} Min. getimeoutet`;
     }
   } else if (action === 'kick') {
@@ -54,7 +90,8 @@ async function act(guild, { action, userId, reason, minutes, actorTag }) {
     const member = await guild.members.fetch(userId).catch(() => null);
     if (!member) throw new Error('Mitglied ist nicht auf dem Server.');
     assertHierarchy(me, member);
-    await member.send(`Du wurdest von **${guild.name}** gekickt.\nGrund: ${why}`).catch(() => null);
+    assertNotIgnored(cfg, member);
+    if (cfg.dmOnAction) await member.send(`Du wurdest von **${guild.name}** gekickt.\nGrund: ${why}`).catch(() => null);
     await member.kick(auditReason);
     summary = `${member.user.tag} gekickt`;
   } else if (action === 'ban') {
@@ -62,7 +99,8 @@ async function act(guild, { action, userId, reason, minutes, actorTag }) {
     const member = await guild.members.fetch(userId).catch(() => null);
     if (member) {
       assertHierarchy(me, member);
-      await member.send(`Du wurdest von **${guild.name}** gebannt.\nGrund: ${why}`).catch(() => null);
+      assertNotIgnored(cfg, member);
+      if (cfg.dmOnAction) await member.send(`Du wurdest von **${guild.name}** gebannt.\nGrund: ${why}`).catch(() => null);
     }
     await guild.bans.create(userId, { reason: auditReason, deleteMessageSeconds: 0 });
     summary = `${member?.user.tag || userId} gebannt`;
@@ -92,6 +130,45 @@ async function act(guild, { action, userId, reason, minutes, actorTag }) {
     .catch(() => null);
 
   return summary;
+}
+
+/**
+ * Verwarnt ein Mitglied und wendet bei Erreichen des Warnlimits die eingestellte Aktion an.
+ * @returns {Promise<{summary:string, count:number, limitHit:string|null}>}
+ */
+async function warn(guild, { userId, reason, moderatorId, actorTag }) {
+  if (!/^\d{5,25}$/.test(String(userId || ''))) throw new Error('Bitte eine gültige Discord-User-ID angeben.');
+  const cfg = moduleSettings.get(guild.id, 'moderation');
+  const why = String(reason || '').trim().slice(0, 400) || 'Kein Grund angegeben';
+  const member = await guild.members.fetch(userId).catch(() => null);
+  if (!member) throw new Error('Mitglied ist nicht auf dem Server.');
+  assertNotIgnored(cfg, member);
+  const count = modWarns.add(guild.id, userId, moderatorId, why);
+  if (cfg.dmOnAction) await member.send(`Du wurdest auf **${guild.name}** verwarnt (${count}. Verwarnung).
+Grund: ${why}`).catch(() => null);
+  await logService.log({
+    guildId: guild.id, category: 'moderation', type: 'mod_warn', title: '⚠️ Verwarnung',
+    color: config.branding.warning,
+    fields: [
+      { name: 'Nutzer', value: `<@${userId}> (${userId})`, inline: false },
+      { name: 'Verwarnungen', value: String(count), inline: true },
+      { name: 'Grund', value: why, inline: true },
+      ...(actorTag ? [{ name: 'Von', value: actorTag, inline: true }] : []),
+    ],
+    targetId: userId,
+  }).catch(() => null);
+
+  let limitHit = null;
+  if (cfg.warnLimitEnabled && count >= cfg.warnLimit) {
+    limitHit = cfg.warnLimitAction;
+    const note = `Warnlimit (${cfg.warnLimit}) erreicht`;
+    await act(guild, {
+      action: cfg.warnLimitAction === 'timeout' ? 'timeout' : cfg.warnLimitAction,
+      userId, reason: note, minutes: cfg.warnLimitTimeoutMinutes, actorTag: 'Warnlimit',
+    }).catch(() => { limitHit = null; });
+    if (limitHit) modWarns.clear(guild.id, userId);
+  }
+  return { summary: `${member.user.tag} verwarnt (${count}. Verwarnung)`, count, limitHit };
 }
 
 /**
@@ -128,4 +205,4 @@ async function purge(guild, channelId, count, filterUserId) {
   return deleted.size;
 }
 
-module.exports = { act, purge, ACTIONS };
+module.exports = { act, warn, purge, canUse, ACTIONS };

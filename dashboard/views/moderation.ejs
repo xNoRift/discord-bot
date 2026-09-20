@@ -3,8 +3,49 @@
 
 <div class="page-head">
   <div class="page-head__row"><h1><%- icon('shield') %> Moderation</h1></div>
-  <p>Moderations-Einstellungen deines Servers.</p>
+  <p>Verwalte Bans, Kicks, Verwarnungen und Stummschaltungen – per Slash-Befehl oder hier im Dashboard.</p>
 </div>
+
+<div class="module-status" id="moduleStatus">
+  <span class="module-status__dot"></span>
+  <span class="module-status__text"><b id="msTitle">…</b><span id="msText"></span></span>
+  <button class="btn btn--ghost btn--sm" id="msToggle">…</button>
+</div>
+
+<form id="modCfg" class="form">
+  <div class="card">
+    <div class="card__head"><h2><%- icon('lock') %> Berechtigungen</h2></div>
+    <p class="card__sub">Wer darf die Slash-Befehle nutzen? Ist für eine Aktion keine Rolle gewählt, gilt das passende Discord-Recht. Administratoren dürfen immer.</p>
+    <div class="col-2">
+      <div class="field"><label>Mute-Berechtigung</label><div class="rolepick"><input type="hidden" name="muteRoleIds" /></div><small>Rollen für /mute und /unmute</small></div>
+      <div class="field"><label>Warn-Berechtigung</label><div class="rolepick"><input type="hidden" name="warnRoleIds" /></div><small>Rollen für /warn und /warnings</small></div>
+      <div class="field"><label>Kick-Berechtigung</label><div class="rolepick"><input type="hidden" name="kickRoleIds" /></div><small>Rollen für /kick</small></div>
+      <div class="field"><label>Ban-Berechtigung</label><div class="rolepick"><input type="hidden" name="banRoleIds" /></div><small>Rollen für /ban</small></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('settings') %> Allgemeines</h2></div>
+    <div class="field"><label>Ignorierte Rollen</label><div class="rolepick"><input type="hidden" name="ignoredRoleIds" /></div><small>Rollen, die immun gegen Mod-Aktionen sind (auch im Dashboard).</small></div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>DM-Nachricht bei Mod-Aktionen</b><span>Nutzer erhalten eine Direktnachricht, wenn sie verwarnt, stummgeschaltet, gekickt oder gebannt werden</span></div>
+      <label class="toggle"><input type="checkbox" name="dmOnAction" /><span class="toggle__track"></span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('clock') %> Limit an Verwarnungen</h2></div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Warnlimit aktivieren</b><span>Führt automatisch eine Aktion aus, wenn ein Nutzer das Limit erreicht (danach werden seine Verwarnungen zurückgesetzt)</span></div>
+      <label class="toggle"><input type="checkbox" name="warnLimitEnabled" /><span class="toggle__track"></span></label>
+    </div>
+    <div class="col-2">
+      <div class="field"><label>Verwarnungen bis zur Aktion</label><input name="warnLimit" type="number" min="1" max="50" /></div>
+      <div class="field"><label>Aktion</label><select name="warnLimitAction"><option value="timeout">Stummschalten</option><option value="kick">Kicken</option><option value="ban">Bannen</option></select></div>
+    </div>
+    <div class="field" style="max-width:320px;"><label>Stummschaltung (Minuten)</label><input name="warnLimitTimeoutMinutes" type="number" min="1" max="40320" /></div>
+  </div>
+</form>
 
 <div class="card">
   <div class="card__head"><h2><%- icon('file') %> Moderations-Log</h2></div>
