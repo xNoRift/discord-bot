@@ -147,7 +147,7 @@ function createApp() {
     }
     res.status(status).render('error', {
       title: 'Fehler',
-      message: config.isProduction ? 'Interner Serverfehler.' : err.message,
+      message: config.isProduction && !config.isOwner(req.session?.user?.id) ? 'Interner Serverfehler.' : err.message,
     });
   });
 
