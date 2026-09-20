@@ -49,6 +49,41 @@ ensureColumn('application_types', 'chat_category_id', 'TEXT');
 ensureColumn('application_types', 'auto_chat', 'INTEGER DEFAULT 0');
 ensureColumn('guild_settings', 'application_chat_category_id', 'TEXT');
 
+// Bewerbungen im Appy-Aufbau: Einstellungen als JSON, Antwort-Methode, Fragetypen, Einreichungs-Details
+ensureColumn('application_types', 'cfg', 'TEXT');
+ensureColumn('application_types', 'method', "TEXT DEFAULT 'modal'"); // modal | dm (neue Bewerbungen: dm)
+ensureColumn('application_questions', 'options', 'TEXT');
+ensureColumn('application_questions', 'description', 'TEXT');
+ensureColumn('applications', 'thread_id', 'TEXT');
+ensureColumn('applications', 'duration_ms', 'INTEGER');
+ensureColumn('applications', 'source', 'TEXT');
+
+// Einmalig: alte „Annahme-Rolle“ -> Rollen-Liste, altes Einzel-Panel -> Panel-Eintrag
+try {
+  db.prepare(
+    "UPDATE application_types SET cfg = json_object('acceptedRoleIds', accept_role_id) WHERE cfg IS NULL AND accept_role_id IS NOT NULL AND accept_role_id != ''",
+  ).run();
+  const legacy = db
+    .prepare(
+      "SELECT guild_id, application_panel_channel_id AS ch, application_panel_message_id AS msg, application_panel_title AS t, application_panel_message AS m FROM guild_settings WHERE application_panel_message_id IS NOT NULL AND application_panel_message_id != ''",
+    )
+    .all();
+  for (const g of legacy) {
+    if (!db.prepare('SELECT 1 FROM application_panels WHERE guild_id = ?').get(g.guild_id)) {
+      const typeIds = db
+        .prepare('SELECT id FROM application_types WHERE guild_id = ? AND enabled = 1 ORDER BY position, id')
+        .all(g.guild_id)
+        .map((r) => r.id);
+      db.prepare(
+        'INSERT INTO application_panels (guild_id, name, channel_id, message_id, type_ids, panel_type, cfg, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      ).run(g.guild_id, 'Bewerbungs-Panel', g.ch, g.msg, JSON.stringify(typeIds), 'buttons', JSON.stringify({ title: g.t || '', description: g.m || '' }), Date.now());
+    }
+    db.prepare('UPDATE guild_settings SET application_panel_message_id = NULL, application_panel_channel_id = NULL WHERE guild_id = ?').run(g.guild_id);
+  }
+} catch (err) {
+  logger.warn(`[db] Bewerbungs-Migration: ${err.message}`);
+}
+
 // Multi-Panel-Ticketsystem
 ensureColumn('tickets', 'panel_id', 'INTEGER');
 ensureColumn('tickets', 'category_id', 'INTEGER');

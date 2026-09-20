@@ -328,6 +328,32 @@ CREATE TABLE IF NOT EXISTS applications (
 );
 CREATE INDEX IF NOT EXISTS idx_applications_guild ON applications(guild_id, status);
 
+-- ---------- Bewerbungs-Panels (Nachricht mit Buttons/Auswahlmenü, verknüpft mit Bewerbungsarten) ----------
+CREATE TABLE IF NOT EXISTS application_panels (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id   TEXT NOT NULL,
+  name       TEXT NOT NULL,
+  channel_id TEXT,
+  message_id TEXT,
+  type_ids   TEXT,                            -- JSON: [application_types.id, ...]
+  panel_type TEXT NOT NULL DEFAULT 'buttons', -- buttons | select
+  cfg        TEXT,                            -- JSON: Embed (title, description, footer, color, imageUrl, thumbnailUrl)
+  created_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_apppanels_guild ON application_panels(guild_id);
+
+-- ---------- Laufende Bewerbungen per Direktnachricht (max. eine pro Nutzer) ----------
+CREATE TABLE IF NOT EXISTS application_sessions (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id     TEXT NOT NULL,
+  type_id      INTEGER NOT NULL,
+  user_id      TEXT NOT NULL UNIQUE,
+  step         INTEGER NOT NULL DEFAULT 0,
+  answers_json TEXT NOT NULL DEFAULT '[]',
+  started_at   INTEGER,
+  expires_at   INTEGER
+);
+
 -- ---------- Globale Bot-Konfiguration (eine Zeile, id = 1) ----------
 CREATE TABLE IF NOT EXISTS bot_config (
   id              INTEGER PRIMARY KEY CHECK (id = 1),

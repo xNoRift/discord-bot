@@ -4,6 +4,7 @@ const settingsModel = require('../database/models/settings');
 const ticketsModel = require('../database/models/tickets');
 const ticketService = require('../services/ticketService');
 const welcomeService = require('../services/welcomeService');
+const applicationService = require('../services/applicationService');
 const logger = require('../utils/logger');
 
 /**
@@ -17,6 +18,12 @@ module.exports = {
       await welcomeService.sendLeave(member);
     } catch (err) {
       logger.error('[guildMemberRemove] Abschied:', err.message);
+    }
+
+    try {
+      await applicationService.onMemberLeave(member);
+    } catch (err) {
+      logger.error('[guildMemberRemove] Bewerbungen:', err.message);
     }
 
     try {

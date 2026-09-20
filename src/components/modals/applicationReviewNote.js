@@ -3,6 +3,7 @@
 const { MessageFlags } = require('discord.js');
 
 const embeds = require('../../utils/embeds');
+const appModel = require('../../database/models/applications');
 const applicationService = require('../../services/applicationService');
 const { isApplicationTeam } = require('../../utils/permissions');
 
@@ -14,7 +15,7 @@ module.exports = {
     const applicationId = Number.parseInt(parts[3], 10);
     const decision = action === 'accept' ? 'accepted' : 'rejected';
 
-    if (!isApplicationTeam(interaction.member, interaction.settings)) {
+    if (!isApplicationTeam(interaction.member, interaction.settings, appModel.getApplication(applicationId))) {
       return interaction.reply({
         embeds: [embeds.error(undefined, 'Du bist nicht berechtigt, Bewerbungen zu bearbeiten.')],
         flags: MessageFlags.Ephemeral,

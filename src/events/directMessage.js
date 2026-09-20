@@ -2,6 +2,7 @@
 
 const { ChannelType } = require('discord.js');
 const modmailService = require('../services/modmailService');
+const applicationFlow = require('../services/applicationFlowService');
 const logger = require('../utils/logger');
 
 /**
@@ -18,6 +19,8 @@ module.exports = {
 
     try {
       if (message.channel?.type === ChannelType.DM || !message.inGuild()) {
+        // Läuft gerade eine Bewerbung per DM, ist die Nachricht eine Antwort darauf (kein ModMail)
+        if (await applicationFlow.handleDm(message)) return;
         await modmailService.relayDmToChannel(message);
       } else {
         await modmailService.relayChannelToDm(message);

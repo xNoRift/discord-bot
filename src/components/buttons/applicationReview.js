@@ -28,7 +28,7 @@ module.exports = {
     if (!application || application.guild_id !== interaction.guildId) {
       return interaction.reply({ embeds: [embeds.error(undefined, 'Bewerbung nicht gefunden.')], flags: MessageFlags.Ephemeral });
     }
-    if (!isApplicationTeam(interaction.member, interaction.settings)) {
+    if (!isApplicationTeam(interaction.member, interaction.settings, application)) {
       return interaction.reply({
         embeds: [embeds.error(undefined, 'Du bist nicht berechtigt, Bewerbungen zu bearbeiten.')],
         flags: MessageFlags.Ephemeral,

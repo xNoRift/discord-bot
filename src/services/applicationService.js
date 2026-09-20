@@ -6,10 +6,9 @@ const {
   ButtonStyle,
   ChannelType,
   EmbedBuilder,
-  ModalBuilder,
+  MessageFlags,
   PermissionsBitField,
-  TextInputBuilder,
-  TextInputStyle,
+  StringSelectMenuBuilder,
 } = require('discord.js');
 const client = require('../core/client');
 const appModel = require('../database/models/applications');
@@ -19,32 +18,83 @@ const logService = require('./logService');
 const embeds = require('../utils/embeds');
 const config = require('../../config/config');
 const { botCanManageRole } = require('../utils/permissions');
-const { discordTimestamp } = require('../utils/time');
 const logger = require('../utils/logger');
 
 /**
- * Bewerbungssystem: Panel, Modal, Einreichung, Review.
- * Hinweis: Ein Discord-Modal erlaubt maximal 5 Eingabefelder -> max. 5 Fragen pro Bewerbungsart.
+ * Bewerbungssystem (Appy-Aufbau): Panels, Anforderungen, Einreichung, Entscheidung, Bewerber-Chat.
+ * Ausgefüllt wird per Discord-Fenster (Modal, max. 5 Fragen) oder per Direktnachricht
+ * (siehe applicationFlowService).
  */
 
-const MAX_QUESTIONS = 5;
+const MAX_QUESTIONS = 200;
+const MODAL_MAX_QUESTIONS = 5;
+const METHOD_LABEL = { modal: 'Discord-Fenster', dm: 'Direktnachricht', web: 'Webseite' };
+
+/* ---------------- Hilfen ---------------- */
+
+const idsOf = (csv) => String(csv || '').split(',').map((s) => s.trim()).filter(Boolean);
+
+async function fetchChannel(guild, id) {
+  if (!id) return null;
+  return guild.channels.cache.get(id) ?? (await guild.channels.fetch(id).catch(() => null));
+}
+
+function parseColor(hex) {
+  const m = String(hex || '').match(/^#?([0-9a-fA-F]{6})$/);
+  return m ? parseInt(m[1], 16) : null;
+}
+
+const validEmoji = (e) => /^(\p{Extended_Pictographic}|<a?:\w+:\d+>)/u.test(String(e || ''));
+
+function fillTemplate(text, vars) {
+  let out = String(text || '');
+  for (const [k, v] of Object.entries(vars)) out = out.replaceAll(`{${k}}`, v ?? '');
+  return out;
+}
+
+function formatDuration(ms) {
+  const s = Math.max(1, Math.round(ms / 1000));
+  if (s < 60) return `${s} Sek.`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} Min. ${s % 60} Sek.`;
+  return `${Math.floor(m / 60)} Std. ${m % 60} Min.`;
+}
+
+function statusLabel(status) {
+  return { pending: '🕓 Offen', accepted: '✅ Angenommen', rejected: '❌ Abgelehnt' }[status] ?? status;
+}
 
 /* ---------------- Panel ---------------- */
 
-function buildPanelMessage(settings, types) {
+/** Panel-Nachricht: Embed + Buttons (je Bewerbung ein Button) oder ein Auswahlmenü. */
+function buildPanelMessage(panel, types) {
+  const cfg = appModel.panelCfg(panel);
   const embed = new EmbedBuilder()
-    .setColor(config.branding.color)
-    .setTitle(settings.application_panel_title || config.defaults.applicationPanelTitle)
-    .setDescription(
-      (settings.application_panel_message || config.defaults.applicationPanelMessage) +
-        '\n\n' +
-        types.map((t) => `${t.emoji ? t.emoji + ' ' : ''}**${t.name}**${t.description ? ` – ${t.description}` : ''}`).join('\n'),
-    )
-    .setFooter({ text: 'Wähle unten eine Position aus.' });
+    .setColor(parseColor(cfg.color) ?? config.branding.color)
+    .setTitle(cfg.title || config.defaults.applicationPanelTitle)
+    .setDescription(cfg.description || config.defaults.applicationPanelMessage);
+  if (cfg.footer) embed.setFooter({ text: cfg.footer });
+  if (cfg.imageUrl) embed.setImage(cfg.imageUrl);
+  if (cfg.thumbnailUrl) embed.setThumbnail(cfg.thumbnailUrl);
+
+  if (panel.panel_type === 'select') {
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId('app:pick')
+      .setPlaceholder('Wähle eine Bewerbung …')
+      .addOptions(
+        types.slice(0, 25).map((t) => ({
+          label: t.name.slice(0, 100),
+          value: String(t.id),
+          ...(t.description ? { description: t.description.slice(0, 100) } : {}),
+          ...(validEmoji(t.emoji) ? { emoji: t.emoji } : {}),
+        })),
+      );
+    return { embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)] };
+  }
 
   const rows = [];
   let current = new ActionRowBuilder();
-  types.forEach((t, i) => {
+  types.slice(0, 25).forEach((t, i) => {
     if (i > 0 && i % 5 === 0) {
       rows.push(current);
       current = new ActionRowBuilder();
@@ -53,121 +103,230 @@ function buildPanelMessage(settings, types) {
       new ButtonBuilder()
         .setCustomId(`app:start:${t.id}`)
         .setLabel(t.name.slice(0, 80))
-        .setEmoji(t.emoji || '📋')
+        .setEmoji(validEmoji(t.emoji) ? t.emoji : '📋')
         .setStyle(ButtonStyle.Secondary),
     );
   });
   if (current.components.length) rows.push(current);
-
-  return { embeds: [embed], components: rows.slice(0, 5) };
+  return { embeds: [embed], components: rows };
 }
 
-async function postOrUpdatePanel(guild, channelId) {
-  const settings = settingsModel.get(guild.id);
-  const types = appModel.listTypes(guild.id, { onlyEnabled: true });
-  if (!types.length) throw new Error('Es sind keine (aktiven) Bewerbungsarten konfiguriert.');
+/** Panel senden bzw. die vorhandene Nachricht aktualisieren. */
+async function sendPanel(guild, panel) {
+  if (!panel.channel_id) throw new Error('Bitte zuerst einen Kanal für das Panel wählen.');
+  const types = appModel
+    .panelTypeIds(panel)
+    .map((id) => appModel.getType(id))
+    .filter((t) => t && t.guild_id === guild.id && t.enabled);
+  if (!types.length) throw new Error('Verknüpfe mindestens eine (offene) Bewerbung mit dem Panel.');
 
-  const channel =
-    guild.channels.cache.get(channelId) ?? (await guild.channels.fetch(channelId).catch(() => null));
+  const channel = await fetchChannel(guild, panel.channel_id);
   if (!channel || !channel.isTextBased()) throw new Error('Panel-Kanal nicht gefunden oder kein Textkanal.');
 
-  const payload = buildPanelMessage(settings, types);
-
-  if (settings.application_panel_channel_id === channelId && settings.application_panel_message_id) {
-    const existing = await channel.messages.fetch(settings.application_panel_message_id).catch(() => null);
+  const payload = buildPanelMessage(panel, types);
+  if (panel.message_id) {
+    const existing = await channel.messages.fetch(panel.message_id).catch(() => null);
     if (existing) {
       await existing.edit(payload);
       return existing;
     }
   }
-
   const message = await channel.send(payload);
-  settingsModel.update(guild.id, {
-    application_panel_channel_id: channelId,
-    application_panel_message_id: message.id,
-  });
+  appModel.updatePanel(panel.id, { message_id: message.id });
   return message;
+}
+
+/** Zeichnet die Panel-Nachricht neu (setzt ein Auswahlmenü zurück). */
+async function refreshPanelMessage(message) {
+  const panel = message ? appModel.getPanelByMessage(message.id) : null;
+  if (!panel) return;
+  const types = appModel.panelTypeIds(panel).map((id) => appModel.getType(id)).filter((t) => t && t.enabled);
+  if (types.length) await message.edit(buildPanelMessage(panel, types)).catch(() => null);
+}
+
+/* ---------------- Anforderungen & Start ---------------- */
+
+/** Liefert eine Fehlermeldung, wenn das Mitglied sich (jetzt) nicht bewerben darf – sonst null. */
+function eligibilityError(member, type, settings) {
+  const cfg = appModel.typeCfg(type);
+  if (!settings?.application_enabled) return 'Das Bewerbungssystem ist auf diesem Server derzeit deaktiviert.';
+  if (!type || type.guild_id !== member.guild.id) return 'Diese Bewerbung existiert nicht (mehr).';
+  if (!type.enabled) return 'Diese Bewerbung ist derzeit geschlossen.';
+  const questions = appModel.listQuestions(type.id);
+  if (!questions.length) return 'Für diese Bewerbung wurden noch keine Fragen konfiguriert.';
+  if (type.method === 'modal' && questions.length > MODAL_MAX_QUESTIONS) {
+    return 'Diese Bewerbung hat mehr als 5 Fragen und ist noch auf „Discord-Fenster“ gestellt. Bitte einem Admin Bescheid geben.';
+  }
+
+  const restricted = idsOf(cfg.restrictedRoleIds);
+  if (restricted.length) {
+    const has = restricted.map((id) => member.roles.cache.has(id));
+    if (cfg.restrictedMode === 'any' ? has.some(Boolean) : has.every(Boolean)) {
+      return 'Du darfst dich auf diese Bewerbung nicht bewerben.';
+    }
+  }
+  const required = idsOf(cfg.requiredRoleIds);
+  if (required.length) {
+    const has = required.map((id) => member.roles.cache.has(id));
+    if (!(cfg.requiredMode === 'any' ? has.some(Boolean) : has.every(Boolean))) {
+      return 'Dir fehlt eine Rolle, die für diese Bewerbung nötig ist.';
+    }
+  }
+
+  if (appModel.hasPending(member.guild.id, member.id, type.id)) {
+    return 'Du hast bereits eine offene Bewerbung für diese Position.';
+  }
+  if (cfg.cooldownMin > 0) {
+    const last = appModel.lastSubmissionAt(member.guild.id, member.id, type.id);
+    const until = last ? last + cfg.cooldownMin * 60_000 : 0;
+    if (until > Date.now()) return `Du kannst dich erst wieder <t:${Math.ceil(until / 1000)}:R> auf diese Bewerbung bewerben.`;
+  }
+  return null;
+}
+
+/** Discord-Fragen -> Modal-Format (Auswahl = Dropdown, Zahl = Kurztext). */
+function toModalQuestions(questions) {
+  return questions.map((q) => ({
+    ...q,
+    style: q.style === 'choice' ? 'select' : q.style === 'number' ? 'short' : q.style,
+    options: q.options,
+    placeholder: q.style === 'number' ? 'Zahl' : undefined,
+  }));
+}
+
+/**
+ * Startet eine Bewerbung (Button, Auswahlmenü oder /apply).
+ * Modal-Bewerbung: öffnet das Fenster. DM-Bewerbung: zeigt eine Bestätigung mit „Starten“.
+ */
+async function beginApplication(interaction, typeId) {
+  const type = appModel.getType(typeId);
+  const settings = interaction.settings ?? settingsModel.get(interaction.guildId);
+  const reply = (embed, components = []) => interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+
+  if (!interaction.guild || !interaction.member) return reply(embeds.error(undefined, 'Bewerbungen sind nur auf einem Server möglich.'));
+  const problem = eligibilityError(interaction.member, type, settings);
+  if (problem) return reply(embeds.warning('Bewerbung nicht möglich', problem));
+  if (appModel.getSessionByUser(interaction.user.id)) {
+    return reply(embeds.warning('Bewerbung läuft bereits', 'Du hast schon eine Bewerbung per Direktnachricht begonnen. Schließe sie ab oder schreibe mir `abbrechen`.'));
+  }
+
+  const questions = appModel.listQuestions(type.id);
+  if (type.method === 'modal') {
+    return interaction.showModal(buildModal(type, questions));
+  }
+
+  const cfg = appModel.typeCfg(type);
+  const text =
+    cfg.confirmationMessage ||
+    `Möchtest du dich auf **${type.name}** bewerben?\n\nNach dem Start schicke ich dir eine Reihe von Fragen per Direktnachricht. ` +
+      `Du hast **${formatDuration(cfg.timeLimitMin * 60_000)}** Zeit, sie zu beantworten. Mit dem Button unten (oder \`abbrechen\`) kannst du jederzeit stoppen.`;
+  return reply(
+    embeds.info(`📋 Bewerbung: ${type.name}`, fillTemplate(text, { applicationName: type.name, server: interaction.guild.name })),
+    [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`app:begin:${type.id}`).setLabel('Starten').setEmoji('▶️').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('app:cancel').setLabel('Abbrechen').setStyle(ButtonStyle.Secondary),
+      ),
+    ],
+  );
 }
 
 /* ---------------- Modal ---------------- */
 
 function buildModal(type, questions) {
-  const modal = new ModalBuilder()
-    .setCustomId(`app:modal:${type.id}`)
-    .setTitle(`Bewerbung: ${type.name}`.slice(0, 45));
+  const ticketService = require('./ticketService');
+  return ticketService.buildQuestionsModal(`app:modal:${type.id}`, `Bewerbung: ${type.name}`, toModalQuestions(questions));
+}
 
-  questions.slice(0, MAX_QUESTIONS).forEach((q, i) => {
-    const input = new TextInputBuilder()
-      .setCustomId(`q_${q.id ?? i}`)
-      .setLabel(q.label.slice(0, 45))
-      .setStyle(q.style === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short)
-      .setRequired(Boolean(q.required));
-    if (q.min_length) input.setMinLength(Math.min(q.min_length, 1000));
-    if (q.max_length) input.setMaxLength(Math.min(q.max_length, 4000));
-    modal.addComponents(new ActionRowBuilder().addComponents(input));
-  });
-
-  return modal;
+function readModal(fields, questions) {
+  return require('./ticketService').readModalAnswers(fields, toModalQuestions(questions));
 }
 
 /* ---------------- Einreichung ---------------- */
 
-function buildReviewMessage(application, answers) {
+/** Antworten -> Embed-Felder, in Blöcke geteilt (Discord: max. 6000 Zeichen je Nachricht). */
+function chunkAnswers(answers, budget) {
+  const chunks = [[]];
+  let used = 0;
+  for (const a of answers) {
+    const name = String(a.question).slice(0, 256);
+    const value = (a.answer && String(a.answer).trim() ? String(a.answer) : '*(keine Angabe)*').slice(0, 1024);
+    if (chunks.at(-1).length >= 20 || (used + name.length + value.length > budget && chunks.at(-1).length)) {
+      chunks.push([]);
+      used = 0;
+    }
+    chunks.at(-1).push({ name, value });
+    used += name.length + value.length;
+  }
+  return chunks;
+}
+
+/** Weitere Antwort-Embeds, wenn nicht alles in die Hauptnachricht passt. */
+function overflowEmbeds(application, answers, hide) {
+  if (hide) return [];
+  return chunkAnswers(answers, 3500)
+    .slice(1)
+    .map((fields, i) => new EmbedBuilder().setColor(config.branding.color).setTitle(`Antworten (Teil ${i + 2}) – Bewerbung #${application.id}`).addFields(fields));
+}
+
+function buildReviewMessage(application, answers, type) {
+  const cfg = appModel.typeCfg(type ?? (application.type_id ? appModel.getType(application.type_id) : null));
   const embed = new EmbedBuilder()
     .setColor(
-      application.status === 'accepted'
-        ? config.branding.success
-        : application.status === 'rejected'
-          ? config.branding.danger
-          : config.branding.color,
+      application.status === 'accepted' ? config.branding.success : application.status === 'rejected' ? config.branding.danger : config.branding.color,
     )
     .setTitle(`📋 Bewerbung #${application.id} – ${application.type_name}`)
     .setDescription(`**Bewerber:** <@${application.user_id}> (${application.user_tag ?? application.user_id})`)
-    .addFields(
-      answers.slice(0, 24).map((a) => ({
-        name: a.question.slice(0, 256),
-        value: (a.answer || '*(keine Angabe)*').slice(0, 1024),
-      })),
-    )
     .setFooter({ text: `Status: ${statusLabel(application.status)}` })
     .setTimestamp(application.created_at);
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`app:accept:${application.id}`)
-      .setLabel('Annehmen')
-      .setEmoji('✅')
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(application.status !== 'pending'),
-    new ButtonBuilder()
-      .setCustomId(`app:reject:${application.id}`)
-      .setLabel('Ablehnen')
-      .setEmoji('❌')
-      .setStyle(ButtonStyle.Danger)
-      .setDisabled(application.status !== 'pending'),
-    new ButtonBuilder()
-      .setCustomId(`app:chat:${application.id}`)
-      .setLabel('Chat')
-      .setEmoji('💬')
-      .setStyle(ButtonStyle.Primary),
-  );
+  if (cfg.hideAnswers) {
+    embed.addFields({ name: 'Antworten', value: '🔒 Ausgeblendet – nur im Dashboard einsehbar.' });
+  } else {
+    embed.addFields(chunkAnswers(answers, 3500)[0]);
+  }
+  if (cfg.showStats) {
+    embed.addFields(
+      { name: 'Methode', value: METHOD_LABEL[application.source] ?? '–', inline: true },
+      { name: 'Ausfüllzeit', value: application.duration_ms ? formatDuration(application.duration_ms) : '–', inline: true },
+    );
+  }
 
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`app:accept:${application.id}`).setLabel('Annehmen').setEmoji('✅').setStyle(ButtonStyle.Success).setDisabled(application.status !== 'pending'),
+    new ButtonBuilder().setCustomId(`app:reject:${application.id}`).setLabel('Ablehnen').setEmoji('❌').setStyle(ButtonStyle.Danger).setDisabled(application.status !== 'pending'),
+    new ButtonBuilder().setCustomId(`app:chat:${application.id}`).setLabel('Chat').setEmoji('💬').setStyle(ButtonStyle.Primary),
+  );
   return { embeds: [embed], components: [row] };
 }
 
-function statusLabel(status) {
-  return { pending: '🕓 Offen', accepted: '✅ Angenommen', rejected: '❌ Abgelehnt' }[status] ?? status;
+/** Rollen hinzufügen/entfernen; liefert Hinweise zu Fehlschlägen. */
+async function applyRoles(guild, member, addCsv, removeCsv, reason) {
+  const notes = [];
+  const run = async (csv, action) => {
+    for (const id of idsOf(csv)) {
+      const role = guild.roles.cache.get(id) ?? (await guild.roles.fetch(id).catch(() => null));
+      const can = botCanManageRole(guild, role);
+      if (!role || !can.ok) {
+        notes.push(`⚠️ Rolle ${role ? `**${role.name}**` : id}: ${can.reason}`);
+        continue;
+      }
+      await member.roles[action](role, reason).catch((err) => notes.push(`⚠️ Rolle **${role.name}**: ${err.message}`));
+    }
+  };
+  await run(addCsv, 'add');
+  await run(removeCsv, 'remove');
+  return notes;
 }
 
 /**
- * Speichert eine eingereichte Bewerbung und postet sie in den Bewerbungs-Channel.
- * @param {import('discord.js').Guild} guild
+ * Speichert eine eingereichte Bewerbung und postet sie in den Bewerbungs-Kanal.
  * @param {object} user  { id, tag }
- * @param {object} type  application_types Zeile
- * @param {Array<{question:string, answer:string}>} answers
+ * @param {{source?: 'modal'|'dm'|'web', durationMs?: number}} [opts]
  */
-async function submitApplication(guild, user, type, answers) {
+async function submitApplication(guild, user, type, answers, opts = {}) {
   const settings = settingsModel.get(guild.id);
+  const cfg = appModel.typeCfg(type);
 
   const application = appModel.createApplication({
     guildId: guild.id,
@@ -176,18 +335,34 @@ async function submitApplication(guild, user, type, answers) {
     userId: user.id,
     userTag: user.tag,
     answers,
+    durationMs: opts.durationMs,
+    source: opts.source ?? type.method,
   });
 
-  const channelId = settings.application_channel_id;
-  if (channelId) {
-    const channel =
-      guild.channels.cache.get(channelId) ?? (await guild.channels.fetch(channelId).catch(() => null));
-    if (channel && channel.isTextBased()) {
-      const payload = buildReviewMessage(application, answers);
-      if (settings.application_team_role_id) payload.content = `<@&${settings.application_team_role_id}>`;
-      const message = await channel.send(payload).catch(() => null);
-      if (message) appModel.setApplicationMessage(application.id, channel.id, message.id);
+  const channel = await fetchChannel(guild, cfg.pendingChannelId || settings.application_channel_id);
+  let message = null;
+  if (channel && channel.isTextBased()) {
+    const payload = buildReviewMessage(application, answers, type);
+    const pings = idsOf(cfg.pingRoleIds);
+    if (!pings.length && settings.application_team_role_id) pings.push(settings.application_team_role_id);
+    if (pings.length) payload.content = pings.map((id) => `<@&${id}>`).join(' ');
+    message = await channel.send(payload).catch(() => null);
+    if (message) {
+      appModel.setApplicationMessage(application.id, channel.id, message.id);
+      for (const e of overflowEmbeds(application, answers, cfg.hideAnswers)) await channel.send({ embeds: [e] }).catch(() => null);
+      if (cfg.staffThreads) {
+        const thread = await message
+          .startThread({ name: `Bewerbung #${application.id} – ${user.tag ?? user.id}`.slice(0, 100), autoArchiveDuration: 1440 })
+          .catch(() => null);
+        if (thread) appModel.setThread(application.id, thread.id);
+      }
     }
+  }
+
+  // Rollen beim Einreichen (Wartet-Rollen geben, andere entfernen)
+  if (cfg.pendingRoleIds || cfg.submitRemovalRoleIds) {
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    if (member) await applyRoles(guild, member, cfg.pendingRoleIds, cfg.submitRemovalRoleIds, `Bewerbung #${application.id} eingereicht`);
   }
 
   await logService.log({
@@ -204,14 +379,129 @@ async function submitApplication(guild, user, type, answers) {
     meta: { applicationId: application.id, typeId: type.id },
   });
 
-  // Chat automatisch öffnen (Einstellung der Bewerbungsart)
   if (type.auto_chat) {
-    await openChat(guild, application, null).catch((err) =>
-      logger.warn(`[application] Auto-Chat für #${application.id}: ${err.message}`),
-    );
+    await openChat(guild, application, null).catch((err) => logger.warn(`[application] Auto-Chat für #${application.id}: ${err.message}`));
+  }
+  return application;
+}
+
+/* ---------------- Entscheidung ---------------- */
+
+/**
+ * Nimmt eine Bewerbung an oder lehnt sie ab (Nachrichten, Kanäle und Rollen aus den Einstellungen der Bewerbung).
+ * @param {'accepted'|'rejected'} decision
+ */
+async function reviewApplication(guild, applicationId, reviewer, decision, note) {
+  const application = appModel.getApplication(applicationId);
+  if (!application) throw new Error('Bewerbung nicht gefunden.');
+  if (application.status !== 'pending') throw new Error(`Diese Bewerbung wurde bereits bearbeitet (${statusLabel(application.status)}).`);
+
+  const type = application.type_id ? appModel.getType(application.type_id) : null;
+  const cfg = appModel.typeCfg(type);
+  const accepted = decision === 'accepted';
+  const updated = appModel.reviewApplication(applicationId, { status: decision, reviewerId: reviewer.id, note });
+  const answers = JSON.parse(updated.answers_json || '[]');
+
+  // Nachricht aktualisieren – bei eigenem Annahme-/Ablehn-Kanal dorthin verschieben
+  const payload = buildReviewMessage(updated, answers, type);
+  payload.content = `Bearbeitet von <@${reviewer.id}> • ${statusLabel(decision)}`;
+  const oldChannel = await fetchChannel(guild, updated.channel_id);
+  const oldMessage = oldChannel && updated.message_id ? await oldChannel.messages.fetch(updated.message_id).catch(() => null) : null;
+  const targetId = accepted ? cfg.acceptedChannelId : cfg.deniedChannelId;
+  const target = targetId && targetId !== updated.channel_id ? await fetchChannel(guild, targetId) : null;
+  if (target && target.isTextBased()) {
+    const moved = await target.send(payload).catch(() => null);
+    if (moved) {
+      appModel.setApplicationMessage(applicationId, target.id, moved.id);
+      await oldMessage?.delete().catch(() => null);
+    } else {
+      await oldMessage?.edit(payload).catch(() => null);
+    }
+  } else {
+    await oldMessage?.edit(payload).catch(() => null);
   }
 
-  return application;
+  // Rollen
+  let roleNote = '';
+  const member = await guild.members.fetch(updated.user_id).catch(() => null);
+  if (member) {
+    const notes = await applyRoles(
+      guild,
+      member,
+      accepted ? cfg.acceptedRoleIds : cfg.deniedRoleIds,
+      [accepted ? cfg.acceptedRemovalRoleIds : cfg.deniedRemovalRoleIds, cfg.pendingRoleIds].filter(Boolean).join(','),
+      `Bewerbung #${applicationId} ${accepted ? 'angenommen' : 'abgelehnt'}`,
+    );
+    const given = idsOf(accepted ? cfg.acceptedRoleIds : cfg.deniedRoleIds);
+    roleNote = notes.length ? `\n${notes.join('\n')}` : given.length ? `\n✅ Rolle(n) vergeben: ${given.map((id) => `<@&${id}>`).join(' ')}` : '';
+  }
+
+  // Bewerber per DM informieren
+  if (member) {
+    const vars = { applicationName: updated.type_name ?? '', user: `<@${reviewer.id}>`, applicant: `<@${updated.user_id}>`, server: guild.name, note: note ?? '' };
+    const body = fillTemplate(accepted ? cfg.acceptedMessage : cfg.deniedMessage, vars) + (note ? `\n\n**Nachricht vom Team:** ${note}` : '');
+    const dm = accepted ? embeds.success('✅ Bewerbung angenommen', body) : embeds.error('❌ Bewerbung abgelehnt', body);
+    await member.send({ embeds: [dm.setFooter({ text: guild.name })] }).catch(() => null);
+  }
+
+  // Ist ein Chat offen, das Ergebnis dort festhalten
+  const chat = ticketsModel.getActiveByApplication(applicationId);
+  if (chat?.status === 'open') {
+    const chatChannel = await fetchChannel(guild, chat.channel_id);
+    await chatChannel
+      ?.send({
+        embeds: [
+          (accepted
+            ? embeds.success('✅ Bewerbung angenommen', `<@${reviewer.id}> hat die Bewerbung angenommen.`)
+            : embeds.error('❌ Bewerbung abgelehnt', `<@${reviewer.id}> hat die Bewerbung abgelehnt.`)
+          ).addFields(note ? [{ name: 'Nachricht vom Team', value: note.slice(0, 1024) }] : []),
+        ],
+      })
+      .catch(() => null);
+  }
+
+  await logService.log({
+    guildId: guild.id,
+    category: 'application',
+    type: accepted ? 'application_accept' : 'application_reject',
+    title: accepted ? '✅ Bewerbung angenommen' : '❌ Bewerbung abgelehnt',
+    color: accepted ? config.branding.success : config.branding.danger,
+    fields: [
+      { name: 'Bewerbung', value: `#${applicationId} – ${updated.type_name}`, inline: true },
+      { name: 'Bewerber', value: `<@${updated.user_id}>`, inline: true },
+      { name: 'Bearbeiter', value: `<@${reviewer.id}>`, inline: true },
+      note ? { name: 'Notiz', value: note.slice(0, 1024), inline: false } : null,
+    ].filter(Boolean),
+    actorId: reviewer.id,
+    meta: { applicationId, decision },
+  });
+
+  return { application: updated, roleNote };
+}
+
+/** Bewerbung samt Nachricht löschen. */
+async function deleteSubmission(guild, application) {
+  const channel = await fetchChannel(guild, application.channel_id);
+  if (channel && application.message_id) await channel.messages.delete(application.message_id).catch(() => null);
+  appModel.deleteApplication(application.id);
+}
+
+/** Bewerber verlässt den Server: offene Bewerbungen nach der Einstellung „Aktion beim Verlassen“ behandeln. */
+async function onMemberLeave(member) {
+  const session = appModel.getSessionByUser(member.id);
+  if (session && session.guild_id === member.guild.id) appModel.deleteSession(session.id);
+
+  for (const application of appModel.listPendingByUser(member.guild.id, member.id)) {
+    const type = application.type_id ? appModel.getType(application.type_id) : null;
+    const action = appModel.typeCfg(type).onLeave;
+    if (action === 'deny') {
+      await reviewApplication(member.guild, application.id, { id: client.user.id, tag: client.user.tag }, 'rejected', 'Der Bewerber hat den Server verlassen.').catch((err) =>
+        logger.warn(`[application] onLeave deny #${application.id}: ${err.message}`),
+      );
+    } else if (action === 'delete') {
+      await deleteSubmission(member.guild, application).catch((err) => logger.warn(`[application] onLeave delete #${application.id}: ${err.message}`));
+    }
+  }
 }
 
 /* ---------------- Bewerber-Chat ---------------- */
@@ -224,11 +514,6 @@ const CHAT_PERMS = [
   PermissionsBitField.Flags.EmbedLinks,
 ];
 
-async function fetchChannel(guild, id) {
-  if (!id) return null;
-  return guild.channels.cache.get(id) ?? (await guild.channels.fetch(id).catch(() => null));
-}
-
 function chatChannelName(user) {
   const base = String(user.username ?? user.tag ?? user.id)
     .toLowerCase()
@@ -239,7 +524,7 @@ function chatChannelName(user) {
   return `bewerbung-${base || user.id}`;
 }
 
-/** Discord-Kategorie für Bewerber-Chats: Bewerbungsart > Server-Standard > keine (oberste Ebene). */
+/** Discord-Kategorie für Bewerber-Chats: Bewerbung > Server-Standard > keine (oberste Ebene). */
 function chatCategoryId(type, settings) {
   return type?.chat_category_id || settings.application_chat_category_id || null;
 }
@@ -247,16 +532,13 @@ function chatCategoryId(type, settings) {
 /**
  * Öffnet einen privaten Chat (Ticket) zwischen Team und Bewerber.
  * Existiert bereits ein Chat, wird er wiederverwendet (ein geschlossener wird wieder geöffnet).
- * @param {import('discord.js').Guild} guild
- * @param {object} application  applications-Zeile
  * @param {{id:string}|null} staff  Teammitglied, das den Chat öffnet (null = automatisch bei Eingang)
- * @returns {Promise<{ channel: import('discord.js').TextChannel, ticket: object, created: boolean }>}
+ * @returns {Promise<{ channel, ticket, created: boolean }>}
  */
 async function openChat(guild, application, staff) {
   const settings = settingsModel.get(guild.id);
   const embedColor = config.branding.color;
 
-  // Vorhandenen Chat wiederverwenden
   const existing = ticketsModel.getActiveByApplication(application.id);
   if (existing) {
     const channel = await fetchChannel(guild, existing.channel_id);
@@ -287,16 +569,13 @@ async function openChat(guild, application, staff) {
     }
   }
 
-  const teamRoleId = settings.application_team_role_id;
+  const teamRoleIds = [...new Set([settings.application_team_role_id, ...idsOf(appModel.typeCfg(type).managerRoleIds)].filter((id) => id && guild.roles.cache.has(id)))];
   const overwrites = [
     { id: guild.roles.everyone.id, deny: [PermissionsBitField.Flags.ViewChannel] },
     { id: member.id, allow: CHAT_PERMS },
-    {
-      id: me.id,
-      allow: [...CHAT_PERMS, PermissionsBitField.Flags.ManageChannels, PermissionsBitField.Flags.ManageMessages],
-    },
+    { id: me.id, allow: [...CHAT_PERMS, PermissionsBitField.Flags.ManageChannels, PermissionsBitField.Flags.ManageMessages] },
+    ...teamRoleIds.map((id) => ({ id, allow: CHAT_PERMS })),
   ];
-  if (teamRoleId && guild.roles.cache.has(teamRoleId)) overwrites.push({ id: teamRoleId, allow: CHAT_PERMS });
 
   const channel = await guild.channels.create({
     name: chatChannelName(member.user),
@@ -306,21 +585,13 @@ async function openChat(guild, application, staff) {
     topic: `Bewerbung #${application.id}${application.type_name ? ' • ' + application.type_name : ''} • Bewerber: ${member.user.tag} (${member.id})`,
   });
 
-  const ticket = ticketsModel.createApplicationChat({
-    guildId: guild.id,
-    channelId: channel.id,
-    applicationId: application.id,
-    openerId: member.id,
-  });
+  const ticket = ticketsModel.createApplicationChat({ guildId: guild.id, channelId: channel.id, applicationId: application.id, openerId: member.id });
   ticketsModel.touch(ticket.id);
 
   const welcome = new EmbedBuilder()
     .setColor(embedColor)
     .setTitle(`💬 Bewerbung #${application.id}${application.type_name ? ` – ${application.type_name}` : ''}`)
-    .setDescription(
-      `Hallo <@${member.id}>, das Team möchte sich mit dir über deine Bewerbung unterhalten.\n` +
-        'Bitte beantworte Rückfragen hier im Chat.',
-    )
+    .setDescription(`Hallo <@${member.id}>, das Team möchte sich mit dir über deine Bewerbung unterhalten.\nBitte beantworte Rückfragen hier im Chat.`)
     .addFields(
       { name: 'Bewerber', value: `<@${member.id}>`, inline: true },
       { name: 'Status', value: statusLabel(application.status), inline: true },
@@ -328,11 +599,8 @@ async function openChat(guild, application, staff) {
     )
     .setTimestamp();
 
-  const pings = [`<@${member.id}>`];
-  if (teamRoleId && guild.roles.cache.has(teamRoleId)) pings.push(`<@&${teamRoleId}>`);
-
   await channel.send({
-    content: pings.join(' • '),
+    content: [`<@${member.id}>`, ...teamRoleIds.map((id) => `<@&${id}>`)].join(' • '),
     embeds: [welcome],
     components: [require('./ticketService').buildManagementRow(ticket)],
   });
@@ -340,21 +608,11 @@ async function openChat(guild, application, staff) {
   // Eingereichte Antworten im Chat mitlesen können
   const answers = JSON.parse(application.answers_json || '[]');
   if (answers.length) {
-    await channel
-      .send({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(embedColor)
-            .setTitle('📋 Eingereichte Antworten')
-            .addFields(
-              answers.slice(0, 24).map((a) => ({
-                name: String(a.question).slice(0, 256),
-                value: (a.answer && a.answer.trim() ? a.answer : '*(keine Angabe)*').slice(0, 1024),
-              })),
-            ),
-        ],
-      })
-      .catch(() => null);
+    for (const [i, fields] of chunkAnswers(answers, 5000).entries()) {
+      await channel
+        .send({ embeds: [new EmbedBuilder().setColor(embedColor).setTitle(i ? `📋 Eingereichte Antworten (Teil ${i + 1})` : '📋 Eingereichte Antworten').addFields(fields)] })
+        .catch(() => null);
+    }
   }
 
   await member
@@ -387,127 +645,24 @@ async function openChat(guild, application, staff) {
   return { channel, ticket, created: true };
 }
 
-/* ---------------- Review ---------------- */
-
-/**
- * Nimmt eine Bewerbung an oder lehnt sie ab.
- * @param {import('discord.js').Guild} guild
- * @param {number} applicationId
- * @param {object} reviewer  { id, tag }
- * @param {'accepted'|'rejected'} decision
- * @param {string} [note]
- */
-async function reviewApplication(guild, applicationId, reviewer, decision, note) {
-  const application = appModel.getApplication(applicationId);
-  if (!application) throw new Error('Bewerbung nicht gefunden.');
-  if (application.status !== 'pending') throw new Error(`Diese Bewerbung wurde bereits bearbeitet (${statusLabel(application.status)}).`);
-
-  const updated = appModel.reviewApplication(applicationId, {
-    status: decision,
-    reviewerId: reviewer.id,
-    note,
-  });
-
-  const answers = JSON.parse(updated.answers_json || '[]');
-
-  // Nachricht aktualisieren
-  if (updated.channel_id && updated.message_id) {
-    const channel =
-      guild.channels.cache.get(updated.channel_id) ??
-      (await guild.channels.fetch(updated.channel_id).catch(() => null));
-    if (channel) {
-      const msg = await channel.messages.fetch(updated.message_id).catch(() => null);
-      if (msg) {
-        const payload = buildReviewMessage(updated, answers);
-        payload.content = `Bearbeitet von <@${reviewer.id}> • ${statusLabel(decision)}`;
-        await msg.edit(payload).catch(() => null);
-      }
-    }
-  }
-
-  // Rolle vergeben bei Annahme
-  let roleNote = '';
-  if (decision === 'accepted') {
-    const type = updated.type_id ? appModel.getType(updated.type_id) : null;
-    const roleId = type?.accept_role_id;
-    if (roleId) {
-      const role = guild.roles.cache.get(roleId) ?? (await guild.roles.fetch(roleId).catch(() => null));
-      const member = await guild.members.fetch(updated.user_id).catch(() => null);
-      const can = role ? botCanManageRole(guild, role) : { ok: false, reason: 'Rolle nicht gefunden.' };
-      if (role && member && can.ok) {
-        await member.roles.add(role, `Bewerbung #${applicationId} angenommen`).catch((err) => {
-          roleNote = `\n⚠️ Rolle konnte nicht vergeben werden: ${err.message}`;
-        });
-        if (!roleNote) roleNote = `\n✅ Rolle <@&${roleId}> vergeben.`;
-      } else {
-        roleNote = `\n⚠️ Rolle nicht vergeben: ${can.reason || 'Mitglied nicht gefunden.'}`;
-      }
-    }
-  }
-
-  // Bewerber per DM informieren
-  const member = await guild.members.fetch(updated.user_id).catch(() => null);
-  if (member) {
-    const dm =
-      decision === 'accepted'
-        ? embeds.success(
-            '✅ Bewerbung angenommen',
-            `Deine Bewerbung als **${updated.type_name}** auf **${guild.name}** wurde angenommen!` +
-              (note ? `\n\n**Nachricht vom Team:** ${note}` : ''),
-          )
-        : embeds.error(
-            '❌ Bewerbung abgelehnt',
-            `Deine Bewerbung als **${updated.type_name}** auf **${guild.name}** wurde leider abgelehnt.` +
-              (note ? `\n\n**Nachricht vom Team:** ${note}` : ''),
-          );
-    await member.send({ embeds: [dm] }).catch(() => null);
-  }
-
-  // Ist ein Chat offen, das Ergebnis dort festhalten
-  const chat = ticketsModel.getActiveByApplication(applicationId);
-  if (chat?.status === 'open') {
-    const chatChannel = await fetchChannel(guild, chat.channel_id);
-    if (chatChannel) {
-      await chatChannel
-        .send({
-          embeds: [
-            (decision === 'accepted'
-              ? embeds.success('✅ Bewerbung angenommen', `<@${reviewer.id}> hat die Bewerbung angenommen.`)
-              : embeds.error('❌ Bewerbung abgelehnt', `<@${reviewer.id}> hat die Bewerbung abgelehnt.`)
-            ).addFields(note ? [{ name: 'Nachricht vom Team', value: note.slice(0, 1024) }] : []),
-          ],
-        })
-        .catch(() => null);
-    }
-  }
-
-  await logService.log({
-    guildId: guild.id,
-    category: 'application',
-    type: decision === 'accepted' ? 'application_accept' : 'application_reject',
-    title: decision === 'accepted' ? '✅ Bewerbung angenommen' : '❌ Bewerbung abgelehnt',
-    color: decision === 'accepted' ? config.branding.success : config.branding.danger,
-    fields: [
-      { name: 'Bewerbung', value: `#${applicationId} – ${updated.type_name}`, inline: true },
-      { name: 'Bewerber', value: `<@${updated.user_id}>`, inline: true },
-      { name: 'Bearbeiter', value: `<@${reviewer.id}>`, inline: true },
-      note ? { name: 'Notiz', value: note.slice(0, 1024), inline: false } : null,
-    ].filter(Boolean),
-    actorId: reviewer.id,
-    meta: { applicationId, decision },
-  });
-
-  return { application: updated, roleNote };
-}
-
 module.exports = {
   MAX_QUESTIONS,
+  MODAL_MAX_QUESTIONS,
+  METHOD_LABEL,
+  fillTemplate,
+  formatDuration,
   buildPanelMessage,
-  postOrUpdatePanel,
+  sendPanel,
+  refreshPanelMessage,
+  eligibilityError,
+  beginApplication,
   buildModal,
+  readModal,
   buildReviewMessage,
   submitApplication,
   reviewApplication,
+  deleteSubmission,
+  onMemberLeave,
   openChat,
   statusLabel,
 };

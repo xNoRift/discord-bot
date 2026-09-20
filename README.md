@@ -51,16 +51,21 @@ Bot und Dashboard laufen in **einem** Node-Prozess und teilen sich dieselbe SQLi
 - Zusätzlicher „Sweep“ alle 60 s als Sicherheitsnetz
 
 ### 📋 Bewerbungen
-- Bewerbungs-Panel mit Buttons pro Position (Support, Moderator, …)
-- Klick öffnet ein Discord-Modal mit **im Dashboard konfigurierbaren Fragen** (max. 5 – Discord-Limit)
-- Bewerbung wird gespeichert und in den Bewerbungs-Channel gepostet
-- Team-Buttons **✅ Annehmen** / **❌ Ablehnen** (mit optionaler Nachricht an den Bewerber)
-- Bei Annahme optional automatische Rollenvergabe
+Aufgebaut wie ein Bewerbungs-Bot: **Bewerbungen** (Formulare) · **Panels** · **Einreichungen** – alles im Dashboard, ohne künstliche Limits.
+- **Bewerbungen:** beliebig viele, jede mit Fragen (Text kurz/lang, Auswahl, Zahl – Pflicht/optional, Länge bzw. Wertgrenzen, Hilfetext),
+  öffnen/schließen, duplizieren
+- **Ausfüllen:** per **Direktnachricht** (beliebig viele Fragen, Zeitlimit, Abbrechen) oder im **Discord-Fenster** (max. 5 – Discord-Limit);
+  starten über Panel-Button, Panel-Auswahlmenü oder `/apply`
+- **Anforderungen:** gesperrte/benötigte Rollen (alle oder eine), Wartezeit nach einer Einreichung, eigene Kanäle für offene/angenommene/abgelehnte
+- **Nachrichten:** Texte bei Annahme, Ablehnung, Bestätigung und Abschluss mit Platzhaltern; Statistik anzeigen, Antworten ausblenden
+- **Rollen:** bei Annahme/Ablehnung vergeben oder entfernen, Rollen während der Prüfung, Ping-Rollen, Bewerbungs-Manager-Rollen
+- **Sonstiges:** Team-Thread pro Einreichung, Aktion beim Verlassen des Servers (nichts / ablehnen / löschen)
+- **Panels:** Embed frei gestalten (Titel, Text, Farbe, Bild), Buttons oder Auswahlmenü, mehrere Bewerbungen pro Panel, Vorschau
+- **Einreichungen:** Statistik, Filter (Bewerbung, Status, Nutzer-ID, Sortierung), Annehmen/Ablehnen mit Nachricht
 - **💬 Bewerber-Chat:** per Button (Discord oder Dashboard) öffnet das Team einen privaten Chat mit dem Bewerber –
   technisch ein Ticket (Übernehmen, Schließen mit Transkript, Wieder-öffnen, Löschen). Die Discord-Kategorie dafür ist
-  **optional** (pro Bewerbungsart, sonst Server-Standard, sonst ohne Kategorie); optional öffnet sich der Chat
+  **optional** (pro Bewerbung, sonst Server-Standard, sonst ohne Kategorie); optional öffnet sich der Chat
   automatisch, sobald eine Bewerbung eingeht
-- Bearbeitung auch komplett im Dashboard möglich
 
 ### 📊 Dashboard
 - Discord-OAuth2-Login

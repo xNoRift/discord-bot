@@ -1995,86 +1995,147 @@ router.delete(
   }),
 );
 
-/* ---------------- Applications ---------------- */
+/* ---------------- Applications (Appy-Aufbau) ---------------- */
+
+const ID_RE = /^\d{5,25}$/;
+
+function serializeAppType(t) {
+  return { ...t, cfg: appModel.typeCfg(t), questions: appModel.listQuestions(t.id) };
+}
+
+function ownedAppType(req) {
+  const type = appModel.getType(num(req.params.id));
+  return type && type.guild_id === req.params.guildId ? type : null;
+}
 
 router.get('/guilds/:guildId/application-types', (req, res) => {
-  const types = appModel.listTypes(req.params.guildId).map((t) => ({
-    ...t,
-    questions: appModel.listQuestions(t.id),
-  }));
-  res.json(types);
+  res.json(appModel.listTypes(req.params.guildId).map(serializeAppType));
 });
 
 router.post(
   '/guilds/:guildId/application-types',
   asyncHandler(async (req, res) => {
-    if (!req.body.name) return res.status(400).json({ error: 'Name erforderlich.' });
+    if (!String(req.body.name || '').trim()) return res.status(400).json({ error: 'Name erforderlich.' });
     const type = appModel.createType({
       guildId: req.params.guildId,
-      name: String(req.body.name).slice(0, 80),
+      name: String(req.body.name).trim().slice(0, 80),
       emoji: req.body.emoji ? String(req.body.emoji).slice(0, 16) : null,
       description: req.body.description ? String(req.body.description).slice(0, 200) : null,
-      acceptRoleId: req.body.acceptRoleId || null,
+      method: req.body.method,
     });
-    res.json(type);
+    res.json(serializeAppType(type));
   }),
 );
 
 router.patch(
   '/guilds/:guildId/application-types/:id',
   asyncHandler(async (req, res) => {
-    const type = appModel.getType(num(req.params.id));
-    if (!type || type.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    const type = ownedAppType(req);
+    if (!type) return res.status(404).json({ error: 'Nicht gefunden.' });
     const patch = {};
-    for (const k of ['name', 'emoji', 'description', 'position']) {
-      if (req.body[k] !== undefined) patch[k] = req.body[k];
+    if (req.body.name !== undefined) {
+      const name = String(req.body.name).trim().slice(0, 80);
+      if (!name) return res.status(400).json({ error: 'Der Name darf nicht leer sein.' });
+      patch.name = name;
     }
-    if (req.body.acceptRoleId !== undefined) patch.accept_role_id = req.body.acceptRoleId || null;
+    if (req.body.emoji !== undefined) patch.emoji = String(req.body.emoji).slice(0, 16);
+    if (req.body.description !== undefined) patch.description = String(req.body.description).slice(0, 200);
+    if (req.body.position !== undefined) patch.position = num(req.body.position, 0);
+    if (req.body.enabled !== undefined) patch.enabled = req.body.enabled ? 1 : 0;
+    if (req.body.method !== undefined) {
+      if (!['modal', 'dm'].includes(req.body.method)) return res.status(400).json({ error: 'Ungültige Methode.' });
+      if (req.body.method === 'modal' && appModel.countQuestions(type.id) > applicationService.MODAL_MAX_QUESTIONS) {
+        return res.status(400).json({ error: `„Discord-Fenster“ erlaubt nur ${applicationService.MODAL_MAX_QUESTIONS} Fragen – bitte Fragen entfernen oder „Direktnachricht“ wählen.` });
+      }
+      patch.method = req.body.method;
+    }
     if (req.body.chatCategoryId !== undefined) {
       const id = String(req.body.chatCategoryId || '');
-      if (id && !/^\d{5,25}$/.test(id)) return res.status(400).json({ error: 'Ungültige Kategorie.' });
+      if (id && !ID_RE.test(id)) return res.status(400).json({ error: 'Ungültige Kategorie.' });
       patch.chat_category_id = id || null;
     }
     if (req.body.autoChat !== undefined) patch.auto_chat = req.body.autoChat ? 1 : 0;
-    if (req.body.enabled !== undefined) patch.enabled = req.body.enabled ? 1 : 0;
-    res.json(appModel.updateType(type.id, patch));
+    if (req.body.cfg && typeof req.body.cfg === 'object') patch.cfg = appModel.mergeTypeCfg(type, req.body.cfg);
+    res.json(serializeAppType(appModel.updateType(type.id, patch)));
+  }),
+);
+
+router.post(
+  '/guilds/:guildId/application-types/:id/duplicate',
+  asyncHandler(async (req, res) => {
+    const type = ownedAppType(req);
+    if (!type) return res.status(404).json({ error: 'Nicht gefunden.' });
+    res.json(serializeAppType(appModel.duplicateType(type.id)));
   }),
 );
 
 router.delete(
   '/guilds/:guildId/application-types/:id',
   asyncHandler(async (req, res) => {
-    const type = appModel.getType(num(req.params.id));
-    if (!type || type.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    const type = ownedAppType(req);
+    if (!type) return res.status(404).json({ error: 'Nicht gefunden.' });
     appModel.deleteType(type.id);
     res.json({ ok: true });
   }),
 );
 
+/** Frage-Felder aus dem Request-Body prüfen -> { patch } oder { error }. */
+function questionPatch(body, current) {
+  const patch = {};
+  if (body.label !== undefined) {
+    const label = String(body.label).trim().slice(0, 200);
+    if (!label) return { error: 'Fragetext erforderlich.' };
+    patch.label = label;
+  }
+  if (body.style !== undefined) {
+    if (!appModel.QUESTION_STYLES.includes(body.style)) return { error: 'Ungültiger Fragetyp.' };
+    patch.style = body.style;
+  }
+  if (body.required !== undefined) patch.required = body.required ? 1 : 0;
+  if (body.position !== undefined) patch.position = num(body.position, 0);
+  if (body.minLength !== undefined) patch.min_length = Math.max(0, num(body.minLength, 0));
+  if (body.maxLength !== undefined) patch.max_length = Math.min(4000, Math.max(0, num(body.maxLength, 0)));
+  if (body.description !== undefined) patch.description = String(body.description).slice(0, 100);
+  if (body.options !== undefined) patch.options = body.options;
+  const style = patch.style ?? current?.style;
+  if (style === 'choice') {
+    const opts = body.options !== undefined ? body.options : current?.options;
+    const n = (Array.isArray(opts) ? opts : String(opts ?? '').split('\n')).map((o) => String(o).trim()).filter(Boolean).length;
+    if (n < 2) return { error: 'Eine Auswahl-Frage braucht mindestens 2 Antwortmöglichkeiten.' };
+  }
+  return { patch };
+}
+
 router.post(
   '/guilds/:guildId/application-types/:id/questions',
   asyncHandler(async (req, res) => {
-    const type = appModel.getType(num(req.params.id));
-    if (!type || type.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
-    if (appModel.countQuestions(type.id) >= applicationService.MAX_QUESTIONS) {
-      return res.status(400).json({ error: `Maximal ${applicationService.MAX_QUESTIONS} Fragen pro Bewerbungsart (Discord-Limit).` });
+    const type = ownedAppType(req);
+    if (!type) return res.status(404).json({ error: 'Nicht gefunden.' });
+    const limit = type.method === 'modal' ? applicationService.MODAL_MAX_QUESTIONS : applicationService.MAX_QUESTIONS;
+    if (appModel.countQuestions(type.id) >= limit) {
+      return res.status(400).json({ error: `Maximal ${limit} Fragen bei dieser Methode${type.method === 'modal' ? ' (Discord-Limit für Fenster)' : ''}.` });
     }
-    if (!req.body.label) return res.status(400).json({ error: 'Fragetext erforderlich.' });
+    if (!String(req.body.label || '').trim()) return res.status(400).json({ error: 'Fragetext erforderlich.' });
+    const { patch, error } = questionPatch(req.body, null);
+    if (error) return res.status(400).json({ error });
+    const style = patch.style ?? 'short';
     const q = appModel.addQuestion({
       typeId: type.id,
-      label: String(req.body.label).slice(0, 45),
-      style: req.body.style === 'paragraph' ? 'paragraph' : 'short',
-      required: req.body.required !== false,
-      minLength: Math.max(0, num(req.body.minLength, 0)),
-      maxLength: Math.min(4000, Math.max(1, num(req.body.maxLength, 400))),
+      label: patch.label,
+      style,
+      required: patch.required !== 0,
+      minLength: patch.min_length ?? 0,
+      maxLength: patch.max_length ?? (style === 'number' ? 0 : 400),
+      options: patch.options,
+      description: patch.description,
     });
     res.json(q);
   }),
 );
 
 function ownedAppQuestion(req) {
-  const type = appModel.getType(num(req.params.id));
-  if (!type || type.guild_id !== req.params.guildId) return null;
+  const type = ownedAppType(req);
+  if (!type) return null;
   const q = appModel.getQuestion(num(req.params.qid));
   return q && q.type_id === type.id ? q : null;
 }
@@ -2082,41 +2143,123 @@ function ownedAppQuestion(req) {
 router.patch(
   '/guilds/:guildId/application-types/:id/questions/:qid',
   asyncHandler(async (req, res) => {
-    if (!ownedAppQuestion(req)) return res.status(404).json({ error: 'Frage nicht gefunden.' });
-    const patch = {};
-    if (req.body.label !== undefined) patch.label = String(req.body.label).slice(0, 45);
-    if (req.body.style !== undefined) patch.style = req.body.style === 'paragraph' ? 'paragraph' : 'short';
-    if (req.body.required !== undefined) patch.required = req.body.required ? 1 : 0;
-    if (req.body.position !== undefined) patch.position = num(req.body.position, 0);
-    if (req.body.minLength !== undefined) patch.min_length = Math.max(0, num(req.body.minLength, 0));
-    if (req.body.maxLength !== undefined) patch.max_length = Math.min(4000, Math.max(1, num(req.body.maxLength, 400)));
-    res.json(appModel.updateQuestion(num(req.params.qid), patch));
+    const q = ownedAppQuestion(req);
+    if (!q) return res.status(404).json({ error: 'Frage nicht gefunden.' });
+    const { patch, error } = questionPatch(req.body, q);
+    if (error) return res.status(400).json({ error });
+    res.json(appModel.updateQuestion(q.id, patch));
   }),
 );
 
 router.delete(
   '/guilds/:guildId/application-types/:id/questions/:qid',
   asyncHandler(async (req, res) => {
-    if (!ownedAppQuestion(req)) return res.status(404).json({ error: 'Frage nicht gefunden.' });
-    appModel.deleteQuestion(num(req.params.qid));
+    const q = ownedAppQuestion(req);
+    if (!q) return res.status(404).json({ error: 'Frage nicht gefunden.' });
+    appModel.deleteQuestion(q.id);
+    res.json({ ok: true });
+  }),
+);
+
+/* --- Panels --- */
+
+function ownedAppPanel(req) {
+  const p = appModel.getPanel(num(req.params.id));
+  return p && p.guild_id === req.params.guildId ? p : null;
+}
+
+function serializeAppPanel(p) {
+  return { ...p, typeIds: appModel.panelTypeIds(p), cfg: appModel.panelCfg(p) };
+}
+
+router.get('/guilds/:guildId/application-panels', (req, res) => {
+  res.json(appModel.listPanels(req.params.guildId).map(serializeAppPanel));
+});
+
+router.post(
+  '/guilds/:guildId/application-panels',
+  asyncHandler(async (req, res) => {
+    const name = String(req.body.name || 'Neues Panel').trim().slice(0, 80) || 'Neues Panel';
+    res.json(serializeAppPanel(appModel.createPanel({ guildId: req.params.guildId, name })));
+  }),
+);
+
+router.patch(
+  '/guilds/:guildId/application-panels/:id',
+  asyncHandler(async (req, res) => {
+    const panel = ownedAppPanel(req);
+    if (!panel) return res.status(404).json({ error: 'Nicht gefunden.' });
+    const patch = {};
+    if (req.body.name !== undefined) patch.name = String(req.body.name).trim().slice(0, 80) || panel.name;
+    if (req.body.channelId !== undefined) {
+      const id = String(req.body.channelId || '');
+      if (id && !ID_RE.test(id)) return res.status(400).json({ error: 'Ungültiger Kanal.' });
+      patch.channel_id = id || null;
+      if ((id || null) !== (panel.channel_id || null)) patch.message_id = null; // neuer Kanal -> neue Nachricht
+    }
+    if (req.body.typeIds !== undefined) {
+      const valid = new Set(appModel.listTypes(req.params.guildId).map((t) => t.id));
+      patch.type_ids = JSON.stringify([...new Set((Array.isArray(req.body.typeIds) ? req.body.typeIds : []).map(Number))].filter((id) => valid.has(id)));
+    }
+    if (req.body.panelType !== undefined) patch.panel_type = req.body.panelType === 'select' ? 'select' : 'buttons';
+    if (req.body.cfg && typeof req.body.cfg === 'object') {
+      patch.cfg = JSON.stringify({ ...appModel.sanitizePanelCfg(JSON.parse(panel.cfg || '{}')), ...appModel.sanitizePanelCfg(req.body.cfg) });
+    }
+    res.json(serializeAppPanel(appModel.updatePanel(panel.id, patch)));
+  }),
+);
+
+router.post(
+  '/guilds/:guildId/application-panels/:id/duplicate',
+  asyncHandler(async (req, res) => {
+    const panel = ownedAppPanel(req);
+    if (!panel) return res.status(404).json({ error: 'Nicht gefunden.' });
+    res.json(serializeAppPanel(appModel.duplicatePanel(panel.id)));
+  }),
+);
+
+router.delete(
+  '/guilds/:guildId/application-panels/:id',
+  asyncHandler(async (req, res) => {
+    const panel = ownedAppPanel(req);
+    if (!panel) return res.status(404).json({ error: 'Nicht gefunden.' });
+    if (panel.channel_id && panel.message_id) {
+      const ch = req.guild.channels.cache.get(panel.channel_id);
+      await ch?.messages?.delete(panel.message_id).catch(() => null);
+    }
+    appModel.deletePanel(panel.id);
     res.json({ ok: true });
   }),
 );
 
 router.post(
-  '/guilds/:guildId/applications/panel',
+  '/guilds/:guildId/application-panels/:id/send',
   actionLimiter,
   asyncHandler(async (req, res) => {
-    const channelId = String(req.body.channelId || '');
-    if (!/^\d{5,25}$/.test(channelId)) return res.status(400).json({ error: 'Bitte einen Kanal wählen.' });
-    const msg = await applicationService.postOrUpdatePanel(req.guild, channelId);
+    const panel = ownedAppPanel(req);
+    if (!panel) return res.status(404).json({ error: 'Nicht gefunden.' });
+    const msg = await applicationService.sendPanel(req.guild, panel);
     res.json({ ok: true, messageId: msg.id, url: msg.url });
   }),
 );
 
+/* --- Einreichungen --- */
+
 router.get('/guilds/:guildId/applications', (req, res) => {
-  res.json(
-    appModel.listApplications(req.params.guildId, { status: req.query.status, limit: 100 }).map((a) => {
+  const gid = req.params.guildId;
+  const limit = Math.min(100, Math.max(1, num(req.query.limit, 20)));
+  const page = Math.max(1, num(req.query.page, 1));
+  const q = String(req.query.q || '').trim();
+  const { items, total } = appModel.listSubmissions(gid, {
+    status: ['pending', 'accepted', 'rejected'].includes(req.query.status) ? req.query.status : undefined,
+    typeId: num(req.query.typeId, undefined),
+    userId: ID_RE.test(q) ? q : undefined,
+    order: req.query.order === 'oldest' ? 'oldest' : 'newest',
+    limit,
+    offset: (page - 1) * limit,
+  });
+  res.json({
+    items: items.map((a) => {
       const chat = ticketsModel.getActiveByApplication(a.id);
       return {
         ...a,
@@ -2124,7 +2267,11 @@ router.get('/guilds/:guildId/applications', (req, res) => {
         chat: chat ? { status: chat.status, url: `https://discord.com/channels/${a.guild_id}/${chat.channel_id}` } : null,
       };
     }),
-  );
+    total,
+    page,
+    limit,
+    stats: appModel.stats(gid),
+  });
 });
 
 router.post(
@@ -2134,11 +2281,7 @@ router.post(
     const app = appModel.getApplication(num(req.params.id));
     if (!app || app.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
     const { channel, created } = await applicationService.openChat(req.guild, app, { id: req.session.user.id });
-    res.json({
-      ok: true,
-      created,
-      url: `https://discord.com/channels/${app.guild_id}/${channel.id}`,
-    });
+    res.json({ ok: true, created, url: `https://discord.com/channels/${app.guild_id}/${channel.id}` });
   }),
 );
 
@@ -2158,6 +2301,17 @@ router.post(
       req.body.note ? String(req.body.note).slice(0, 1000) : null,
     );
     res.json({ application, roleNote });
+  }),
+);
+
+router.delete(
+  '/guilds/:guildId/applications/:id',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const app = appModel.getApplication(num(req.params.id));
+    if (!app || app.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Nicht gefunden.' });
+    await applicationService.deleteSubmission(req.guild, app);
+    res.json({ ok: true });
   }),
 );
 

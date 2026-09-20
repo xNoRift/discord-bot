@@ -4,7 +4,7 @@
 <div id="appIndex">
   <div class="page-head">
     <div class="page-head__row"><h1><%- icon('clipboard') %> Bewerbungen</h1></div>
-    <p>Verwalte Bewerbungsarten, Fragen und eingereichte Bewerbungen.</p>
+    <p>Erstelle Bewerbungen mit eigenen Fragen, sende Panels in deinen Server und bearbeite alle Einreichungen an einem Ort.</p>
   </div>
 
   <div class="module-status" id="moduleStatus">
@@ -13,47 +13,83 @@
     <button class="btn btn--ghost btn--sm" id="msToggle">…</button>
   </div>
 
-  <div class="col-2">
+  <div class="tabs tabs--wrap" id="mainTabs" style="margin-bottom:16px;">
+    <button class="tab is-active" data-view="apps"><%- icon('clipboard') %> Bewerbungen</button>
+    <button class="tab" data-view="panels"><%- icon('layers') %> Panels</button>
+    <button class="tab" data-view="subs"><%- icon('send') %> Einreichungen</button>
+    <button class="tab" data-view="general"><%- icon('settings') %> Allgemein</button>
+  </div>
+
+  <!-- Bewerbungen -->
+  <section id="viewApps">
     <div class="card">
       <div class="card__head">
-        <h2><%- icon('layers') %> Bewerbungsarten</h2><div class="spacer"></div>
-        <button class="btn btn--primary btn--sm" id="newTypeBtn"><%- icon('plus') %> Erstellen</button>
+        <h2><%- icon('clipboard') %> Bewerbungen: <span id="appCount">0</span></h2><div class="spacer"></div>
+        <input type="search" id="appSearch" placeholder="Bewerbungen suchen …" style="max-width:240px;" />
+        <button class="btn btn--primary btn--sm" id="newAppBtn"><%- icon('plus') %> Neue Bewerbung</button>
       </div>
-      <div id="typeGrid"><div class="loading">Lädt…</div></div>
+      <p class="muted" style="margin:0 0 12px;">Eine Bewerbung ist ein Formular (z. B. „Support-Team“). Öffne sie mit dem Stift, um Fragen, Kanäle, Rollen und Nachrichten einzustellen. Damit Mitglieder sie nutzen können, verknüpfe sie mit einem <b>Panel</b> – oder sie nutzen <code>/apply</code>.</p>
+      <div id="appList"><div class="loading">Lädt…</div></div>
     </div>
+  </section>
 
+  <!-- Panels -->
+  <section id="viewPanels" hidden>
     <div class="card">
-      <div class="card__head"><h2><%- icon('settings') %> Panel &amp; Kanäle</h2></div>
-      <form id="appSettings" class="form">
-        <div class="field"><label>Bewerbungs-Kanal</label><select name="application_channel_id" data-type="text"></select><small>Hier landen eingereichte Bewerbungen.</small></div>
-        <div class="field"><label>Team-Rolle</label><select name="application_team_role_id" data-type="role"></select><small>Darf Bewerbungen bearbeiten und sieht die Bewerber-Chats.</small></div>
-        <div class="field"><label>Log-Kanal</label><select name="application_log_channel_id" data-type="text"></select><small>Log-Einträge und Transkripte der Bewerber-Chats.</small></div>
-        <div class="field"><label>Kategorie für Bewerber-Chats <span class="muted">(optional)</span></label><select name="application_chat_category_id" data-type="category"></select><small>Hier entstehen die Chats mit den Bewerbern. Leer = Kanal ohne Kategorie. Pro Bewerbungsart überschreibbar.</small></div>
-        <div class="field"><label>Panel-Titel</label><input name="application_panel_title" type="text" /></div>
-        <div class="field"><label>Panel-Text</label><textarea name="application_panel_message" rows="2"></textarea></div>
-      </form>
-      <hr class="divider" />
-      <div class="field"><label>Panel senden in</label><select id="appPanelCh" data-type="text"></select></div>
-      <button class="btn btn--primary btn--sm" id="appPanelSend" style="margin-top:8px;"><%- icon('send') %> Panel senden</button>
-      <p class="muted" id="appPanelStatus"></p>
+      <div class="card__head">
+        <h2><%- icon('layers') %> Panels: <span id="panelCount">0</span></h2><div class="spacer"></div>
+        <button class="btn btn--primary btn--sm" id="newPanelBtn"><%- icon('plus') %> Neues Panel</button>
+      </div>
+      <p class="muted" style="margin:0 0 12px;">Ein Panel ist eine Nachricht in deinem Server (Buttons oder Auswahlmenü), über die Mitglieder ihre Bewerbung starten.</p>
+      <div id="panelList"><div class="loading">Lädt…</div></div>
     </div>
-  </div>
+  </section>
 
-  <div class="card">
-    <div class="card__head">
-      <h2><%- icon('clipboard') %> Eingereichte Bewerbungen</h2><div class="spacer"></div>
-      <div class="tabs" id="appTabs">
-        <button class="tab is-active" data-status="pending">Offen</button>
-        <button class="tab" data-status="accepted">Angenommen</button>
-        <button class="tab" data-status="rejected">Abgelehnt</button>
-        <button class="tab" data-status="">Alle</button>
+  <!-- Einreichungen -->
+  <section id="viewSubs" hidden>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi__ico"><%- icon('send') %></div><div class="kpi__label">Einreichungen gesamt</div><div class="kpi__value" id="sTotal">0</div></div>
+      <div class="kpi kpi--green"><div class="kpi__ico"><%- icon('check') %></div><div class="kpi__label">Angenommen</div><div class="kpi__value" id="sAccepted">0</div></div>
+      <div class="kpi kpi--amber"><div class="kpi__ico"><%- icon('clock') %></div><div class="kpi__label">Offen</div><div class="kpi__value" id="sPending">0</div></div>
+      <div class="kpi"><div class="kpi__ico"><%- icon('x') %></div><div class="kpi__label">Abgelehnt</div><div class="kpi__value" id="sRejected">0</div></div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <div class="card__head"><h2><%- icon('send') %> Einreichungen</h2></div>
+      <div class="form">
+        <div class="field"><input type="search" id="subSearch" placeholder="Nach Nutzer-ID suchen" /><small>Die Suche versteht nur numerische Discord-Nutzer-IDs.</small></div>
+        <div class="col-2" style="grid-template-columns:repeat(4,1fr);">
+          <div class="field"><label>Bewerbung</label><select id="subType"><option value="">Alle</option></select></div>
+          <div class="field"><label>Sortierung</label><select id="subOrder"><option value="newest">Neueste zuerst</option><option value="oldest">Älteste zuerst</option></select></div>
+          <div class="field"><label>Status</label><select id="subStatus"><option value="">Alle Status</option><option value="pending">Offen</option><option value="accepted">Angenommen</option><option value="rejected">Abgelehnt</option></select></div>
+          <div class="field"><label>Pro Seite</label><select id="subLimit"><option>10</option><option selected>20</option><option>50</option><option>100</option></select></div>
+        </div>
+      </div>
+      <div class="muted" id="subInfo" style="margin:8px 0;"></div>
+      <div id="subList"><div class="loading">Lädt…</div></div>
+      <div class="list-row__actions" style="justify-content:center;margin-top:12px;">
+        <button class="btn btn--ghost btn--sm" id="subPrev">← Zurück</button>
+        <span class="muted" id="subPage"></span>
+        <button class="btn btn--ghost btn--sm" id="subNext">Weiter →</button>
       </div>
     </div>
-    <div id="appList"><div class="loading">Lädt…</div></div>
-  </div>
+  </section>
+
+  <!-- Allgemein -->
+  <section id="viewGeneral" hidden>
+    <div class="card">
+      <div class="card__head"><h2><%- icon('settings') %> Allgemeine Einstellungen</h2></div>
+      <form id="appSettings" class="form">
+        <div class="field"><label>Standard-Kanal für neue Einreichungen</label><select name="application_channel_id" data-type="text"></select><small>Wird genutzt, wenn eine Bewerbung keinen eigenen „Offen“-Kanal hat.</small></div>
+        <div class="field"><label>Team-Rolle</label><select name="application_team_role_id" data-type="role"></select><small>Darf alle Bewerbungen bearbeiten, wird bei neuen Einreichungen erwähnt (wenn keine eigenen Ping-Rollen gesetzt sind) und sieht die Bewerber-Chats.</small></div>
+        <div class="field"><label>Log-Kanal</label><select name="application_log_channel_id" data-type="text"></select><small>Log-Einträge und Transkripte der Bewerber-Chats.</small></div>
+        <div class="field"><label>Kategorie für Bewerber-Chats <span class="muted">(optional)</span></label><select name="application_chat_category_id" data-type="category"></select><small>Hier entstehen die Chats mit den Bewerbern. Leer = Kanal ohne Kategorie. Pro Bewerbung überschreibbar.</small></div>
+      </form>
+    </div>
+  </section>
 </div>
 
 <div id="appEditor" hidden></div>
+<div id="panelEditor" hidden></div>
 
 <%- include('partials/app-shell-close') %>
 <script src="/static/js/applications.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>

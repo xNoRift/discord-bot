@@ -32,7 +32,10 @@ function isSupport(member, settings, ticket) {
   const roleId = settings?.ticket_support_role_id;
   if (roleId && member.roles.cache.has(roleId)) return true;
   // Bewerber-Chats werden vom Bewerbungs-Team betreut
-  if (ticket?.application_id && isApplicationTeam(member, settings)) return true;
+  if (ticket?.application_id) {
+    const application = require('../database/models/applications').getApplication(ticket.application_id);
+    if (isApplicationTeam(member, settings, application)) return true;
+  }
   if (ticket?.category_id) {
     const ticketPanels = require('../database/models/ticketPanels');
     const cat = ticketPanels.getCategory(ticket.category_id);
@@ -46,12 +49,21 @@ function isSupport(member, settings, ticket) {
   return false;
 }
 
-/** Darf Bewerbungen bearbeiten: Team-Rolle oder Manager. */
-function isApplicationTeam(member, settings) {
+/**
+ * Darf Bewerbungen bearbeiten: Team-Rolle, Manager – oder (mit `application`) eine der
+ * „Bewerbungs-Manager-Rollen“ dieser Bewerbung.
+ */
+function isApplicationTeam(member, settings, application) {
   if (!member) return false;
   if (isManager(member)) return true;
   const roleId = settings?.application_team_role_id;
-  return Boolean(roleId && member.roles.cache.has(roleId));
+  if (roleId && member.roles.cache.has(roleId)) return true;
+  if (application?.type_id) {
+    const appModel = require('../database/models/applications');
+    const cfg = appModel.typeCfg(appModel.getType(application.type_id));
+    return cfg.managerRoleIds.split(',').some((id) => id && member.roles.cache.has(id));
+  }
+  return false;
 }
 
 /**

@@ -6,6 +6,7 @@ const embeds = require('../../utils/embeds');
 const appModel = require('../../database/models/applications');
 const applicationService = require('../../services/applicationService');
 
+/** Modal "app:modal:<typeId>" – Bewerbung im Discord-Fenster abgegeben. */
 module.exports = {
   prefix: 'app:modal',
   async execute(interaction) {
@@ -13,21 +14,15 @@ module.exports = {
     const type = appModel.getType(typeId);
 
     if (!type || type.guild_id !== interaction.guildId) {
-      return interaction.reply({ embeds: [embeds.error(undefined, 'Bewerbungsart nicht gefunden.')], flags: MessageFlags.Ephemeral });
+      return interaction.reply({ embeds: [embeds.error(undefined, 'Bewerbung nicht gefunden.')], flags: MessageFlags.Ephemeral });
     }
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const problem = applicationService.eligibilityError(interaction.member, type, interaction.settings);
+    if (problem) return interaction.editReply({ embeds: [embeds.warning('Bewerbung nicht möglich', problem)] });
 
-    const questions = appModel.listQuestions(typeId);
-    const answers = questions.slice(0, applicationService.MAX_QUESTIONS).map((q) => {
-      let value = '';
-      try {
-        value = interaction.fields.getTextInputValue(`q_${q.id}`);
-      } catch {
-        value = '';
-      }
-      return { question: q.label, answer: value };
-    });
+    const questions = appModel.listQuestions(typeId).slice(0, applicationService.MODAL_MAX_QUESTIONS);
+    const answers = applicationService.readModal(interaction.fields, questions);
 
     try {
       const application = await applicationService.submitApplication(
@@ -35,12 +30,14 @@ module.exports = {
         { id: interaction.user.id, tag: interaction.user.tag },
         type,
         answers,
+        { source: 'modal' },
       );
+      const cfg = appModel.typeCfg(type);
       await interaction.editReply({
         embeds: [
           embeds.success(
             '📋 Bewerbung eingereicht',
-            `Deine Bewerbung als **${type.name}** (#${application.id}) wurde an das Team weitergeleitet. Danke!`,
+            `${applicationService.fillTemplate(cfg.completionMessage, { applicationName: type.name, server: interaction.guild.name })}\n(#${application.id})`,
           ),
         ],
       });
