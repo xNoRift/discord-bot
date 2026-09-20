@@ -441,6 +441,7 @@ const saveBar = {
   saveBtn: null,
   cancelBtn: null,
   hintEl: null,
+  titleEl: null,
   wired: false,
   trackers: new Set(),
   ensure() {
@@ -450,6 +451,7 @@ const saveBar = {
       this.saveBtn = document.getElementById('saveBarSave');
       this.cancelBtn = document.getElementById('saveBarCancel');
       this.hintEl = this.el.querySelector('.savebar__text > span');
+      this.titleEl = this.el.querySelector('.savebar__text > b');
     }
     if (!this.wired && this.saveBtn) {
       this.wired = true;
@@ -478,12 +480,21 @@ const saveBar = {
   },
   refresh() {
     if (!this.ensure()) return;
-    const n = this.dirty().length;
+    const list = this.dirty();
+    const n = list.length;
     this.el.hidden = n === 0;
+    const invalid = list.some((t) => {
+      try { return t.isInvalid ? t.isInvalid() : false; } catch { return false; }
+    });
+    this.el.classList.toggle('is-invalid', invalid);
+    if (this.saveBtn) this.saveBtn.disabled = invalid;
+    if (this.titleEl) this.titleEl.textContent = invalid ? 'Ungültige Eingaben' : 'Ungespeicherte Änderungen';
     if (n && this.hintEl) {
-      this.hintEl.textContent = n === 1
-        ? 'Nicht vergessen zu speichern.'
-        : `${n} Bereiche mit ungespeicherten Änderungen.`;
+      this.hintEl.textContent = invalid
+        ? 'Einige Felder haben ungültige Eingaben. Speichern ist nicht möglich.'
+        : n === 1
+          ? 'Nicht vergessen zu speichern.'
+          : `${n} Bereiche mit ungespeicherten Änderungen.`;
     }
   },
   busy(on) {
@@ -494,6 +505,7 @@ const saveBar = {
   async saveAll() {
     const list = this.dirty();
     if (!list.length) return;
+    if (list.some((t) => t.isInvalid && t.isInvalid())) return; // ungültige Eingaben blockieren das Speichern
     this.busy(true);
     try {
       for (const t of list) {
@@ -555,6 +567,31 @@ function trackForm(container, saveFn, o) {
   };
   let clean = snapshot();
 
+  // Pflichtfelder: [data-required] (Wert = Fehlermeldung, sonst Standardtext)
+  const validate = () => {
+    let invalid = false;
+    container.querySelectorAll('[data-required]').forEach((el) => {
+      const empty = !String(el.value || '').trim();
+      const host = el.closest('.in-wrap') || el;
+      let msg = host.parentElement.querySelector(':scope > .field-error');
+      el.classList.toggle('is-invalid', empty);
+      if (host !== el) host.classList.toggle('is-invalid', empty);
+      if (empty) {
+        invalid = true;
+        if (!msg) {
+          msg = document.createElement('div');
+          msg.className = 'field-error';
+          host.after(msg);
+        }
+        msg.textContent = el.dataset.required && el.dataset.required !== '1' ? el.dataset.required : 'Dieses Feld darf nicht leer sein.';
+      } else if (msg) {
+        msg.remove();
+      }
+    });
+    return invalid;
+  };
+  validate();
+
   const restore = async () => {
     if (resetFn) { await resetFn(); return; }
     const m = JSON.parse(clean.split('|')[0]);
@@ -569,6 +606,7 @@ function trackForm(container, saveFn, o) {
 
   const tracker = {
     key,
+    isInvalid: validate,
     isDirty: () => snapshot() !== clean,
     save: async () => { await saveFn(); clean = snapshot(); },
     cancel: async () => { await restore(); clean = snapshot(); },
@@ -576,7 +614,7 @@ function trackForm(container, saveFn, o) {
   };
   saveBar.register(tracker);
 
-  const check = () => saveBar.refresh();
+  const check = () => { validate(); saveBar.refresh(); };
   container.addEventListener('input', check);
   container.addEventListener('change', check);
   if (isForm) {
@@ -673,6 +711,7 @@ const ICON_PATHS = {
   bulb: '<path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2Z"/>',
   chat: '<path d="M21 12a8 8 0 0 1-11.5 7.2L3 21l1.8-6.5A8 8 0 1 1 21 12Z"/>',
   chevron: '<path d="m15 18-6-6 6-6"/>',
+  alert: '<path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
   trash: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/>',

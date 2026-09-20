@@ -1085,3 +1085,34 @@ input[type="range"]::-moz-range-thumb {
 .embed-preview__text{padding-right:64px;white-space:pre-wrap;word-break:break-word}
 .embed-preview__img{display:grid;place-items:center;height:90px;border-radius:6px;background:var(--line);font-size:.8rem;opacity:.8}
 .embed-preview__foot{font-size:.75rem;opacity:.7}
+
+/* Ungültige Eingaben (Pflichtfelder) */
+input.is-invalid, textarea.is-invalid, select.is-invalid, .in-wrap.is-invalid { border-color: var(--danger, #f0616d) !important; }
+.in-wrap.is-invalid input { border-color: transparent !important; }
+.field-error { color: var(--danger, #f0616d); font-size: .82rem; margin-top: 6px; }
+.savebar.is-invalid { border-color: var(--danger, #f0616d); }
+.savebar.is-invalid .savebar__save { opacity: .45; cursor: not-allowed; filter: grayscale(.4); }
+.savebar.is-invalid .savebar__text b { color: var(--danger, #f0616d); }
+
+/* Ticket-Editor (GalaxyBot-Aufbau) */
+.set-block { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.set-block:last-child { border-bottom: 0; }
+.set-block__title { font-weight: 700; margin-bottom: 2px; }
+.set-block__desc { color: var(--text-2); font-size: .9rem; margin-bottom: 10px; }
+.set-sub { margin-top: 12px; max-width: 320px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.chip { padding: 5px 10px; border-radius: 8px; border: 1px solid var(--line-2, var(--line)); background: var(--accent-soft); color: var(--accent-2); font-size: .8rem; font-weight: 600; cursor: pointer; }
+.chip:hover { filter: brightness(1.15); }
+.check-row { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 8px; }
+.check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.embed-edit { display: flex; background: var(--surface-2); border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.embed-edit__bar { width: 5px; flex-shrink: 0; }
+.embed-edit__body { flex: 1; padding: 14px; display: grid; gap: 12px; min-width: 0; }
+.embed-edit .in-wrap { position: relative; }
+.embed-edit .in-count { position: absolute; right: 10px; top: 10px; font-size: .78rem; }
+.embed-edit .in-wrap input, .embed-edit .in-wrap textarea { width: 100%; padding-right: 74px; }
+.embed-edit__more summary { cursor: pointer; color: var(--accent-2); font-weight: 600; font-size: .88rem; }
+.embed-edit__more[open] summary { margin-bottom: 12px; }
+.editor-tabs--sub { margin-top: 10px; }
+.editor-head--inner { margin-top: 16px; }
+[hidden] { display: none !important; }

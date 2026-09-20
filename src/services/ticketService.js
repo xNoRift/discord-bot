@@ -295,7 +295,15 @@ async function rerenderPanelMessage(message, panelId) {
  * Wird sowohl fürs Ticket-Öffnen-Formular einer Kategorie als auch für
  * andere Formular-Modals (z. B. Giveaway-Ticket-Buttons) verwendet.
  */
-const isTextQuestion = (q) => !q.style || q.style === 'short' || q.style === 'paragraph';
+/** Wirksamer Feldtyp: Auswahl/Radio ohne (genug) Optionen fallen auf ein Textfeld zurück, damit Discord das Modal annimmt. */
+function questionStyle(q) {
+  const n = questionOptions(q).length;
+  if (q.style === 'select' && n < 1) return 'short';
+  if (q.style === 'radio' && n < 2) return 'short';
+  return q.style || 'short';
+}
+
+const isTextQuestion = (q) => ['short', 'paragraph'].includes(questionStyle(q));
 
 /** Optionen einer Auswahl/Radio-Frage als { label, value }-Liste (max. 25). */
 function questionOptions(q) {
@@ -316,7 +324,7 @@ function buildRichModal(customId, title, questions) {
     const required = Boolean(q.required);
     const placeholder = q.placeholder ? String(q.placeholder).slice(0, 100) : null;
 
-    switch (q.style) {
+    switch (questionStyle(q)) {
       case 'select': {
         const menu = new StringSelectMenuBuilder().setCustomId(id).setRequired(required).addOptions(questionOptions(q));
         if (placeholder) menu.setPlaceholder(placeholder);
@@ -354,7 +362,7 @@ function buildRichModal(customId, title, questions) {
         break;
       }
       default: {
-        const input = new TextInputBuilder().setCustomId(id).setStyle(q.style === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short).setRequired(required);
+        const input = new TextInputBuilder().setCustomId(id).setStyle(questionStyle(q) === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short).setRequired(required);
         if (placeholder) input.setPlaceholder(placeholder);
         if (q.min_length) input.setMinLength(Math.min(q.min_length, 1000));
         if (q.max_length) input.setMaxLength(Math.min(Math.max(q.max_length, 1), 4000));
@@ -375,7 +383,7 @@ function readModalAnswers(fields, questions) {
     const id = `q_${q.id}`;
     let answer = '';
     try {
-      switch (q.style) {
+      switch (questionStyle(q)) {
         case 'select': answer = fields.getStringSelectValues(id).join(', '); break;
         case 'radio': answer = fields.getRadioGroup(id) || ''; break;
         case 'checkbox': answer = fields.getCheckbox(id) ? '✅ Ja' : '❌ Nein'; break;
