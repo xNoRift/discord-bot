@@ -14,7 +14,7 @@ const NAV = [
     items: [
       { key: 'overview', label: 'Übersicht', icon: 'home', path: '' },
       { key: 'welcome', label: 'Willkommen', icon: 'bell', path: '/welcome' },
-      { key: 'support', label: 'Support', icon: 'chat', path: '/support' },
+      { key: 'voicesupport', label: 'Voice Support', icon: 'chat', path: '/voicesupport' },
       { key: 'tickets', label: 'Ticket', icon: 'ticket', path: '/tickets' },
       { key: 'moderation', label: 'Moderation', icon: 'shield', path: '/moderation' },
       { key: 'tempvoice', label: 'Private Kanäle', icon: 'hash', path: '/tempvoice' },
@@ -43,6 +43,7 @@ function footerNav() {
   const items = [
     { key: 'impressum', label: 'Impressum', icon: 'scale', path: '/impressum' },
     { key: 'datenschutz', label: 'Datenschutzerklärung', icon: 'lock', path: '/datenschutz' },
+    { key: 'support', label: 'Support', icon: 'chat', path: '/support' },
   ];
   if (config.links.supportDiscord) items.push({ key: 'support-discord', label: 'Support-Discord', icon: 'chat', href: config.links.supportDiscord });
   items.push({ key: 'docs', label: 'Dokumentation', icon: 'file', href: config.links.docs || config.dashboard.url + '/#funktionen' });
@@ -75,6 +76,7 @@ const CRUMB = {
   impressum: { crumb: 'Impressum', crumbIcon: 'scale' },
   datenschutz: { crumb: 'Datenschutzerklärung', crumbIcon: 'lock' },
   support: { crumb: 'Support', crumbIcon: 'chat' },
+  voicesupport: { crumb: 'Voice Support', crumbIcon: 'chat' },
   servers: { crumb: 'Server auswählen', crumbIcon: 'server' },
 };
 
@@ -157,6 +159,7 @@ const PAGES = [
   ['/impressum', 'impressum'],
   ['/datenschutz', 'datenschutz'],
   ['/support', 'support'],
+  ['/voicesupport', 'voicesupport'],
 ];
 
 for (const [path, view] of PAGES) {
