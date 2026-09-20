@@ -25,7 +25,7 @@ function parseJson(text, fallback) {
 const ID_RE = /^\d{5,25}$/;
 const idOnly = (v) => (ID_RE.test(String(v ?? '').trim()) ? String(v).trim() : '');
 const idList = (v) =>
-  [...new Set(String(v ?? '').split(',').map((x) => x.trim()).filter((x) => ID_RE.test(x)))].slice(0, 250).join(',');
+  [...new Set(String(v ?? '').split(',').map((x) => x.trim()).filter((x) => ID_RE.test(x)))].join(',');
 const text = (v, max) => String(v ?? '').slice(0, max);
 const int = (v, min, max, fallback) => {
   const n = Number.parseInt(v, 10);
@@ -68,8 +68,8 @@ function sanitizeTypeCfg(input) {
   for (const k of ['showStats', 'hideAnswers', 'staffThreads']) if (k in i) out[k] = bool(i[k], TYPE_CFG_DEFAULTS[k]);
   for (const k of ['restrictedMode', 'requiredMode']) if (k in i) out[k] = i[k] === 'any' ? 'any' : 'all';
   for (const k of ROLE_KEYS) if (k in i) out[k] = idList(i[k]);
-  if ('cooldownMin' in i) out.cooldownMin = int(i.cooldownMin, 0, 525600, 0);
-  if ('timeLimitMin' in i) out.timeLimitMin = int(i.timeLimitMin, 1, 10080, 180);
+  if ('cooldownMin' in i) out.cooldownMin = int(i.cooldownMin, 0, 52560000, 0);
+  if ('timeLimitMin' in i) out.timeLimitMin = int(i.timeLimitMin, 1, 52560000, 180);
   if ('onLeave' in i) out.onLeave = ['nothing', 'deny', 'delete'].includes(i.onLeave) ? i.onLeave : 'nothing';
   return out;
 }
@@ -86,7 +86,7 @@ function mergeTypeCfg(type, patch) {
 
 /* ---------------- Bewerbungen (Formulare) ---------------- */
 
-function createType({ guildId, name, emoji, description, method }) {
+function createType({ guildId, name, emoji, description }) {
   const maxPos = db
     .prepare('SELECT COALESCE(MAX(position), -1) AS p FROM application_types WHERE guild_id = ?')
     .get(guildId).p;
@@ -95,7 +95,7 @@ function createType({ guildId, name, emoji, description, method }) {
       `INSERT INTO application_types (guild_id, name, emoji, description, method, enabled, position, created_at)
        VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
     )
-    .run(guildId, name, emoji ?? null, description ?? null, method === 'modal' ? 'modal' : 'dm', maxPos + 1, Date.now());
+    .run(guildId, name, emoji ?? null, description ?? null, 'dm', maxPos + 1, Date.now());
   return getType(info.lastInsertRowid);
 }
 
@@ -133,7 +133,7 @@ function deleteType(id) {
 function duplicateType(id) {
   const t = getType(id);
   if (!t) return null;
-  const copy = createType({ guildId: t.guild_id, name: `${t.name} (Kopie)`.slice(0, 80), emoji: t.emoji, description: t.description, method: t.method });
+  const copy = createType({ guildId: t.guild_id, name: `${t.name} (Kopie)`.slice(0, 80), emoji: t.emoji, description: t.description });
   updateType(copy.id, { cfg: t.cfg, chat_category_id: t.chat_category_id, auto_chat: t.auto_chat, enabled: t.enabled });
   for (const q of listQuestions(id)) {
     addQuestion({ typeId: copy.id, label: q.label, style: q.style, required: q.required, minLength: q.min_length, maxLength: q.max_length, options: q.options, description: q.description });
@@ -147,7 +147,7 @@ const QUESTION_STYLES = ['short', 'paragraph', 'choice', 'number'];
 
 function normQ(q) {
   if (!q) return q;
-  return { ...q, options: parseJson(q.options, []).filter((o) => typeof o === 'string' && o).slice(0, 25) };
+  return { ...q, options: parseJson(q.options, []).filter((o) => typeof o === 'string' && o) };
 }
 
 function listQuestions(typeId) {
@@ -163,7 +163,7 @@ function getQuestion(id) {
 
 function cleanOptions(options) {
   const list = Array.isArray(options) ? options : String(options ?? '').split('\n');
-  return [...new Set(list.map((o) => String(o).trim().slice(0, 100)).filter(Boolean))].slice(0, 25);
+  return [...new Set(list.map((o) => String(o).trim().slice(0, 100)).filter(Boolean))];
 }
 
 function addQuestion({ typeId, label, style = 'short', required = true, minLength = 0, maxLength = 400, options, description }) {

@@ -28,7 +28,7 @@ function questionEmbed(session, type, questions) {
   if (q.style === 'number') {
     hints.push(`Antworte mit einer Zahl${q.min_length > 0 || q.max_length > 0 ? ` (${q.min_length > 0 ? `min. ${q.min_length}` : ''}${q.min_length > 0 && q.max_length > 0 ? ', ' : ''}${q.max_length > 0 ? `max. ${q.max_length}` : ''})` : ''}`);
   } else if (q.style === 'choice') {
-    hints.push('Wähle eine Option im Menü');
+    hints.push('Wähle eine Option im Menü (oder schreibe sie)');
   } else if (q.min_length > 0 || q.max_length > 0) {
     hints.push(`${q.min_length > 0 ? `mind. ${q.min_length}` : ''}${q.min_length > 0 && q.max_length > 0 ? ', ' : ''}${q.max_length > 0 ? `max. ${q.max_length}` : ''} Zeichen`);
   }
@@ -43,18 +43,25 @@ function questionEmbed(session, type, questions) {
 async function sendQuestion(user, session, type, questions) {
   const q = questions[session.step];
   const components = [];
+  const embed = questionEmbed(session, type, questions);
   if (q.style === 'choice' && q.options.length) {
-    components.push(
-      new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId(`app:dmsel:${session.id}:${session.step}`)
-          .setPlaceholder('Wähle eine Option …')
-          .addOptions(q.options.map((o, i) => ({ label: o.slice(0, 100), value: String(i) }))),
-      ),
-    );
+    // Discord: max. 25 Optionen je Menü, 4 Menüs + Abbrechen-Zeile je Nachricht -> ab 100 Optionen zusätzlich als Text antworten
+    for (let start = 0, k = 0; start < q.options.length && k < 4; start += 25, k++) {
+      components.push(
+        new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId(`app:dmsel:${session.id}:${session.step}:${k}`)
+            .setPlaceholder(q.options.length > 25 ? `Wähle eine Option … (${k + 1})` : 'Wähle eine Option …')
+            .addOptions(q.options.slice(start, start + 25).map((o, i) => ({ label: o.slice(0, 100), value: String(start + i) }))),
+        ),
+      );
+    }
+    if (q.options.length > 100) {
+      embed.setDescription(`${embed.data.description}\n\n**Weitere Antworten (schreibe sie einfach):**\n${q.options.slice(100).join(' · ').slice(0, 1500)}`);
+    }
   }
   components.push(cancelRow(session.id));
-  await user.send({ embeds: [questionEmbed(session, type, questions)], components });
+  await user.send({ embeds: [embed], components });
 }
 
 /** Startet die DM-Sitzung (nach „Starten“). Wirft bei Problemen eine verständliche Fehlermeldung. */
@@ -89,7 +96,7 @@ function validate(q, raw) {
 
   if (q.style === 'choice') {
     const hit = q.options.find((o) => o.toLowerCase() === text.toLowerCase());
-    return hit ? { value: hit } : { error: 'Bitte wähle eine Option im Menü.' };
+    return hit ? { value: hit } : { error: 'Bitte wähle eine der Optionen im Menü (oder schreibe sie genau so).' };
   }
   if (q.style === 'number') {
     const n = Number(text.replace(',', '.'));

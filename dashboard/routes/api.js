@@ -2021,7 +2021,6 @@ router.post(
       name: String(req.body.name).trim().slice(0, 80),
       emoji: req.body.emoji ? String(req.body.emoji).slice(0, 16) : null,
       description: req.body.description ? String(req.body.description).slice(0, 200) : null,
-      method: req.body.method,
     });
     res.json(serializeAppType(type));
   }),
@@ -2042,13 +2041,6 @@ router.patch(
     if (req.body.description !== undefined) patch.description = String(req.body.description).slice(0, 200);
     if (req.body.position !== undefined) patch.position = num(req.body.position, 0);
     if (req.body.enabled !== undefined) patch.enabled = req.body.enabled ? 1 : 0;
-    if (req.body.method !== undefined) {
-      if (!['modal', 'dm'].includes(req.body.method)) return res.status(400).json({ error: 'Ungültige Methode.' });
-      if (req.body.method === 'modal' && appModel.countQuestions(type.id) > applicationService.MODAL_MAX_QUESTIONS) {
-        return res.status(400).json({ error: `„Discord-Fenster“ erlaubt nur ${applicationService.MODAL_MAX_QUESTIONS} Fragen – bitte Fragen entfernen oder „Direktnachricht“ wählen.` });
-      }
-      patch.method = req.body.method;
-    }
     if (req.body.chatCategoryId !== undefined) {
       const id = String(req.body.chatCategoryId || '');
       if (id && !ID_RE.test(id)) return res.status(400).json({ error: 'Ungültige Kategorie.' });
@@ -2111,10 +2103,6 @@ router.post(
   asyncHandler(async (req, res) => {
     const type = ownedAppType(req);
     if (!type) return res.status(404).json({ error: 'Nicht gefunden.' });
-    const limit = type.method === 'modal' ? applicationService.MODAL_MAX_QUESTIONS : applicationService.MAX_QUESTIONS;
-    if (appModel.countQuestions(type.id) >= limit) {
-      return res.status(400).json({ error: `Maximal ${limit} Fragen bei dieser Methode${type.method === 'modal' ? ' (Discord-Limit für Fenster)' : ''}.` });
-    }
     if (!String(req.body.label || '').trim()) return res.status(400).json({ error: 'Fragetext erforderlich.' });
     const { patch, error } = questionPatch(req.body, null);
     if (error) return res.status(400).json({ error });

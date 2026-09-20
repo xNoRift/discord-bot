@@ -17,8 +17,7 @@ let PANELS = [];
 let ROLES = [];
 let CH = { text: [], categories: [] };
 
-const METHOD_LABEL = { modal: 'Discord-Fenster', dm: 'Direktnachricht', web: 'Webseite' };
-const SOURCE_LABEL = METHOD_LABEL;
+const SOURCE_LABEL = { modal: 'Discord-Fenster', dm: 'Direktnachricht', web: 'Webseite' };
 
 const ROLE_FIELDS = [
   ['restrictedRoleIds', 'Gesperrte Rollen', 'Diese Rollen dürfen sich NICHT bewerben.', 'restrictedMode'],
@@ -83,7 +82,7 @@ function typeRow(t) {
     <div class="list-row__head">
       <span class="list-row__title">${escapeHtml(t.emoji || '📋')} ${escapeHtml(t.name)}</span>
       <span class="badge badge--${t.enabled ? 'green' : 'red'}">${t.enabled ? 'Offen' : 'Geschlossen'}</span>
-      <span class="muted">${t.questions.length} ${t.questions.length === 1 ? 'Frage' : 'Fragen'} · ${METHOD_LABEL[t.method] || 'Discord-Fenster'}</span>
+      <span class="muted">${t.questions.length} ${t.questions.length === 1 ? 'Frage' : 'Fragen'}</span>
       <div class="spacer"></div>
       <div class="list-row__actions">
         ${iconBtn('btn--outline', 'edit', t.id, 'edit', 'Bearbeiten')}
@@ -165,10 +164,7 @@ function editorHtml(t) {
             <div class="field"><label>Emoji</label><input name="emoji" maxlength="8" data-emoji="one" value="${escapeHtml(t.emoji || '')}" /></div>
           </div>
           <div class="field"><label>Beschreibung</label><input name="description" maxlength="100" value="${escapeHtml(t.description || '')}" /><small>Wird im Auswahlmenü des Panels angezeigt.</small></div>
-          <div class="field"><label>Ausfüll-Methode</label>
-            <select name="method"><option value="dm">Direktnachricht (beliebig viele Fragen)</option><option value="modal">Discord-Fenster (max. 5 Fragen)</option></select>
-            <small>Bei „Direktnachricht“ stellt der Bot die Fragen nacheinander privat. Das „Discord-Fenster“ öffnet ein Formular direkt im Server.</small></div>
-          <div class="field"><label>Zeit zum Ausfüllen (Minuten, nur Direktnachricht)</label><input name="timeLimitMin" type="number" min="1" max="10080" value="${c.timeLimitMin}" /></div>
+          <div class="field"><label>Zeit zum Ausfüllen (Minuten)</label><input name="timeLimitMin" type="number" min="1" value="${c.timeLimitMin}" /><small>Der Bot stellt die Fragen nacheinander per Direktnachricht – beliebig viele.</small></div>
           <hr class="divider" />
           <div class="field"><label>Kanal für offene Einreichungen</label><select name="pendingChannelId" data-type="text"></select><small>Leer = Standard-Kanal aus „Allgemein“.</small></div>
           <div class="col-2">
@@ -187,7 +183,7 @@ function editorHtml(t) {
             <div class="field"><label>Nachricht bei Ablehnung</label><textarea name="deniedMessage" rows="3" maxlength="1000">${escapeHtml(c.deniedMessage)}</textarea></div>
           </div>
           <div class="col-2">
-            <div class="field"><label>Bestätigungs-Nachricht</label><textarea name="confirmationMessage" rows="4" maxlength="1500" placeholder="Leer = Standardtext („Möchtest du dich bewerben? …“)">${escapeHtml(c.confirmationMessage)}</textarea><small>Erste Nachricht, wenn jemand die Bewerbung startet (nur Direktnachricht).</small></div>
+            <div class="field"><label>Bestätigungs-Nachricht</label><textarea name="confirmationMessage" rows="4" maxlength="1500" placeholder="Leer = Standardtext („Möchtest du dich bewerben? …“)">${escapeHtml(c.confirmationMessage)}</textarea><small>Erste Nachricht, wenn jemand die Bewerbung startet.</small></div>
             <div class="field"><label>Abschluss-Nachricht</label><textarea name="completionMessage" rows="4" maxlength="1000">${escapeHtml(c.completionMessage)}</textarea><small>Wird nach dem Einreichen an den Bewerber geschickt.</small></div>
           </div>
           <hr class="divider" />
@@ -250,7 +246,7 @@ function typeBody(form) {
     cooldownMin: (Number(f.cdDays) || 0) * 1440 + (Number(f.cdHours) || 0) * 60 + (Number(f.cdMins) || 0),
   };
   for (const [key] of ROLE_FIELDS) cfg[key] = f[key];
-  return { name: f.name, emoji: f.emoji, description: f.description, method: f.method, enabled: f.enabled, chatCategoryId: f.chatCategoryId, autoChat: f.autoChat, cfg };
+  return { name: f.name, emoji: f.emoji, description: f.description, enabled: f.enabled, chatCategoryId: f.chatCategoryId, autoChat: f.autoChat, cfg };
 }
 
 async function openEditor(typeId) {
@@ -262,7 +258,6 @@ async function openEditor(typeId) {
   ED.innerHTML = editorHtml(t);
   initEmojiInputs(ED);
   const form = ED.querySelector('#typeForm');
-  form.method.value = t.method === 'modal' ? 'modal' : 'dm';
   form.restrictedMode.value = t.cfg.restrictedMode; form.requiredMode.value = t.cfg.requiredMode; form.onLeave.value = t.cfg.onLeave;
   await fillSelectors({
     pendingChannelId: t.cfg.pendingChannelId, acceptedChannelId: t.cfg.acceptedChannelId, deniedChannelId: t.cfg.deniedChannelId,
@@ -308,7 +303,7 @@ function questionCard(q, i, total) {
       <button type="button" class="btn btn--danger btn--icon" data-a="del" title="Löschen">${icon('trash', 'icon--sm')}</button>
     </div>
     <div class="form">
-      <div class="field"><input data-f="label" maxlength="200" value="${escapeHtml(q.label)}" placeholder="Fragetext" /><small>Im „Discord-Fenster“ werden nur die ersten 45 Zeichen angezeigt.</small></div>
+      <div class="field"><input data-f="label" maxlength="200" value="${escapeHtml(q.label)}" placeholder="Fragetext" /></div>
       <div class="field q-opts"${q.style === 'choice' ? '' : ' hidden'}><label>Antwortmöglichkeiten (eine pro Zeile, mind. 2)</label><textarea data-f="options" rows="3">${escapeHtml((q.options || []).join('\n'))}</textarea></div>
       <details><summary style="cursor:pointer;font-weight:700;">Einstellungen</summary>
         <div class="form" style="margin-top:10px;">

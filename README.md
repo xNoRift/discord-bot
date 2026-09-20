@@ -54,8 +54,8 @@ Bot und Dashboard laufen in **einem** Node-Prozess und teilen sich dieselbe SQLi
 Aufgebaut wie ein Bewerbungs-Bot: **Bewerbungen** (Formulare) · **Panels** · **Einreichungen** – alles im Dashboard, ohne künstliche Limits.
 - **Bewerbungen:** beliebig viele, jede mit Fragen (Text kurz/lang, Auswahl, Zahl – Pflicht/optional, Länge bzw. Wertgrenzen, Hilfetext),
   öffnen/schließen, duplizieren
-- **Ausfüllen:** per **Direktnachricht** (beliebig viele Fragen, Zeitlimit, Abbrechen) oder im **Discord-Fenster** (max. 5 – Discord-Limit);
-  starten über Panel-Button, Panel-Auswahlmenü oder `/apply`
+- **Ausfüllen:** per Direktnachricht – **beliebig viele** Fragen, Zeitlimit einstellbar, Abbrechen jederzeit; starten über
+  Panel-Button, Panel-Auswahlmenü oder /apply. Auswahl-Fragen mit beliebig vielen Antworten (ab 100 zusätzlich als Text)
 - **Anforderungen:** gesperrte/benötigte Rollen (alle oder eine), Wartezeit nach einer Einreichung, eigene Kanäle für offene/angenommene/abgelehnte
 - **Nachrichten:** Texte bei Annahme, Ablehnung, Bestätigung und Abschluss mit Platzhaltern; Statistik anzeigen, Antworten ausblenden
 - **Rollen:** bei Annahme/Ablehnung vergeben oder entfernen, Rollen während der Prüfung, Ping-Rollen, Bewerbungs-Manager-Rollen

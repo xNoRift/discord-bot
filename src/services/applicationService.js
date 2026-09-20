@@ -22,12 +22,9 @@ const logger = require('../utils/logger');
 
 /**
  * Bewerbungssystem (Appy-Aufbau): Panels, Anforderungen, Einreichung, Entscheidung, Bewerber-Chat.
- * Ausgefüllt wird per Discord-Fenster (Modal, max. 5 Fragen) oder per Direktnachricht
- * (siehe applicationFlowService).
+ * Ausgefüllt wird per Direktnachricht (siehe applicationFlowService) – beliebig viele Fragen.
  */
 
-const MAX_QUESTIONS = 200;
-const MODAL_MAX_QUESTIONS = 5;
 const METHOD_LABEL = { modal: 'Discord-Fenster', dm: 'Direktnachricht', web: 'Webseite' };
 
 /* ---------------- Hilfen ---------------- */
@@ -78,23 +75,30 @@ function buildPanelMessage(panel, types) {
   if (cfg.thumbnailUrl) embed.setThumbnail(cfg.thumbnailUrl);
 
   if (panel.panel_type === 'select') {
-    const menu = new StringSelectMenuBuilder()
-      .setCustomId('app:pick')
-      .setPlaceholder('Wähle eine Bewerbung …')
-      .addOptions(
-        types.slice(0, 25).map((t) => ({
-          label: t.name.slice(0, 100),
-          value: String(t.id),
-          ...(t.description ? { description: t.description.slice(0, 100) } : {}),
-          ...(validEmoji(t.emoji) ? { emoji: t.emoji } : {}),
-        })),
+    const rows = [];
+    for (let i = 0; i < types.length && rows.length < 5; i += 25) {
+      rows.push(
+        new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId(`app:pick:${rows.length}`)
+            .setPlaceholder(types.length > 25 ? `Wähle eine Bewerbung … (${rows.length + 1})` : 'Wähle eine Bewerbung …')
+            .addOptions(
+              types.slice(i, i + 25).map((t) => ({
+                label: t.name.slice(0, 100),
+                value: String(t.id),
+                ...(t.description ? { description: t.description.slice(0, 100) } : {}),
+                ...(validEmoji(t.emoji) ? { emoji: t.emoji } : {}),
+              })),
+            ),
+        ),
       );
-    return { embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)] };
+    }
+    return { embeds: [embed], components: rows };
   }
 
   const rows = [];
   let current = new ActionRowBuilder();
-  types.slice(0, 25).forEach((t, i) => {
+  types.forEach((t, i) => {
     if (i > 0 && i % 5 === 0) {
       rows.push(current);
       current = new ActionRowBuilder();
@@ -154,9 +158,6 @@ function eligibilityError(member, type, settings) {
   if (!type.enabled) return 'Diese Bewerbung ist derzeit geschlossen.';
   const questions = appModel.listQuestions(type.id);
   if (!questions.length) return 'Für diese Bewerbung wurden noch keine Fragen konfiguriert.';
-  if (type.method === 'modal' && questions.length > MODAL_MAX_QUESTIONS) {
-    return 'Diese Bewerbung hat mehr als 5 Fragen und ist noch auf „Discord-Fenster“ gestellt. Bitte einem Admin Bescheid geben.';
-  }
 
   const restricted = idsOf(cfg.restrictedRoleIds);
   if (restricted.length) {
@@ -184,19 +185,9 @@ function eligibilityError(member, type, settings) {
   return null;
 }
 
-/** Discord-Fragen -> Modal-Format (Auswahl = Dropdown, Zahl = Kurztext). */
-function toModalQuestions(questions) {
-  return questions.map((q) => ({
-    ...q,
-    style: q.style === 'choice' ? 'select' : q.style === 'number' ? 'short' : q.style,
-    options: q.options,
-    placeholder: q.style === 'number' ? 'Zahl' : undefined,
-  }));
-}
-
 /**
  * Startet eine Bewerbung (Button, Auswahlmenü oder /apply).
- * Modal-Bewerbung: öffnet das Fenster. DM-Bewerbung: zeigt eine Bestätigung mit „Starten“.
+ * Zeigt eine Bestätigung mit „Starten“ – danach stellt der Bot die Fragen per Direktnachricht.
  */
 async function beginApplication(interaction, typeId) {
   const type = appModel.getType(typeId);
@@ -208,11 +199,6 @@ async function beginApplication(interaction, typeId) {
   if (problem) return reply(embeds.warning('Bewerbung nicht möglich', problem));
   if (appModel.getSessionByUser(interaction.user.id)) {
     return reply(embeds.warning('Bewerbung läuft bereits', 'Du hast schon eine Bewerbung per Direktnachricht begonnen. Schließe sie ab oder schreibe mir `abbrechen`.'));
-  }
-
-  const questions = appModel.listQuestions(type.id);
-  if (type.method === 'modal') {
-    return interaction.showModal(buildModal(type, questions));
   }
 
   const cfg = appModel.typeCfg(type);
@@ -229,17 +215,6 @@ async function beginApplication(interaction, typeId) {
       ),
     ],
   );
-}
-
-/* ---------------- Modal ---------------- */
-
-function buildModal(type, questions) {
-  const ticketService = require('./ticketService');
-  return ticketService.buildQuestionsModal(`app:modal:${type.id}`, `Bewerbung: ${type.name}`, toModalQuestions(questions));
-}
-
-function readModal(fields, questions) {
-  return require('./ticketService').readModalAnswers(fields, toModalQuestions(questions));
 }
 
 /* ---------------- Einreichung ---------------- */
@@ -322,7 +297,7 @@ async function applyRoles(guild, member, addCsv, removeCsv, reason) {
 /**
  * Speichert eine eingereichte Bewerbung und postet sie in den Bewerbungs-Kanal.
  * @param {object} user  { id, tag }
- * @param {{source?: 'modal'|'dm'|'web', durationMs?: number}} [opts]
+ * @param {{source?: 'dm'|'web', durationMs?: number}} [opts]
  */
 async function submitApplication(guild, user, type, answers, opts = {}) {
   const settings = settingsModel.get(guild.id);
@@ -336,7 +311,7 @@ async function submitApplication(guild, user, type, answers, opts = {}) {
     userTag: user.tag,
     answers,
     durationMs: opts.durationMs,
-    source: opts.source ?? type.method,
+    source: opts.source ?? 'dm',
   });
 
   const channel = await fetchChannel(guild, cfg.pendingChannelId || settings.application_channel_id);
@@ -646,8 +621,6 @@ async function openChat(guild, application, staff) {
 }
 
 module.exports = {
-  MAX_QUESTIONS,
-  MODAL_MAX_QUESTIONS,
   METHOD_LABEL,
   fillTemplate,
   formatDuration,
@@ -656,8 +629,6 @@ module.exports = {
   refreshPanelMessage,
   eligibilityError,
   beginApplication,
-  buildModal,
-  readModal,
   buildReviewMessage,
   submitApplication,
   reviewApplication,

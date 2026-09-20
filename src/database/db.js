@@ -51,12 +51,15 @@ ensureColumn('guild_settings', 'application_chat_category_id', 'TEXT');
 
 // Bewerbungen im Appy-Aufbau: Einstellungen als JSON, Antwort-Methode, Fragetypen, Einreichungs-Details
 ensureColumn('application_types', 'cfg', 'TEXT');
-ensureColumn('application_types', 'method', "TEXT DEFAULT 'modal'"); // modal | dm (neue Bewerbungen: dm)
+ensureColumn('application_types', 'method', "TEXT DEFAULT 'dm'"); // historisch – es gibt nur noch Direktnachricht
 ensureColumn('application_questions', 'options', 'TEXT');
 ensureColumn('application_questions', 'description', 'TEXT');
 ensureColumn('applications', 'thread_id', 'TEXT');
 ensureColumn('applications', 'duration_ms', 'INTEGER');
 ensureColumn('applications', 'source', 'TEXT');
+
+// Das „Discord-Fenster“ (max. 5 Fragen) gibt es nicht mehr – alle Bewerbungen laufen per Direktnachricht
+db.prepare("UPDATE application_types SET method = 'dm' WHERE method IS NOT 'dm'").run();
 
 // Einmalig: alte „Annahme-Rolle“ -> Rollen-Liste, altes Einzel-Panel -> Panel-Eintrag
 try {
