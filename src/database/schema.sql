@@ -446,3 +446,69 @@ CREATE TABLE IF NOT EXISTS activity_log (
   created_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_activity_guild ON activity_log(guild_id, created_at);
+
+-- ---------- Neue Module: Einstellungen (JSON pro Server + Modul) ----------
+CREATE TABLE IF NOT EXISTS module_settings (
+  guild_id   TEXT NOT NULL,
+  module     TEXT NOT NULL,
+  data       TEXT NOT NULL DEFAULT '{}',
+  updated_at INTEGER,
+  PRIMARY KEY (guild_id, module)
+);
+
+-- ---------- Beteiligungs-Belohnungen (XP / Level) ----------
+CREATE TABLE IF NOT EXISTS user_levels (
+  guild_id     TEXT NOT NULL,
+  user_id      TEXT NOT NULL,
+  xp           INTEGER NOT NULL DEFAULT 0,
+  level        INTEGER NOT NULL DEFAULT 0,
+  messages     INTEGER NOT NULL DEFAULT 0,
+  voice_minutes INTEGER NOT NULL DEFAULT 0,
+  updated_at   INTEGER,
+  PRIMARY KEY (guild_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_levels_rank ON user_levels(guild_id, xp DESC);
+
+CREATE TABLE IF NOT EXISTS level_rewards (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  level    INTEGER NOT NULL,
+  role_id  TEXT NOT NULL,
+  UNIQUE (guild_id, level, role_id)
+);
+
+-- ---------- Neuigkeiten ----------
+CREATE TABLE IF NOT EXISTS news_posts (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id   TEXT NOT NULL,
+  channel_id TEXT,
+  message_id TEXT,
+  title      TEXT,
+  body       TEXT,
+  author_id  TEXT,
+  created_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_news_guild ON news_posts(guild_id, created_at);
+
+-- ---------- Club-Management ----------
+CREATE TABLE IF NOT EXISTS clubs (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id    TEXT NOT NULL,
+  name        TEXT NOT NULL,
+  description TEXT,
+  emoji       TEXT,
+  leader_id   TEXT,
+  role_id     TEXT,
+  channel_id  TEXT,
+  created_at  INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_clubs_guild ON clubs(guild_id);
+
+CREATE TABLE IF NOT EXISTS club_members (
+  club_id   INTEGER NOT NULL,
+  user_id   TEXT NOT NULL,
+  rank      TEXT NOT NULL DEFAULT 'member',   -- leader | officer | member
+  joined_at INTEGER,
+  PRIMARY KEY (club_id, user_id),
+  FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE
+);

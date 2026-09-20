@@ -2,11 +2,18 @@
 
 const autoRoleService = require('../services/autoRoleService');
 const welcomeService = require('../services/welcomeService');
+const protectionService = require('../services/protectionService');
 const logger = require('../utils/logger');
 
 module.exports = {
   name: 'guildMemberAdd',
   async execute(member) {
+    try {
+      await protectionService.onMemberJoin(member);
+    } catch (err) {
+      logger.error('[guildMemberAdd] Guild Protection:', err.message);
+    }
+
     try {
       await autoRoleService.applyOnJoin(member);
     } catch (err) {

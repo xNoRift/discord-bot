@@ -1490,6 +1490,20 @@ router.delete(
   }),
 );
 
+/* ---------------- Neue Module: Einstellungen (Guild Protection, Belohnungen, News, Clubs) ---------------- */
+
+const moduleSettings = require('../../src/database/models/moduleSettings');
+
+router.get('/guilds/:guildId/modules/:module', (req, res) => {
+  if (!moduleSettings.SCHEMAS[req.params.module]) return res.status(404).json({ error: 'Unbekanntes Modul.' });
+  res.json(moduleSettings.get(req.params.guildId, req.params.module));
+});
+
+router.patch('/guilds/:guildId/modules/:module', actionLimiter, (req, res) => {
+  if (!moduleSettings.SCHEMAS[req.params.module]) return res.status(404).json({ error: 'Unbekanntes Modul.' });
+  res.json(moduleSettings.update(req.params.guildId, req.params.module, req.body || {}));
+});
+
 /* ---------------- Applications ---------------- */
 
 router.get('/guilds/:guildId/application-types', (req, res) => {

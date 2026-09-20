@@ -1,0 +1,75 @@
+<%- include('partials/head', { title: guild.name + ' – Guild Protection' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('shield') %> Guild Protection</h1></div>
+  <p>Schütze deinen Server vor Raids, Spam, Werbung und Fake-Accounts.</p>
+</div>
+
+<div class="module-status" id="moduleStatus">
+  <span class="module-status__dot"></span>
+  <span class="module-status__text"><b id="msTitle">…</b><span id="msText"></span></span>
+  <button class="btn btn--ghost btn--sm" id="msToggle">…</button>
+</div>
+
+<form id="protForm" class="form">
+  <div class="card">
+    <div class="card__head"><h2><%- icon('users') %> Neue Mitglieder</h2></div>
+    <div class="col-2">
+      <div class="field"><label>Mindest-Kontoalter (Tage)</label><input name="minAccountAgeDays" type="number" min="0" max="365" /><small>0 = aus. Jüngere Konten werden beim Beitritt bestraft (Schutz vor Fake-Accounts).</small></div>
+      <div class="field"><label>Aktion bei zu jungem Konto</label><select name="accountAgeAction"><option value="kick">Kicken</option><option value="timeout">Stummschalten (24 h)</option></select></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Raid-Erkennung</b><span>Erkennt viele Beitritte in kurzer Zeit und bestraft die Nachzügler</span></div>
+      <label class="toggle"><input type="checkbox" name="raidEnabled" /><span class="toggle__track"></span></label>
+    </div>
+    <div class="col-2">
+      <div class="field"><label>Ab wie vielen Beitritten?</label><input name="raidJoins" type="number" min="2" max="50" /></div>
+      <div class="field"><label>Innerhalb (Sekunden)</label><input name="raidSeconds" type="number" min="3" max="120" /></div>
+    </div>
+    <div class="field" style="max-width:320px;"><label>Aktion bei Raid</label><select name="raidAction"><option value="kick">Kicken</option><option value="timeout">Stummschalten (30 Min.)</option></select></div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('chat') %> Nachrichten</h2></div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Einladungslinks blockieren</b><span>Löscht Discord-Einladungen von Mitgliedern</span></div>
+      <label class="toggle"><input type="checkbox" name="blockInvites" /><span class="toggle__track"></span></label>
+    </div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Alle Links blockieren</b><span>Löscht Nachrichten mit Links (außer Erlaubte Domains)</span></div>
+      <label class="toggle"><input type="checkbox" name="blockLinks" /><span class="toggle__track"></span></label>
+    </div>
+    <div class="field"><label>Erlaubte Domains</label><input name="linkWhitelist" placeholder="youtube.com, twitch.tv, tenor.com" /><small>Kommagetrennt, gilt auch für Subdomains.</small></div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Spam-Schutz</b><span>Schaltet Mitglieder stumm, die zu schnell schreiben</span></div>
+      <label class="toggle"><input type="checkbox" name="spamEnabled" /><span class="toggle__track"></span></label>
+    </div>
+    <div class="col-2">
+      <div class="field"><label>Nachrichten</label><input name="spamMessages" type="number" min="3" max="30" /></div>
+      <div class="field"><label>Innerhalb (Sekunden)</label><input name="spamSeconds" type="number" min="2" max="60" /></div>
+    </div>
+    <div class="field" style="max-width:320px;"><label>Stummschaltung (Minuten)</label><input name="spamTimeoutMinutes" type="number" min="1" max="1440" /></div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('settings') %> Ausnahmen &amp; Protokoll</h2></div>
+    <div class="col-2">
+      <div class="field"><label>Log-Kanal</label><select name="logChannelId" data-type="text"></select><small>Leer = Moderations-/Standard-Log des Servers.</small></div>
+      <div class="field"><label>Ausgenommene Rollen (IDs)</label><input name="exemptRoleIds" placeholder="Rollen-ID, Rollen-ID" /><small>Mitglieder mit „Nachrichten verwalten" sind immer ausgenommen.</small></div>
+    </div>
+  </div>
+</form>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('bot') %> Hinweise</h2></div>
+  <ul class="bullet-list">
+    <li>Der Bot braucht die Rechte <b>Mitglieder kicken</b>, <b>Mitglieder stummschalten</b> und <b>Nachrichten verwalten</b> – seine Rolle muss über den betroffenen Mitgliedern stehen.</li>
+    <li>Link- und Spam-Schutz benötigen den <b>„Message Content"-Intent</b>.</li>
+    <li>Es werden keine Nachrichteninhalte gespeichert; die Zähler liegen nur kurz im Arbeitsspeicher.</li>
+  </ul>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/protection.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

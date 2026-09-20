@@ -740,7 +740,48 @@ async function initModuleStatus(field, opts = {}) {
   });
 }
 
+/**
+ * Formular + Aktivieren-Schalter für ein "neues Modul" (Einstellungen aus /modules/:module).
+ * Felder werden über ihr name-Attribut gefüllt; Speichern läuft über die Speicher-Leiste.
+ */
+async function moduleForm(module, form, opts = {}) {
+  let cfg = {};
+  const fill = async () => {
+    cfg = await apiFor('GET', '/modules/' + module);
+    await fillSelectors(cfg);
+    for (const el of form.elements) {
+      if (!el.name || !(el.name in cfg)) continue;
+      if (el.type === 'checkbox') el.checked = Boolean(cfg[el.name]);
+      else el.value = cfg[el.name] ?? '';
+    }
+    if (document.getElementById('moduleStatus')) renderModuleStatus(Boolean(cfg.enabled), opts);
+    form.sbMarkClean?.();
+    if (opts.afterLoad) opts.afterLoad(cfg);
+  };
+  const save = async () => {
+    try {
+      cfg = await apiFor('PATCH', '/modules/' + module, readForm(form));
+      toast('Gespeichert.', 'success');
+      await fill();
+    } catch (err) { toast(err.message, 'error'); throw err; }
+  };
+  await fill();
+  trackForm(form, save, { reset: fill });
+  const btn = document.getElementById('msToggle');
+  if (btn && 'enabled' in cfg) {
+    btn.addEventListener('click', async () => {
+      try {
+        cfg = await apiFor('PATCH', '/modules/' + module, { enabled: !cfg.enabled });
+        renderModuleStatus(Boolean(cfg.enabled), opts);
+        toast('Gespeichert.', 'success');
+      } catch (err) { toast(err.message, 'error'); }
+    });
+  }
+  return { get cfg() { return cfg; }, reload: fill };
+}
+
 window.Dash = {
+  moduleForm,
   api,
   apiFor,
   toast,

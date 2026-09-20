@@ -3,6 +3,7 @@
 const ticketsModel = require('../database/models/tickets');
 const countingService = require('../services/countingService');
 const suggestionService = require('../services/suggestionService');
+const protectionService = require('../services/protectionService');
 const logger = require('../utils/logger');
 
 /**
@@ -14,6 +15,12 @@ module.exports = {
   name: 'messageCreate',
   async execute(message) {
     if (message.author?.bot || !message.inGuild()) return;
+
+    try {
+      await protectionService.onMessage(message);
+    } catch (err) {
+      logger.warn('[messageCreate] Guild Protection:', err.message);
+    }
 
     try {
       const ticket = ticketsModel.getByChannel(message.channelId);
