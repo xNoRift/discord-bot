@@ -1,0 +1,66 @@
+<%- include('partials/head', { title: guild.name + ' – Regeln' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('scale') %> Regeln</h1></div>
+  <p>Eine übersichtliche Regel-Nachricht für deinen Regel-Kanal: oben ein kurzer Text, darunter Buttons wie „§1 Allgemein“. Wer auf einen Button klickt, sieht die Regeln dieses Bereichs nur für sich – der Kanal bleibt aufgeräumt.</p>
+</div>
+
+<div class="module-status" id="moduleStatus">
+  <span class="module-status__dot"></span>
+  <span class="module-status__text"><b id="msTitle">…</b><span id="msText"></span></span>
+  <button class="btn btn--ghost btn--sm" id="msToggle">…</button>
+</div>
+
+<div class="col-2">
+  <form id="rulesForm" class="card form">
+    <div class="card__head"><h2><%- icon('file') %> Regel-Nachricht</h2></div>
+    <div class="field"><label>Kanal</label><select name="channelId" data-type="text"></select><small>Hier wird die Nachricht gepostet – meist ein eigener „regeln“-Kanal, in dem nur das Team schreiben darf.</small></div>
+    <div class="col-2">
+      <div class="field"><label>Titel</label><input name="title" maxlength="256" data-emoji /></div>
+      <div class="field"><label>Farbe</label><input name="color" data-color data-color-default="#7c5cff" /></div>
+    </div>
+    <div class="field"><label>Text</label><textarea name="intro" rows="4" maxlength="2000" data-emoji></textarea><small>Eine kurze Einleitung. Markdown wie <code>**fett**</code> funktioniert.</small></div>
+    <div class="col-2">
+      <div class="field"><label>Hinweis – Überschrift</label><input name="noticeTitle" maxlength="256" data-emoji /></div>
+      <div class="field"><label>Fußzeile (optional)</label><input name="footer" maxlength="256" /></div>
+    </div>
+    <div class="field"><label>Hinweis – Text</label><textarea name="noticeText" rows="3" maxlength="1000" data-emoji></textarea><small>Leer lassen, wenn du keinen Hinweis-Kasten willst.</small></div>
+    <div class="field"><label>Banner (optional)</label><input name="imageUrl" data-image /></div>
+  </form>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('bell') %> Vorschau &amp; Senden</h2></div>
+    <div class="embed-preview" id="rlPreview" style="max-width:none;"></div>
+    <div class="rules-btns" id="rlPreviewBtns"></div>
+    <div class="row-inline" style="margin-top:14px;">
+      <button type="button" class="btn btn--primary" id="rlPost"><%- icon('send', 'icon--sm') %> Nachricht senden / aktualisieren</button>
+      <span class="muted" id="rlMsg"></span>
+    </div>
+    <small class="muted">Ungespeicherte Änderungen werden vor dem Senden gespeichert. Der Text hinter einem Button ist sofort aktuell – neue oder umbenannte Buttons erscheinen nach „senden / aktualisieren“. Wechselst du den Kanal, wird die alte Nachricht entfernt.</small>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__head">
+    <h2><%- icon('clipboard') %> Abschnitte (Buttons)</h2>
+    <div class="spacer"></div>
+    <button type="button" class="btn btn--ghost btn--sm" id="rlTemplate"><%- icon('sparkles', 'icon--sm') %> Beispiel-Regeln einfügen</button>
+    <button type="button" class="btn btn--primary btn--sm" id="rlAdd"><%- icon('plus', 'icon--sm') %> Abschnitt hinzufügen</button>
+  </div>
+  <p class="card__sub">Jeder Abschnitt wird ein Button unter der Nachricht. Bis zu 25 Stück – sortiere sie mit den Pfeilen.</p>
+  <div id="rlList"><div class="loading">Lädt…</div></div>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('bulb') %> Brauche ich das?</h2></div>
+  <ul class="bullet-list">
+    <li>Klare Regeln geben dem Team eine Grundlage, um bei Streit oder Verstößen zu verwarnen oder zu sperren – „das stand ja nirgends“ zieht dann nicht mehr.</li>
+    <li>Am einfachsten: <b>Beispiel-Regeln einfügen</b>, die Texte an deinen Server anpassen, Kanal wählen, Modul aktivieren und senden.</li>
+    <li>Willst du, dass neue Mitglieder die Regeln erst bestätigen? Das geht über <b>Guild Protection → Verifizierung</b> (ein Button, der eine Rolle vergibt).</li>
+  </ul>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/rules.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

@@ -1141,3 +1141,7 @@ input.is-invalid, textarea.is-invalid, select.is-invalid, .in-wrap.is-invalid { 
 .colorpick__swatch { width: 24px; height: 24px; border-radius: 8px; border: 2px solid transparent; box-shadow: 0 0 0 1px var(--line-2, var(--line)); cursor: pointer; padding: 0; }
 .colorpick__swatch:hover { transform: scale(1.12); }
 .colorpick__swatch.is-active { border-color: #fff; }
+
+/* Regeln: Vorschau der Buttons unter der Regel-Nachricht */
+.rules-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.rules-btn { background: var(--surface-3); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 14px; font-size: .85rem; font-weight: 600; }

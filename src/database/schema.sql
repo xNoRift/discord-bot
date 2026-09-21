@@ -558,3 +558,15 @@ CREATE TABLE IF NOT EXISTS mod_warns (
   created_at   INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_mod_warns_user ON mod_warns(guild_id, user_id);
+
+-- ---------- Regeln: Abschnitte (je ein Button unter der Regel-Nachricht) ----------
+CREATE TABLE IF NOT EXISTS rule_sections (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0,
+  label    TEXT NOT NULL,      -- Button-Text, z. B. "§1 Allgemein"
+  emoji    TEXT,
+  title    TEXT,               -- Überschrift der Antwort (leer = Button-Text)
+  content  TEXT NOT NULL       -- die Regeln dieses Abschnitts
+);
+CREATE INDEX IF NOT EXISTS idx_rule_sections_guild ON rule_sections(guild_id, position);

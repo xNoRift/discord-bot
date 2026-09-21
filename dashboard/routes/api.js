@@ -1830,6 +1830,94 @@ router.post(
   }),
 );
 
+/* ---------------- Regeln ---------------- */
+
+const ruleSections = require('../../src/database/models/ruleSections');
+const rulesService = require('../../src/services/rulesService');
+
+const serializeSection = (s) => ({ id: s.id, label: s.label, emoji: s.emoji || '', title: s.title || '', content: s.content });
+
+/** Prüft die Eingaben eines Abschnitts; liefert { error } oder { value }. */
+function parseSection(b, { partial = false } = {}) {
+  const out = {};
+  if (!partial || b.label !== undefined) {
+    out.label = String(b.label ?? '').trim().slice(0, 80);
+    if (!out.label) return { error: 'Bitte einen Button-Text angeben.' };
+  }
+  if (!partial || b.content !== undefined) {
+    out.content = String(b.content ?? '').trim().slice(0, 4000);
+    if (!out.content) return { error: 'Bitte die Regeln für diesen Abschnitt eintragen.' };
+  }
+  if (b.title !== undefined) out.title = String(b.title).trim().slice(0, 240);
+  if (b.emoji !== undefined) {
+    out.emoji = String(b.emoji).trim().slice(0, 64);
+    if (out.emoji && !rulesService.validEmoji(out.emoji)) return { error: 'Bitte ein gültiges Emoji wählen.' };
+  }
+  return { value: out };
+}
+
+const ownedSection = (req) => {
+  const s = ruleSections.get(num(req.params.id));
+  return s && s.guild_id === req.params.guildId ? s : null;
+};
+
+router.get('/guilds/:guildId/rules/sections', (req, res) => {
+  res.json({ max: ruleSections.MAX_SECTIONS, sections: ruleSections.list(req.params.guildId).map(serializeSection) });
+});
+
+router.post('/guilds/:guildId/rules/sections', (req, res) => {
+  if (ruleSections.count(req.params.guildId) >= ruleSections.MAX_SECTIONS) {
+    return res.status(400).json({ error: `Maximal ${ruleSections.MAX_SECTIONS} Abschnitte (mehr Buttons passen nicht unter eine Nachricht).` });
+  }
+  const { error, value } = parseSection(req.body || {});
+  if (error) return res.status(400).json({ error });
+  res.json(serializeSection(ruleSections.create(req.params.guildId, value)));
+});
+
+router.patch('/guilds/:guildId/rules/sections/:id', (req, res) => {
+  const s = ownedSection(req);
+  if (!s) return res.status(404).json({ error: 'Abschnitt nicht gefunden.' });
+  const { error, value } = parseSection(req.body || {}, { partial: true });
+  if (error) return res.status(400).json({ error });
+  res.json(serializeSection(ruleSections.update(s.id, value)));
+});
+
+router.delete('/guilds/:guildId/rules/sections/:id', (req, res) => {
+  const s = ownedSection(req);
+  if (!s) return res.status(404).json({ error: 'Abschnitt nicht gefunden.' });
+  ruleSections.remove(s.id);
+  res.json({ ok: true });
+});
+
+router.post('/guilds/:guildId/rules/sections/:id/move', (req, res) => {
+  const s = ownedSection(req);
+  if (!s) return res.status(404).json({ error: 'Abschnitt nicht gefunden.' });
+  ruleSections.move(req.params.guildId, s.id, req.body?.dir === 'up' ? -1 : 1);
+  res.json({ ok: true });
+});
+
+// Beispiel-Regeln als Startpunkt einfügen (hängt die Abschnitte an die vorhandenen an).
+router.post('/guilds/:guildId/rules/template', (req, res) => {
+  if (ruleSections.count(req.params.guildId) + rulesService.TEMPLATE.length > ruleSections.MAX_SECTIONS) {
+    return res.status(400).json({ error: 'Dafür ist nicht mehr genug Platz – lösche zuerst ein paar Abschnitte.' });
+  }
+  for (const t of rulesService.TEMPLATE) ruleSections.create(req.params.guildId, t);
+  res.json({ ok: true });
+});
+
+router.post(
+  '/guilds/:guildId/rules/post',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      const msg = await rulesService.postPanel(req.guild);
+      res.json({ ok: true, url: msg.url });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
 /* ---------------- Club-Management ---------------- */
 
 const clubsModel = require('../../src/database/models/clubs');

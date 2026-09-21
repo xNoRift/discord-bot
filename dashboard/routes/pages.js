@@ -14,6 +14,7 @@ const NAV = [
     items: [
       { key: 'overview', label: 'Übersicht', icon: 'home', path: '' },
       { key: 'welcome', label: 'Willkommen', icon: 'bell', path: '/welcome' },
+      { key: 'rules', label: 'Regeln', icon: 'scale', path: '/rules' },
       { key: 'voicesupport', label: 'Voice Support', icon: 'chat', path: '/voicesupport' },
       { key: 'tickets', label: 'Ticket', icon: 'ticket', path: '/tickets' },
       { key: 'moderation', label: 'Moderation', icon: 'shield', path: '/moderation' },
@@ -56,6 +57,7 @@ const CRUMB = {
   members: { crumb: 'Mitglieder', crumbIcon: 'users' },
   structure: { crumb: 'Server-Struktur', crumbIcon: 'layers' },
   welcome: { crumb: 'Willkommen', crumbIcon: 'bell' },
+  rules: { crumb: 'Regeln', crumbIcon: 'scale' },
   music: { crumb: 'Musik', crumbIcon: 'music' },
   tempvoice: { crumb: 'Private Kanäle', crumbIcon: 'hash' },
   games: { crumb: 'Spiele', crumbIcon: 'sparkles' },
@@ -139,6 +141,7 @@ const PAGES = [
   ['/', 'overview'],
   ['/messages', 'messages'],
   ['/welcome', 'welcome'],
+  ['/rules', 'rules'],
   ['/music', 'music'],
   ['/tempvoice', 'tempvoice'],
   ['/games', 'games'],
