@@ -52,6 +52,7 @@ const EDITABLE_FIELDS = [
   'team_role_ids',
   'autorole_ids',
   'autorole_bot_ids',
+  'command_channel_ids',
   // Willkommens-System
   'welcome_enabled',
   'welcome_channel_id',

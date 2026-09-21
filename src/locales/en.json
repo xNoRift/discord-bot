@@ -4,7 +4,9 @@
     "error_generic_desc": "Unknown error.",
     "no_text": "*(no text)*",
     "no_answer": "*(no answer)*",
-    "question": "Question"
+    "question": "Question",
+    "command_channel_title": "🚫 Wrong channel",
+    "command_channel_desc": "Bot commands are only allowed in {channels} on this server."
   },
   "tickets": {
     "panel": {

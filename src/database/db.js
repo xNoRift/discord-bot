@@ -139,6 +139,7 @@ ensureColumn('guild_settings', 'mod_log_channel_id', 'TEXT');
 ensureColumn('guild_settings', 'team_role_ids', 'TEXT');
 ensureColumn('guild_settings', 'autorole_ids', 'TEXT');
 ensureColumn('guild_settings', 'autorole_bot_ids', 'TEXT');
+ensureColumn('guild_settings', 'command_channel_ids', 'TEXT');
 
 // Willkommens-System
 ensureColumn('guild_settings', 'welcome_enabled', 'INTEGER DEFAULT 0');

@@ -18,12 +18,31 @@ async function load() {
   ect.value = settings.embed_color || '';
   ec.value = /^#?[0-9a-f]{6}$/i.test(settings.embed_color || '') ? (settings.embed_color[0] === '#' ? settings.embed_color : '#' + settings.embed_color) : '#7c5cff';
   ec.oninput = () => { ect.value = ec.value; };
+  await renderCommandChannels();
+}
+
+/* Befehls-Kanäle: Slash-Befehle nur in den gewählten Kanälen (leer = überall) */
+async function renderCommandChannels() {
+  const chans = await Dash.getChannels();
+  const selected = new Set((settings.command_channel_ids || '').split(',').filter(Boolean));
+  const box = document.getElementById('cmdChannelChecks');
+  box.innerHTML = chans.text.length
+    ? chans.text.map((c) => `
+      <span class="chip-check">
+        <input type="checkbox" id="cmdch-${c.id}" name="cmdch_${c.id}" value="${c.id}" ${selected.has(c.id) ? 'checked' : ''}>
+        <label for="cmdch-${c.id}">#${escapeHtml(c.name)}</label>
+      </span>`).join('')
+    : '<span class="muted">Keine Textkanäle gefunden.</span>';
+}
+
+function collectCommandChannels() {
+  return [...document.querySelectorAll('#cmdChannelChecks input:checked')].map((c) => c.value).join(',');
 }
 
 const settingsForm = document.getElementById('settingsForm');
 async function saveSettings() {
   try {
-    settings = await apiFor('PATCH', '/settings', readForm(settingsForm));
+    settings = await apiFor('PATCH', '/settings', { ...readForm(settingsForm), command_channel_ids: collectCommandChannels() });
     document.getElementById('sStatus').textContent = 'Gespeichert ✓';
     toast('Alle Einstellungen gespeichert.', 'success');
     await load();

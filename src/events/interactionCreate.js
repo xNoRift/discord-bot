@@ -1,6 +1,6 @@
 'use strict';
 
-const { MessageFlags } = require('discord.js');
+const { MessageFlags, PermissionFlagsBits } = require('discord.js');
 
 const logger = require('../utils/logger');
 const embeds = require('../utils/embeds');
@@ -20,6 +20,20 @@ async function safeReply(interaction, payload) {
   }
 }
 
+/**
+ * Befehls-Kanäle: Ist eine Kanal-Liste gesetzt, funktionieren Slash-Befehle nur dort
+ * (Threads zählen über ihren Eltern-Kanal). Leer = überall. Admins / „Server verwalten“ sind ausgenommen.
+ * @returns {string[]|null} die erlaubten Kanal-IDs, wenn der Befehl blockiert werden soll, sonst null
+ */
+function blockedCommandChannels(interaction) {
+  const allowed = String(interaction.settings?.command_channel_ids || '').split(',').filter(Boolean);
+  if (!allowed.length) return null;
+  const channel = interaction.channel;
+  if (allowed.includes(interaction.channelId) || (channel?.parentId && allowed.includes(channel.parentId))) return null;
+  if (interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return null;
+  return allowed;
+}
+
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction, client) {
@@ -33,6 +47,14 @@ module.exports = {
       if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
+        const blocked = interaction.inGuild() ? blockedCommandChannels(interaction) : null;
+        if (blocked) {
+          const tg = i18n.forGuild(interaction.guildId);
+          await safeReply(interaction, {
+            embeds: [embeds.error(tg('common.command_channel_title'), tg('common.command_channel_desc', { channels: blocked.map((id) => `<#${id}>`).join(', ') }))],
+          });
+          return;
+        }
         await command.execute(interaction, client);
         return;
       }

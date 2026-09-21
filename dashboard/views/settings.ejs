@@ -122,6 +122,12 @@
     </div>
   </div>
 
+  <div class="card">
+    <div class="card__head"><h2><%- icon('chat') %> Befehls-Kanäle</h2></div>
+    <p class="card__sub">Wähle die Kanäle, in denen Bot-Befehle (Slash-Befehle wie <code>/play</code> oder <code>/rank</code>) benutzt werden dürfen. <strong>Nichts ausgewählt = überall erlaubt.</strong> In allen anderen Kanälen antwortet der Bot nur mit einem Hinweis (nur für die Person sichtbar). Mitglieder mit dem Recht „Server verwalten“ sind davon ausgenommen. Buttons, Ticket-Panels & Co. sind nicht betroffen.</p>
+    <div id="cmdChannelChecks" class="chip-row"><span class="muted">Lädt…</span></div>
+  </div>
+
   <div class="form-actions">
     <span class="muted" id="sStatus"></span>
   </div>
