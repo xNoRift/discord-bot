@@ -938,7 +938,7 @@ router.post(
       if (!s) return res.status(400).json({ error: 'Es läuft gerade nichts.' });
       const action = String(req.body.action || '');
       if (action === 'skip') s.skip();
-      else if (action === 'stop') s.destroy();
+      else if (action === 'stop') s.destroy('⏹️ Über das Dashboard gestoppt.');
       else if (action === 'pause') s.pause();
       else if (action === 'resume') s.resume();
       else if (action === 'shuffle') s.shuffle();

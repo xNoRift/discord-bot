@@ -118,9 +118,16 @@ class Session {
     this.resource = null;
     this.idleTimer = null;
     this.panelMessageId = null;
+    this.destroyed = false;
 
-    this.player.on(voice.AudioPlayerStatus.Idle, () => this._onIdle());
+    // player.stop() innerhalb von destroy() löst 'Idle' erst einen Tick später aus - die
+    // destroyed-Sperre verhindert, dass das dann noch die Warteschlange weiterschaltet
+    // oder das Panel überschreibt (z. B. nachdem der Bot gekickt/verschoben wurde).
+    this.player.on(voice.AudioPlayerStatus.Idle, () => {
+      if (!this.destroyed) this._onIdle();
+    });
     this.player.on('error', (err) => {
+      if (this.destroyed) return;
       logger.warn(`[music] Player-Fehler (${this.guildId}): ${err.message}`);
       this._announce(`⚠️ Fehler bei **${this.current?.title || 'Titel'}** – überspringe.`);
       this._next();
@@ -144,7 +151,7 @@ class Session {
           voice.entersState(this.connection, voice.VoiceConnectionStatus.Connecting, 5000),
         ]);
       } catch {
-        this.destroy();
+        this.destroy('⚠️ Verbindung zum Sprachkanal verloren.');
       }
     });
     this.connection.subscribe(this.player);
@@ -161,8 +168,7 @@ class Session {
   _scheduleIdle() {
     this._clearIdle();
     this.idleTimer = setTimeout(() => {
-      this._updatePanelIdle('👋 Nichts mehr in der Warteschlange – ich verlasse den Sprachkanal.').catch(() => null);
-      this.destroy();
+      this.destroy('👋 Nichts mehr in der Warteschlange – ich verlasse den Sprachkanal.');
     }, IDLE_DISCONNECT_MS);
   }
 
@@ -423,8 +429,12 @@ class Session {
     return removed;
   }
 
-  destroy() {
+  /** @param {string} [reason] Text fürs Panel/den Kanal beim Beenden (z. B. "Gestoppt."). */
+  destroy(reason) {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this._clearIdle();
+    if (reason) this._updatePanelIdle(reason).catch(() => null);
     try { this.player.stop(true); } catch { /* ignore */ }
     try { this.connection?.destroy(); } catch { /* ignore */ }
     sessions.delete(this.guildId);

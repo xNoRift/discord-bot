@@ -8,7 +8,25 @@ const logger = require('../utils/logger');
 
 module.exports = {
   name: 'voiceStateUpdate',
-  async execute(oldState, newState) {
+  async execute(oldState, newState, client) {
+    // Musik: Der Bot selbst wurde aus dem Kanal entfernt (gekickt) oder in einen anderen
+    // Kanal verschoben -> NICHT folgen/wieder verbinden, sondern komplett verlassen.
+    try {
+      if (newState.id === client.user.id) {
+        const guild = newState.guild || oldState.guild;
+        const session = musicService.getSession(guild.id);
+        if (session) {
+          if (!newState.channelId) {
+            session.destroy('🚪 Ich wurde aus dem Sprachkanal entfernt.');
+          } else if (oldState.channelId && newState.channelId !== oldState.channelId) {
+            session.destroy('🚪 Ich wurde in einen anderen Kanal verschoben – ich verlasse ihn wieder.');
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn('[voiceStateUpdate] Musik (Kick/Move):', err.message);
+    }
+
     try {
       await tempVoiceService.onVoiceUpdate(oldState, newState);
     } catch (err) {
@@ -39,8 +57,7 @@ module.exports = {
             const s = musicService.getSession(guild.id);
             const c = s && guild.channels.cache.get(s.voiceChannelId);
             if (s && (!c || c.members.filter((m) => !m.user.bot).size === 0)) {
-              s._announce?.('👋 Niemand mehr im Sprachkanal – ich verlasse ihn.');
-              s.destroy();
+              s.destroy('👋 Niemand mehr im Sprachkanal – ich verlasse ihn.');
             }
           }, 20000);
         }

@@ -10,7 +10,7 @@ module.exports = {
     const s = music.getSession(interaction.guildId);
     if (!s) return err(interaction, 'Der Bot ist in keinem Sprachkanal.');
     if (!canControl(interaction.member, interaction.settings)) return err(interaction, 'Dir fehlt die DJ-Rolle.');
-    s.destroy();
+    s.destroy('👋 Sprachkanal verlassen.');
     return ok(interaction, '👋 Sprachkanal verlassen.');
   },
 };

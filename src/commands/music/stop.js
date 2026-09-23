@@ -10,7 +10,7 @@ module.exports = {
     const s = music.getSession(interaction.guildId);
     if (!s) return err(interaction, 'Es läuft gerade nichts.');
     if (!canControl(interaction.member, interaction.settings)) return err(interaction, 'Dir fehlt die DJ-Rolle.');
-    s.destroy();
+    s.destroy('⏹️ Gestoppt und Sprachkanal verlassen.');
     return ok(interaction, '⏹️ Gestoppt und Sprachkanal verlassen.');
   },
 };
