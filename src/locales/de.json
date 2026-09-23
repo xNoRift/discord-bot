@@ -6,7 +6,9 @@
     "no_answer": "*(keine Angabe)*",
     "question": "Frage",
     "command_channel_title": "🚫 Falscher Kanal",
-    "command_channel_desc": "Bot-Befehle sind auf diesem Server nur in {channels} erlaubt."
+    "command_channel_desc": "Dieser Befehl ist auf diesem Server nur in {channels} erlaubt.",
+    "command_disabled_title": "🚫 Befehl deaktiviert",
+    "command_disabled_desc": "Dieser Befehl ist auf diesem Server deaktiviert. Ein Team-Mitglied kann ihn im Dashboard unter „Befehle“ anschalten."
   },
   "tickets": {
     "panel": {

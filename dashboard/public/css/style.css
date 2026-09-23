@@ -1113,6 +1113,9 @@ input.is-invalid, textarea.is-invalid, select.is-invalid, .in-wrap.is-invalid { 
 .embed-edit .in-wrap input, .embed-edit .in-wrap textarea { width: 100%; padding-right: 74px; }
 .embed-edit__more summary { cursor: pointer; color: var(--accent-2); font-weight: 600; font-size: .88rem; }
 .embed-edit__more[open] summary { margin-bottom: 12px; }
+.cmd-row__more { margin-top: 8px; }
+.cmd-row__more summary { cursor: pointer; color: var(--accent-2); font-weight: 600; font-size: .82rem; }
+.cmd-row__more[open] summary { margin-bottom: 4px; }
 .editor-tabs--sub { margin-top: 10px; }
 .editor-head--inner { margin-top: 16px; }
 [hidden] { display: none !important; }

@@ -1,0 +1,25 @@
+<%- include('partials/head', { title: guild.name + ' – Befehle' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('terminal') %> Befehle</h1></div>
+  <p>Schalte jeden Slash-Befehl für <strong><%= guild.name %></strong> einzeln an oder aus und beschränke ihn optional auf bestimmte Kanäle.</p>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('power') %> Befehle verwalten</h2></div>
+  <p class="card__sub">
+    <strong>Neu hinzugefügte und noch nicht konfigurierte Befehle sind standardmäßig aus.</strong>
+    Aktiviere hier, welche Befehle auf diesem Server funktionieren sollen. Mit „Auf Kanäle beschränken" legst du fest, in welchen Kanälen ein aktivierter Befehl benutzt werden darf – leer gelassen heißt überall.
+    Mitglieder mit dem Recht „Server verwalten" dürfen Befehle immer überall nutzen. Buttons, Ticket-Panels & Co. sind nicht betroffen, nur <code>/befehle</code>.
+  </p>
+  <div id="cmdList"><div class="loading">Lädt…</div></div>
+</div>
+
+<div class="form-actions">
+  <span class="muted" id="cmdStatus"></span>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/commands.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

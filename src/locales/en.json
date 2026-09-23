@@ -6,7 +6,9 @@
     "no_answer": "*(no answer)*",
     "question": "Question",
     "command_channel_title": "🚫 Wrong channel",
-    "command_channel_desc": "Bot commands are only allowed in {channels} on this server."
+    "command_channel_desc": "This command is only allowed in {channels} on this server.",
+    "command_disabled_title": "🚫 Command disabled",
+    "command_disabled_desc": "This command is disabled on this server. A team member can turn it on in the dashboard under \"Befehle\"."
   },
   "tickets": {
     "panel": {

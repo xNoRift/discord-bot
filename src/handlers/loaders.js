@@ -27,6 +27,8 @@ function loadCommands(client) {
       logger.warn(`[loader] Command übersprungen (ungültig): ${path.relative(dir, file)}`);
       continue;
     }
+    // Unterordner (commands/music/play.js -> "music") dient als Kategorie im Dashboard.
+    mod.category = path.dirname(path.relative(dir, file)).split(path.sep)[0];
     client.commands.set(mod.data.name, mod);
     count++;
   }

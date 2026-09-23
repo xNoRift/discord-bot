@@ -11,6 +11,7 @@ const { apiLimiter, actionLimiter } = require('../middleware/rateLimit');
 const guildAccess = require('../services/guildAccess');
 
 const settingsModel = require('../../src/database/models/settings');
+const commandSettingsModel = require('../../src/database/models/commandSettings');
 const ticketsModel = require('../../src/database/models/tickets');
 const ticketPanels = require('../../src/database/models/ticketPanels');
 const giveawaysModel = require('../../src/database/models/giveaways');
@@ -1122,6 +1123,50 @@ router.patch(
     }
     const updated = settingsModel.update(req.params.guildId, patch);
     res.json(updated);
+  }),
+);
+
+/* ---------------- Befehle (pro Server an/aus + Kanal-Beschränkung) ---------------- */
+
+const CATEGORY_LABELS = {
+  music: 'Musik',
+  moderation: 'Moderation',
+  levels: 'Beteiligungs-Belohnungen',
+  tickets: 'Ticket',
+  applications: 'Bewerbungen',
+  general: 'Allgemein',
+};
+
+router.get('/guilds/:guildId/commands', (req, res) => {
+  const stored = commandSettingsModel.get(req.params.guildId);
+  const list = [...client.commands.values()]
+    .map((c) => {
+      const s = stored[c.data.name] || {};
+      return {
+        name: c.data.name,
+        description: c.data.description || '',
+        category: c.category || 'general',
+        categoryLabel: CATEGORY_LABELS[c.category] || c.category || 'Allgemein',
+        enabled: !!s.enabled,
+        channel_ids: s.channel_ids || '',
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+  res.json(list);
+});
+
+router.patch(
+  '/guilds/:guildId/commands',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    const known = new Set(client.commands.keys());
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const map = {};
+    for (const [name, cfg] of Object.entries(body)) {
+      if (!known.has(name)) continue;
+      map[name] = { enabled: !!cfg?.enabled, channel_ids: cfg?.channel_ids || '' };
+    }
+    res.json(commandSettingsModel.setAll(req.params.guildId, map));
   }),
 );
 

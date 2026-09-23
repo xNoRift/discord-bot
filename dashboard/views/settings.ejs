@@ -98,7 +98,7 @@
 <form id="settingsForm">
   <div class="card">
     <div class="card__head"><h2><%- icon('settings') %> Allgemein</h2></div>
-    <p class="card__sub">Ticket-, Giveaway-, Bewerbungs- und Log-Einstellungen findest du jetzt direkt auf der jeweiligen Seite. Die Beitritts-Rolle steht unter „Willkommen".</p>
+    <p class="card__sub">Ticket-, Giveaway-, Bewerbungs- und Log-Einstellungen findest du jetzt direkt auf der jeweiligen Seite. Die Beitritts-Rolle steht unter „Willkommen". Welche Befehle an sind und auf welche Kanäle beschränkt, stellst du unter <a href="/dashboard/<%= guild.id %>/commands">Befehle</a> ein.</p>
     <div class="col-2">
       <div class="field"><label>Embed-Farbe</label>
         <div class="row-inline">
@@ -120,12 +120,6 @@
         <select name="bot_language"><option value="de">Deutsch</option><option value="en">English</option></select>
       </div>
     </div>
-  </div>
-
-  <div class="card">
-    <div class="card__head"><h2><%- icon('chat') %> Befehls-Kanäle</h2></div>
-    <p class="card__sub">Wähle die Kanäle, in denen Bot-Befehle (Slash-Befehle wie <code>/play</code> oder <code>/rank</code>) benutzt werden dürfen. <strong>Nichts ausgewählt = überall erlaubt.</strong> In allen anderen Kanälen antwortet der Bot nur mit einem Hinweis (nur für die Person sichtbar). Mitglieder mit dem Recht „Server verwalten“ sind davon ausgenommen. Buttons, Ticket-Panels & Co. sind nicht betroffen.</p>
-    <div id="cmdChannelChecks" class="chip-row"><span class="muted">Lädt…</span></div>
   </div>
 
   <div class="form-actions">

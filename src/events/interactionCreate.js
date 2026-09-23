@@ -7,6 +7,7 @@ const embeds = require('../utils/embeds');
 const i18n = require('../utils/i18n');
 const { matchComponent } = require('../handlers/loaders');
 const settingsModel = require('../database/models/settings');
+const commandSettingsModel = require('../database/models/commandSettings');
 
 async function safeReply(interaction, payload) {
   try {
@@ -21,17 +22,20 @@ async function safeReply(interaction, payload) {
 }
 
 /**
- * Befehls-Kanäle: Ist eine Kanal-Liste gesetzt, funktionieren Slash-Befehle nur dort
- * (Threads zählen über ihren Eltern-Kanal). Leer = überall. Admins / „Server verwalten“ sind ausgenommen.
- * @returns {string[]|null} die erlaubten Kanal-IDs, wenn der Befehl blockiert werden soll, sonst null
+ * Seite „Befehle“: jeder Slash-Befehl ist pro Server einzeln an/aus (Standard: aus) und
+ * kann zusätzlich auf bestimmte Kanäle beschränkt werden (Threads zählen über ihren Eltern-Kanal;
+ * leer = überall erlaubt). Mitglieder mit „Server verwalten“ sind von der Kanal-Beschränkung ausgenommen.
+ * @returns {null|{type:'disabled'}|{type:'channel', allowed:string[]}}
  */
-function blockedCommandChannels(interaction) {
-  const allowed = String(interaction.settings?.command_channel_ids || '').split(',').filter(Boolean);
+function commandBlockReason(interaction) {
+  const cfg = commandSettingsModel.forCommand(interaction.guildId, interaction.commandName);
+  if (!cfg.enabled) return { type: 'disabled' };
+  const allowed = cfg.channel_ids ? cfg.channel_ids.split(',').filter(Boolean) : [];
   if (!allowed.length) return null;
   const channel = interaction.channel;
   if (allowed.includes(interaction.channelId) || (channel?.parentId && allowed.includes(channel.parentId))) return null;
   if (interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return null;
-  return allowed;
+  return { type: 'channel', allowed };
 }
 
 module.exports = {
@@ -47,11 +51,15 @@ module.exports = {
       if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
-        const blocked = interaction.inGuild() ? blockedCommandChannels(interaction) : null;
-        if (blocked) {
+        const block = interaction.inGuild() ? commandBlockReason(interaction) : null;
+        if (block) {
           const tg = i18n.forGuild(interaction.guildId);
           await safeReply(interaction, {
-            embeds: [embeds.error(tg('common.command_channel_title'), tg('common.command_channel_desc', { channels: blocked.map((id) => `<#${id}>`).join(', ') }))],
+            embeds: [
+              block.type === 'disabled'
+                ? embeds.error(tg('common.command_disabled_title'), tg('common.command_disabled_desc'))
+                : embeds.error(tg('common.command_channel_title'), tg('common.command_channel_desc', { channels: block.allowed.map((id) => `<#${id}>`).join(', ') })),
+            ],
           });
           return;
         }
