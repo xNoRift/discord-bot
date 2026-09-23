@@ -22,6 +22,6 @@ module.exports = {
     if (c.thumbnail) e.setThumbnail(c.thumbnail);
     if (c.url && /^https?:/.test(c.url)) e.setURL(c.url);
     if (s.queue.length) e.setFooter({ text: `${s.queue.length} Titel in der Warteschlange` });
-    return interaction.reply({ embeds: [e] });
+    return interaction.reply({ embeds: [e], flags: MessageFlags.Ephemeral });
   },
 };

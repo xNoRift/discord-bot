@@ -1,10 +1,13 @@
 'use strict';
 
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const ytdlp = require('./ytdlp');
 const spotify = require('./spotify');
 const logger = require('../utils/logger');
+const embeds = require('../utils/embeds');
 const settingsModel = require('../database/models/settings');
 const stationsModel = require('../database/models/musicStations');
+const playlistsModel = require('../database/models/musicPlaylists');
 
 let BUILTIN_STATIONS = [];
 try {
@@ -61,6 +64,7 @@ function assertMusicAllowed(guildId) {
 
 const IDLE_DISCONNECT_MS = 3 * 60 * 1000;
 const MAX_QUEUE = 200;
+const MAX_PLAYLISTS = 25;
 
 /** @type {Map<string, Session>} */
 const sessions = new Map();
@@ -113,6 +117,7 @@ class Session {
     this.player = voice.createAudioPlayer({ behaviors: { noSubscriber: voice.NoSubscriberBehavior.Pause } });
     this.resource = null;
     this.idleTimer = null;
+    this.panelMessageId = null;
 
     this.player.on(voice.AudioPlayerStatus.Idle, () => this._onIdle());
     this.player.on('error', (err) => {
@@ -156,7 +161,7 @@ class Session {
   _scheduleIdle() {
     this._clearIdle();
     this.idleTimer = setTimeout(() => {
-      this._announce('👋 Nichts mehr in der Warteschlange – ich verlasse den Sprachkanal.');
+      this._updatePanelIdle('👋 Nichts mehr in der Warteschlange – ich verlasse den Sprachkanal.').catch(() => null);
       this.destroy();
     }, IDLE_DISCONNECT_MS);
   }
@@ -174,6 +179,7 @@ class Session {
     if (!this.current) {
       this.resource = null;
       this._scheduleIdle();
+      this._updatePanelIdle('⏸️ Warteschlange ist leer.').catch(() => null);
       return;
     }
     this._clearIdle();
@@ -183,11 +189,7 @@ class Session {
       this.player.play(this.resource);
       this._tuneEncoder();
       this._resolveTrack(this.queue[0])?.catch(() => null); // nächsten Spotify-Titel vorab suchen -> keine Pause dazwischen
-      this._announce(
-        `▶️ **${this.current.title}**` +
-          (this.current.live ? ' _(Live)_' : ` \`${fmtDuration(this.current.duration)}\``) +
-          (this.current.requestedBy ? ` · von ${this.current.requestedBy.tag}` : ''),
-      );
+      this._sendOrUpdatePanel().catch((err) => logger.warn(`[music] Panel-Fehler: ${err.message}`));
     } catch (err) {
       logger.warn(`[music] Resource-Fehler: ${err.message}`);
       this._announce(`⚠️ **${this.current.title}** konnte nicht abgespielt werden – überspringe.`);
@@ -274,10 +276,91 @@ class Session {
     ch?.send({ content: text, allowedMentions: { parse: [] } }).catch(() => null);
   }
 
+  /** Embed für das Steuer-Panel ("Läuft gerade" + Buttons), das im Textkanal gepostet/aktualisiert wird. */
+  _panelEmbed() {
+    const c = this.current;
+    const link = c.url && /^https?:/.test(c.url) ? ` — [öffnen](${c.url})` : '';
+    const e = embeds.brand(c.live ? '🔴 Live' : '🎵 Läuft gerade', `**${c.title}**${link}`);
+    if (c.thumbnail) e.setThumbnail(c.thumbnail);
+    e.addFields(
+      { name: 'Länge', value: c.live ? 'LIVE' : fmtDuration(c.duration), inline: true },
+      { name: 'Lautstärke', value: `${Math.round(this.volume * 100)} %`, inline: true },
+      { name: 'Loop', value: this.loop ? 'an 🔁' : 'aus', inline: true },
+    );
+    const footer = [
+      c.requestedBy ? `Angefragt von ${c.requestedBy.tag}` : null,
+      this.queue.length ? `${this.queue.length} weitere in der Warteschlange` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    if (footer) e.setFooter({ text: footer });
+    return e;
+  }
+
+  _panelRows() {
+    const row1 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('music:panel:pause').setEmoji(this.paused ? '▶️' : '⏸️').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('music:panel:skip').setEmoji('⏭️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music:panel:loop').setEmoji('🔁').setStyle(this.loop ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music:panel:shuffle').setEmoji('🔀').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music:panel:stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
+    );
+    const row2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('music:panel:voldown').setEmoji('🔉').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music:panel:volup').setEmoji('🔊').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music:panel:queue').setEmoji('📜').setStyle(ButtonStyle.Secondary),
+    );
+    return [row1, row2];
+  }
+
+  /** @returns {{embeds: object[], components: object[]}} */
+  panelPayload() {
+    return { embeds: [this._panelEmbed()], components: this._panelRows() };
+  }
+
+  async _sendOrUpdatePanel() {
+    const ch = this.guild.channels.cache.get(this.textChannelId);
+    if (!ch) return;
+    const payload = this.panelPayload();
+    if (this.panelMessageId) {
+      try {
+        const msg = await ch.messages.fetch(this.panelMessageId);
+        await msg.edit(payload);
+        return;
+      } catch {
+        this.panelMessageId = null; // Nachricht wurde wohl gelöscht -> neu senden
+      }
+    }
+    const msg = await ch.send(payload);
+    this.panelMessageId = msg.id;
+  }
+
+  /** Panel auf einen reinen Text-Zustand setzen (Warteschlange leer / Bot verlässt den Kanal) und Buttons entfernen. */
+  async _updatePanelIdle(text) {
+    const ch = this.guild.channels.cache.get(this.textChannelId);
+    if (this.panelMessageId && ch) {
+      try {
+        const msg = await ch.messages.fetch(this.panelMessageId);
+        await msg.edit({ embeds: [embeds.brand('🎵 Musik', text)], components: [] });
+        this.panelMessageId = null;
+        return;
+      } catch {
+        this.panelMessageId = null;
+      }
+    }
+    this._announce(text);
+  }
+
+  /** Nach einer Steuer-Aktion (Pause/Lautstärke/Loop/…) das bestehende Panel neu zeichnen. */
+  refreshPanel() {
+    if (this.current) this._sendOrUpdatePanel().catch((err) => logger.warn(`[music] Panel-Fehler: ${err.message}`));
+  }
+
   enqueue(tracks) {
     const room = MAX_QUEUE - this.queue.length;
     const added = tracks.slice(0, Math.max(0, room));
     this.queue.push(...added);
+    this.refreshPanel();
     return added.length;
   }
 
@@ -301,23 +384,27 @@ class Session {
 
   pause() {
     this.paused = this.player.pause();
+    this.refreshPanel();
     return this.paused;
   }
 
   resume() {
     const ok = this.player.unpause();
     if (ok) this.paused = false;
+    this.refreshPanel();
     return ok;
   }
 
   setVolume(vol) {
     this.volume = Math.max(0, Math.min(1.5, vol));
     this.resource?.volume?.setVolume(this.volume);
+    this.refreshPanel();
     return this.volume;
   }
 
   toggleLoop() {
     this.loop = !this.loop;
+    this.refreshPanel();
     return this.loop;
   }
 
@@ -326,11 +413,14 @@ class Session {
       const j = Math.floor(Math.random() * (i + 1));
       [this.queue[i], this.queue[j]] = [this.queue[j], this.queue[i]];
     }
+    this.refreshPanel();
   }
 
   removeAt(index) {
     if (index < 0 || index >= this.queue.length) return null;
-    return this.queue.splice(index, 1)[0];
+    const removed = this.queue.splice(index, 1)[0];
+    this.refreshPanel();
+    return removed;
   }
 
   destroy() {
@@ -476,6 +566,96 @@ async function join(guild, voiceChannel, textChannelId) {
   return session;
 }
 
+/* ------------------------- Eigene Playlists (pro Server) ------------------------- */
+
+async function _playPlaylistRow(guild, voiceChannel, textChannelId, pl, requestedBy) {
+  const rows = playlistsModel.tracks(pl.id);
+  if (!rows.length) throw new Error('Diese Playlist ist leer.');
+  const session = getOrCreate(guild);
+  await session.connect(voiceChannel, textChannelId);
+  const tracks = rows.map((t) => ({
+    title: t.title,
+    url: t.url,
+    source: t.source,
+    search: t.search || undefined,
+    duration: t.duration,
+    live: false,
+    requestedBy,
+  }));
+  const wasIdle = !session.current;
+  const added = session.enqueue(tracks);
+  await session.startIfIdle();
+  return { added, first: tracks[0] || null, startedNow: wasIdle, label: pl.name };
+}
+
+/** Playlist per Name abspielen (Slash-Command) – nur die des eigenen Servers werden gefunden. */
+async function playPlaylist(guild, voiceChannel, textChannelId, name, requestedBy) {
+  assertMusicAllowed(guild.id);
+  const pl = playlistsModel.getByName(guild.id, name);
+  if (!pl) throw new Error(`Playlist „${name}" wurde auf diesem Server nicht gefunden.`);
+  return _playPlaylistRow(guild, voiceChannel, textChannelId, pl, requestedBy);
+}
+
+/** Playlist per ID abspielen (Dashboard) – die ID wird zwingend gegen die guildId geprüft. */
+async function playPlaylistById(guild, voiceChannel, textChannelId, id, requestedBy) {
+  assertMusicAllowed(guild.id);
+  const pl = playlistsModel.get(guild.id, id);
+  if (!pl) throw new Error('Playlist wurde auf diesem Server nicht gefunden.');
+  return _playPlaylistRow(guild, voiceChannel, textChannelId, pl, requestedBy);
+}
+
+/**
+ * Playlist speichern: entweder aus einem Link/Suchbegriff (query) oder – wenn keiner
+ * angegeben ist – aus der aktuell laufenden Warteschlange dieses Servers.
+ * Wird IMMER an guild.id gebunden gespeichert -> auf keinem anderen Server nutzbar.
+ */
+async function savePlaylist(guild, name, query, createdBy) {
+  assertMusicAllowed(guild.id);
+  const n = String(name || '').trim().slice(0, 80);
+  if (!n) throw new Error('Bitte einen Namen für die Playlist angeben.');
+  if (playlistsModel.getByName(guild.id, n)) {
+    throw new Error(`Es gibt auf diesem Server schon eine Playlist namens „${n}". Lösche sie erst oder wähle einen anderen Namen.`);
+  }
+  if (playlistsModel.count(guild.id) >= MAX_PLAYLISTS) {
+    throw new Error(`Maximal ${MAX_PLAYLISTS} Playlists pro Server.`);
+  }
+
+  let items;
+  if (query) {
+    items = (await resolveTracks(guild.id, query, null)).tracks;
+  } else {
+    const session = getSession(guild.id);
+    items = [...(session?.current ? [session.current] : []), ...(session?.queue || [])];
+    if (!items.length) {
+      throw new Error('Es läuft gerade nichts und die Warteschlange ist leer. Gib einen Link/Suchbegriff an oder starte erst etwas mit /play.');
+    }
+  }
+  const tracks = items.slice(0, MAX_QUEUE).map((t) => ({
+    title: t.title,
+    url: t.url || null,
+    source: t.source,
+    search: t.search || null,
+    duration: Math.round(t.duration || 0),
+  }));
+  const pl = playlistsModel.create({ guildId: guild.id, name: n, createdBy, tracks });
+  return { name: pl.name, count: tracks.length };
+}
+
+function listPlaylists(guildId) {
+  return playlistsModel.list(guildId);
+}
+
+/** Titel einer Playlist lesen – gibt null zurück, wenn sie nicht diesem Server gehört. */
+function getPlaylistTracks(guildId, id) {
+  const pl = playlistsModel.get(guildId, id);
+  return pl ? playlistsModel.tracks(pl.id) : null;
+}
+
+/** Löscht nur, wenn die Playlist wirklich diesem Server gehört. */
+function deletePlaylist(guildId, id) {
+  return playlistsModel.remove(guildId, id);
+}
+
 module.exports = {
   sessions,
   getSession,
@@ -487,6 +667,12 @@ module.exports = {
   allStations,
   findStation,
   fmtDuration,
+  savePlaylist,
+  playPlaylist,
+  playPlaylistById,
+  listPlaylists,
+  getPlaylistTracks,
+  deletePlaylist,
   BUILTIN_STATIONS,
   youtubeAvailable: () => ytdlp.available(),
   musicEnabled,

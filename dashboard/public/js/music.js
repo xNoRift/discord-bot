@@ -200,8 +200,79 @@ document.getElementById('stList').addEventListener('click', async (e) => {
   } catch (err) { toast(err.message, 'error'); }
 });
 
+/* ---- Playlists ---- */
+async function loadPlaylists() {
+  const list = await apiFor('GET', '/music/playlists');
+  document.getElementById('plList').innerHTML = list.length
+    ? list
+        .map(
+          (p) => `<li>
+        <span><b class="pl-name" data-plview="${p.id}" style="cursor:pointer;text-decoration:underline dotted;">${escapeHtml(p.name)}</b> <span class="muted">${p.trackCount} Titel</span></span>
+        <button class="btn btn--ghost btn--sm" data-plplay="${p.id}">▶️ Abspielen</button>
+        <button class="btn btn--ghost btn--icon" data-pldel="${p.id}" title="Löschen" style="margin-left:8px;">${Dash.icon('trash', 'icon--sm')}</button>
+      </li><li class="muted" id="plTracks${p.id}" hidden></li>`,
+        )
+        .join('')
+    : '<li class="muted">Noch keine Playlists auf diesem Server.</li>';
+}
+
+document.getElementById('plForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = e.target.name.value.trim();
+  const query = e.target.query.value.trim();
+  if (!name) return;
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true;
+  try {
+    const r = await apiFor('POST', '/music/playlists', { name, query: query || undefined });
+    toast(`Playlist „${r.playlist.name}" mit ${r.playlist.count} Titeln gespeichert.`, 'success');
+    e.target.reset();
+    await loadPlaylists();
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('plList').addEventListener('click', async (e) => {
+  const viewBtn = e.target.closest('[data-plview]');
+  const playBtn = e.target.closest('[data-plplay]');
+  const delBtn = e.target.closest('[data-pldel]');
+  if (viewBtn) {
+    const box = document.getElementById('plTracks' + viewBtn.dataset.plview);
+    if (!box.hidden) { box.hidden = true; return; }
+    box.hidden = false;
+    box.textContent = 'Lade …';
+    try {
+      const d = await apiFor('GET', `/music/playlists/${viewBtn.dataset.plview}`);
+      box.innerHTML = d.tracks.length
+        ? d.tracks.map((t, i) => `${i + 1}. ${escapeHtml(t.title)} <span class="muted">${fmtDur(t.duration, false)}</span>`).join('<br>')
+        : 'Leer.';
+    } catch (err) {
+      box.textContent = err.message;
+    }
+  } else if (playBtn) {
+    try {
+      const r = await apiFor('POST', `/music/playlists/${playBtn.dataset.plplay}/play`, {});
+      toast(`${r.added} Titel aus „${r.label}" hinzugefügt.`, 'success');
+      render(r.state);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  } else if (delBtn) {
+    try {
+      await apiFor('DELETE', '/music/playlists/' + delBtn.dataset.pldel);
+      await loadPlaylists();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+});
+
 /* ---- Poll ---- */
 refresh();
 loadStations().catch((e) => toast(e.message, 'error'));
+loadPlaylists().catch((e) => toast(e.message, 'error'));
 pollTimer = setInterval(refresh, 5000);
 window.addEventListener('beforeunload', () => clearInterval(pollTimer));

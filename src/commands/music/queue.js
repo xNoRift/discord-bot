@@ -16,6 +16,6 @@ module.exports = {
       .map((t, i) => `\`${i + 1}.\` ${t.title}${t.live ? ' _(Live)_' : ` \`${music.fmtDuration(t.duration)}\``}`);
     const more = s.queue.length > 15 ? `\n… und **${s.queue.length - 15}** weitere` : '';
     const e = embeds.brand('🎶 Warteschlange', s.current ? `**Jetzt:** ${s.current.title}\n\n${lines.join('\n') || '_leer_'}${more}` : lines.join('\n') + more);
-    return interaction.reply({ embeds: [e] });
+    return interaction.reply({ embeds: [e], flags: MessageFlags.Ephemeral });
   },
 };

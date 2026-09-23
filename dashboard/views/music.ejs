@@ -70,6 +70,19 @@
 </div>
 
 <div class="card">
+  <div class="card__head"><h2><%- icon('layers') %> Eigene Playlists</h2></div>
+  <p class="card__sub">Playlists werden nur auf <strong><%= guild.name %></strong> gespeichert – nicht auf anderen Servern, auf denen der Bot läuft.</p>
+  <form id="plForm" class="form">
+    <div class="col-2">
+      <div class="field"><label>Name</label><input name="name" maxlength="80" placeholder="z. B. Gaming-Abend" /></div>
+      <div class="field"><label>Quelle (optional)</label><input name="query" maxlength="400" placeholder="YouTube-/Spotify-Link – leer = aktuelle Warteschlange speichern" /></div>
+    </div>
+    <div><button class="btn btn--primary btn--sm" type="submit">💾 Speichern</button></div>
+  </form>
+  <ul class="activity" id="plList" style="margin-top:12px;"><li>—</li></ul>
+</div>
+
+<div class="card">
   <div class="card__head"><h2><%- icon('bell') %> Eigene Radio-Sender</h2></div>
   <p class="card__sub">Eigene Stream-URLs (Icecast/Shoutcast/MP3). Tauchen dann in der Sender-Liste oben und bei <code>/radio</code> auf.</p>
   <form id="stForm" class="form">

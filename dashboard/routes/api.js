@@ -1013,6 +1013,63 @@ router.delete('/guilds/:guildId/music/stations/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+/* Eigene Playlists – jede Abfrage ist an req.guild.id gebunden, also nie serverübergreifend sichtbar. */
+
+router.get('/guilds/:guildId/music/playlists', (req, res) => {
+  res.json(
+    musicService.listPlaylists(req.guild.id).map((p) => ({ id: p.id, name: p.name, trackCount: p.track_count, createdAt: p.created_at })),
+  );
+});
+
+router.get('/guilds/:guildId/music/playlists/:id', (req, res) => {
+  const tracks = musicService.getPlaylistTracks(req.guild.id, num(req.params.id));
+  if (!tracks) return res.status(404).json({ error: 'Playlist nicht gefunden.' });
+  res.json({ tracks: tracks.map((t) => ({ title: t.title, url: t.url, source: t.source, duration: t.duration })) });
+});
+
+router.post(
+  '/guilds/:guildId/music/playlists',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      await requireMusicMember(req);
+      const name = String(req.body.name || '').trim().slice(0, 80);
+      const query = req.body.query ? String(req.body.query).trim().slice(0, 400) : null;
+      const r = await musicService.savePlaylist(req.guild, name, query, req.session.user.id);
+      res.json({ ok: true, playlist: r });
+    } catch (err) {
+      res.status(err.status || 400).json({ error: err.message });
+    }
+  }),
+);
+
+router.post(
+  '/guilds/:guildId/music/playlists/:id/play',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      const member = await requireMusicMember(req);
+      const vc = member.voice?.channel;
+      if (!vc) return res.status(400).json({ error: 'Geh zuerst selbst in einen Sprachkanal auf diesem Server.' });
+      const me = req.guild.members.me;
+      if (!vc.permissionsFor(me)?.has(PermissionFlagsBits.Connect) || !vc.permissionsFor(me)?.has(PermissionFlagsBits.Speak)) {
+        return res.status(403).json({ error: 'Der Bot darf diesem Sprachkanal nicht beitreten.' });
+      }
+      const r = await musicService.playPlaylistById(req.guild, vc, req.body.textChannelId || null, num(req.params.id), {
+        id: member.id,
+        tag: req.session.user.username,
+      });
+      res.json({ ok: true, added: r.added, label: r.label, state: musicState(req.guild) });
+    } catch (err) {
+      res.status(err.status || 400).json({ error: err.message });
+    }
+  }),
+);
+
+router.delete('/guilds/:guildId/music/playlists/:id', (req, res) => {
+  res.json({ ok: musicService.deletePlaylist(req.guild.id, num(req.params.id)) });
+});
+
 /* Aktive temporäre Giveaway-Gewinnerrollen (für Dashboard-Anzeige). */
 router.get('/guilds/:guildId/temp-roles', (req, res) => {
   res.json(

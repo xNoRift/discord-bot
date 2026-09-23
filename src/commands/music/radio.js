@@ -31,7 +31,7 @@ module.exports = {
     } catch (e) {
       return interaction.reply({ embeds: [embeds.error(undefined, e.message)], flags: MessageFlags.Ephemeral });
     }
-    await interaction.deferReply();
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     try {
       const r = await music.playStation(
         interaction.guild,

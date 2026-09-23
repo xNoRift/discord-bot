@@ -17,7 +17,7 @@ module.exports = {
     } catch (e) {
       return interaction.reply({ embeds: [embeds.error(undefined, e.message)], flags: MessageFlags.Ephemeral });
     }
-    await interaction.deferReply();
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     try {
       await music.join(interaction.guild, vc, interaction.channelId);
       await interaction.editReply({ embeds: [embeds.success('🔊 Verbunden', `Ich bin jetzt in **${vc.name}**. Starte etwas mit \`/play\` oder \`/radio\`.`)] });

@@ -35,8 +35,10 @@ function canControl(member, settings) {
   return member.roles.cache.has(djRole);
 }
 
+/** Bestätigungen sind nur für den Befehlsnutzer sichtbar (temporär) – dauerhaft sichtbar ist nur das Steuerungspanel. */
 function ok(interaction, text) {
-  return interaction.reply({ embeds: [embeds.success(undefined, text)] });
+  const p = { embeds: [embeds.success(undefined, text)], flags: MessageFlags.Ephemeral };
+  return interaction.deferred || interaction.replied ? interaction.editReply(p) : interaction.reply(p);
 }
 function err(interaction, text) {
   const p = { embeds: [embeds.error(undefined, text)], flags: MessageFlags.Ephemeral };

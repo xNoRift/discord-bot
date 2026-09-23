@@ -410,6 +410,28 @@ CREATE TABLE IF NOT EXISTS music_stations (
 );
 CREATE INDEX IF NOT EXISTS idx_music_stations_guild ON music_stations(guild_id);
 
+-- ---------- Musik: eigene Playlists pro Server (NICHT serverübergreifend nutzbar) ----------
+CREATE TABLE IF NOT EXISTS music_playlists (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id   TEXT NOT NULL,
+  name       TEXT NOT NULL,
+  created_by TEXT,
+  created_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_music_playlists_guild ON music_playlists(guild_id);
+
+CREATE TABLE IF NOT EXISTS music_playlist_tracks (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  playlist_id INTEGER NOT NULL REFERENCES music_playlists(id) ON DELETE CASCADE,
+  position    INTEGER NOT NULL,
+  title       TEXT NOT NULL,
+  url         TEXT,
+  source      TEXT NOT NULL DEFAULT 'youtube',
+  search      TEXT,
+  duration    INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_music_playlist_tracks_playlist ON music_playlist_tracks(playlist_id);
+
 -- ---------- Dashboard-Nutzer (OAuth2) ----------
 CREATE TABLE IF NOT EXISTS dashboard_users (
   user_id          TEXT PRIMARY KEY,
