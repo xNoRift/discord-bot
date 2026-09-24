@@ -1,0 +1,21 @@
+<%- include('partials/head', { title: 'Impressum – ' + brandName }) %>
+<link rel="stylesheet" href="/static/css/landing.css?v=<%= typeof assetVer !== 'undefined' ? assetVer : '1' %>" />
+
+<div class="lp">
+  <header class="lp-nav">
+    <a class="lp-brand" href="/"><span class="lp-brand__logo"><%- icon('bot') %></span><%= brandName %></a>
+    <nav class="lp-nav__links" aria-label="Hauptnavigation">
+      <a class="lp-nav__link" href="/">Home</a>
+      <a class="lp-btn lp-btn--solid" href="/auth/discord">Dashboard</a>
+    </nav>
+  </header>
+
+  <main class="lp-legal">
+    <h1>Impressum</h1>
+    <%- include('partials/impressum-content') %>
+  </main>
+
+  <footer class="lp-foot">© <%= new Date().getFullYear() %> <%= brandName %> · <a href="/impressum">Impressum</a> · Nicht mit Discord Inc. verbunden.</footer>
+</div>
+
+<%- include('partials/foot') %>

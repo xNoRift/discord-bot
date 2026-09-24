@@ -93,6 +93,7 @@ function pageLocals(req, active, extra = {}) {
     nav: NAV,
     footerNav: footerNav(),
     links: config.links,
+    impressum: config.impressum,
     active,
     guild: req.guild ? { id: req.guild.id, name: req.guild.name, icon: req.guild.icon } : null,
     navBadges: {},
@@ -125,6 +126,10 @@ router.get('/', (req, res) => {
 router.get('/login', (req, res) => {
   if (req.session?.user) return res.redirect('/servers');
   res.render('login', { brandName: config.branding.name, brand: config.branding });
+});
+
+router.get('/impressum', (req, res) => {
+  res.render('impressum-public', { brandName: config.branding.name, brand: config.branding, impressum: config.impressum });
 });
 
 /* ---------------- Geschützt ---------------- */

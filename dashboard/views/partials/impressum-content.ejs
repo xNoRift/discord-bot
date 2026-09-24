@@ -1,0 +1,31 @@
+<% const imp = impressum || {}; const missing = !imp.name || !imp.street || !imp.city || !imp.email; %>
+<% if (missing) { %>
+  <p class="muted"><strong>Hinweis:</strong> Das Impressum ist noch nicht vollständig eingerichtet (IMPRESSUM_* in der .env fehlen).</p>
+<% } %>
+
+<h3>Angaben gemäß § 5 DDG</h3>
+<p>
+  <%= imp.name || '[Name]' %><br />
+  <%= imp.street || '[Straße Nr.]' %><br />
+  <%= imp.city || '[PLZ Ort]' %><br />
+  <%= imp.country %>
+</p>
+
+<h3>Kontakt</h3>
+<p>
+  E-Mail: <% if (imp.email) { %><a href="mailto:<%= imp.email %>"><%= imp.email %></a><% } else { %>[E-Mail]<% } %>
+  <% if (imp.phone) { %><br />Telefon: <%= imp.phone %><% } %>
+  <% if (imp.discord) { %><br />Discord: <%= imp.discord %><% } %>
+</p>
+
+<h3>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h3>
+<p><%= imp.name || '[Name]' %> (Anschrift wie oben)</p>
+
+<h3>Haftung für Inhalte</h3>
+<p class="muted">Als Diensteanbieter bin ich für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Ich bin jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde Informationen zu überwachen. Inhalte, die Nutzer über den Bot auf ihren eigenen Discord-Servern einstellen, liegen in der Verantwortung der jeweiligen Server-Betreiber. Bei Bekanntwerden von Rechtsverletzungen werden entsprechende Inhalte umgehend entfernt.</p>
+
+<h3>Haftung für Links</h3>
+<p class="muted">Diese Seite enthält Links zu externen Websites Dritter (z. B. Discord), auf deren Inhalte ich keinen Einfluss habe. Für diese fremden Inhalte ist stets der jeweilige Anbieter oder Betreiber der Seiten verantwortlich.</p>
+
+<h3>Hinweis</h3>
+<p class="muted">Dieses Projekt ist nicht mit Discord Inc. verbunden und wird nicht von Discord Inc. unterstützt.</p>

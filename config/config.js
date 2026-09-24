@@ -65,6 +65,17 @@ const config = {
     docs: optional('DOCS_URL'),
   },
 
+  // Impressum (§ 5 DDG) – nur in der .env, damit die Anschrift nicht im Repo landet
+  impressum: {
+    name: optional('IMPRESSUM_NAME'),
+    street: optional('IMPRESSUM_STREET'),
+    city: optional('IMPRESSUM_CITY'),
+    country: optional('IMPRESSUM_COUNTRY', 'Deutschland'),
+    email: optional('IMPRESSUM_EMAIL'),
+    phone: optional('IMPRESSUM_PHONE'),
+    discord: optional('IMPRESSUM_DISCORD'),
+  },
+
   // Social-Media-Benachrichtigungen
   social: {
     // Twitch: kostenlose App unter https://dev.twitch.tv/console/apps registrieren.
