@@ -15,7 +15,7 @@
 <p>
   E-Mail: <% if (imp.email) { %><a href="mailto:<%= imp.email %>"><%= imp.email %></a><% } else { %>[E-Mail]<% } %>
   <% if (imp.phone) { %><br />Telefon: <%= imp.phone %><% } %>
-  <% if (imp.discord) { %><br />Discord: <%= imp.discord %><% } %>
+  <% if (imp.discord) { %><br />Discord: <% if (/^https?:///.test(imp.discord)) { %><a href="<%= imp.discord %>" target="_blank" rel="noopener"><%= imp.discord %></a><% } else { %><%= imp.discord %><% } %><% } %>
 </p>
 
 <h3>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h3>
