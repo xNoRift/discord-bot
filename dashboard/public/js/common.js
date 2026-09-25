@@ -376,10 +376,11 @@ function optionEmbedsModal(options, current, o = {}) {
             <div class="field"><label>Bild (groß)</label><input data-k="imageUrl" data-image value="${escapeHtml(e.imageUrl || '')}" placeholder="https://…" /></div>
             <div class="field"><label>Vorschaubild (klein)</label><input data-k="thumbnailUrl" data-image value="${escapeHtml(e.thumbnailUrl || '')}" placeholder="https://…" /></div>
             <div class="field"><label>Fußzeile</label><input data-k="footer" maxlength="2048" value="${escapeHtml(e.footer || '')}" /></div>
+            <div><button type="button" class="btn btn--danger btn--sm" data-act="clear">${icon('trash', 'icon--sm')} Embed dieser Option löschen</button></div>
           </div>
         </details>`;
       }).join('') : '<div class="empty">Trage zuerst Optionen ein (eine pro Zeile).</div>'}
-      <div class="modal__actions"><button type="button" class="btn btn--ghost" data-act="cancel">Abbrechen</button><button type="button" class="btn btn--primary" data-act="ok"${list.length ? '' : ' disabled'}>Übernehmen</button></div>`,
+      <div class="modal__actions">${list.length ? `<button type="button" class="btn btn--danger" data-act="clearall" style="margin-right:auto;">${icon('trash', 'icon--sm')} Alle löschen</button>` : ''}<button type="button" class="btn btn--ghost" data-act="cancel">Abbrechen</button><button type="button" class="btn btn--primary" data-act="ok"${list.length ? '' : ' disabled'}>Übernehmen</button></div>`,
     { onClose: () => finish(null) });
     modal.style.maxWidth = '760px';
     enhanceWidgets(modal);
@@ -388,6 +389,11 @@ function optionEmbedsModal(options, current, o = {}) {
       const box = e.target.closest('[data-opt]');
       if (box) box.querySelector('[data-state]').outerHTML = badge(has(read(box)));
     });
+    // Löschen = alle Felder der Option leeren (wird mit „Übernehmen“ gespeichert)
+    const clearBox = (box) => box.querySelectorAll('[data-k]').forEach((el) => { el.value = ''; fireInput(el); });
+    modal.querySelectorAll('[data-act="clear"]').forEach((b) => { b.onclick = () => clearBox(b.closest('[data-opt]')); });
+    const clearAll = modal.querySelector('[data-act="clearall"]');
+    if (clearAll) clearAll.onclick = () => modal.querySelectorAll('[data-opt]').forEach(clearBox);
     modal.querySelector('[data-act="cancel"]').onclick = () => close();
     modal.querySelector('[data-act="ok"]').onclick = () => {
       const out = {};

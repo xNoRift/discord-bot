@@ -167,6 +167,7 @@ function embedMsgBlock([key, field, title, hint, max, ph, defTitle], c) {
               <div class="field"><label>Bild (groß)</label><input name="${p}_image" value="${escapeHtml(e.imageUrl || '')}" placeholder="https://…" /></div>
               <div class="field"><label>Vorschaubild (klein)</label><input name="${p}_thumb" value="${escapeHtml(e.thumbnailUrl || '')}" placeholder="https://…" /></div>
             </div>
+            <button type="button" class="btn btn--danger btn--sm" data-emreset="${p}">${icon('trash', 'icon--sm')} Gestaltung löschen (Titel, Farbe, Bilder, Fußzeile)</button>
           </details>
         </div>
       </div>
@@ -315,6 +316,16 @@ async function openEditor(typeId) {
   initEmojiInputs(ED);
   const form = ED.querySelector('#typeForm');
   wireEmbedColors(form);
+  form.querySelectorAll('[data-emreset]').forEach((b) => b.addEventListener('click', () => {
+    const p = b.dataset.emreset;
+    for (const k of ['title', 'color', 'footer', 'image', 'thumb']) {
+      const el = form.elements[`${p}_${k}`];
+      el.value = '';
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    const bar = form.querySelector(`[data-bar="${p}"]`);
+    if (bar) bar.style.background = colorHex('');
+  }));
   form.restrictedMode.value = t.cfg.restrictedMode; form.requiredMode.value = t.cfg.requiredMode; form.onLeave.value = t.cfg.onLeave;
   await fillSelectors({
     pendingChannelId: t.cfg.pendingChannelId, acceptedChannelId: t.cfg.acceptedChannelId, deniedChannelId: t.cfg.deniedChannelId,

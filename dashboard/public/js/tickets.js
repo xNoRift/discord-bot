@@ -903,9 +903,12 @@ function wireOptionPrices(row) {
       <h2>Preise pro Option</h2>
       <p class="muted" style="margin-top:-8px;">Zahl mit optionalem Kürzel: <code>2500</code>, <code>500k</code>, <code>14.2M</code>, <code>1.5B</code>. Leer = kein Preis.
         Im Ticket steht dann <b>Menge × Preis</b> – die Menge kommt aus einem Textfeld mit aktiviertem „Mengenfeld“ (sonst 1). Platzhalter für Embeds: <code>{price}</code></p>
-      ${opts.length ? `<div class="form">${opts.map((o, i) => `<div class="field"><label>${esc(o)}</label><input data-pi="${i}" maxlength="20" value="${esc(map[o] || '')}" placeholder="z. B. 14.2M"></div>`).join('')}</div>`
+      ${opts.length ? `<div class="form">${opts.map((o, i) => `<div class="field"><label>${esc(o)}</label><div class="row-inline"><input data-pi="${i}" maxlength="20" value="${esc(map[o] || '')}" placeholder="z. B. 14.2M"><button type="button" class="btn btn--danger btn--icon" data-pclear="${i}" title="Preis löschen">${icon('trash', 'icon--sm')}</button></div></div>`).join('')}</div>`
         : '<div class="empty">Trage zuerst Optionen ein (eine pro Zeile).</div>'}
-      <div class="modal__actions"><button type="button" class="btn btn--ghost" data-act="cancel">Abbrechen</button><button type="button" class="btn btn--primary" data-act="ok"${opts.length ? '' : ' disabled'}>Übernehmen</button></div>`);
+      <div class="modal__actions">${opts.length ? `<button type="button" class="btn btn--danger" data-act="clearall" style="margin-right:auto;">${icon('trash', 'icon--sm')} Alle löschen</button>` : ''}<button type="button" class="btn btn--ghost" data-act="cancel">Abbrechen</button><button type="button" class="btn btn--primary" data-act="ok"${opts.length ? '' : ' disabled'}>Übernehmen</button></div>`);
+    // Löschen = Feld leeren (wird mit „Übernehmen“ gespeichert)
+    modal.querySelectorAll('[data-pclear]').forEach((b) => { b.onclick = () => { const inp = modal.querySelector(`[data-pi="${b.dataset.pclear}"]`); inp.value = ''; inp.classList.remove('is-invalid'); }; });
+    modal.querySelector('[data-act="clearall"]')?.addEventListener('click', () => modal.querySelectorAll('[data-pi]').forEach((inp) => { inp.value = ''; inp.classList.remove('is-invalid'); }));
     modal.querySelector('[data-act="cancel"]').onclick = close;
     modal.querySelector('[data-act="ok"]').onclick = () => {
       const out = {};
