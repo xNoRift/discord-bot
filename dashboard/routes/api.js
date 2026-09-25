@@ -15,6 +15,7 @@ const commandSettingsModel = require('../../src/database/models/commandSettings'
 const ticketsModel = require('../../src/database/models/tickets');
 const ticketPanels = require('../../src/database/models/ticketPanels');
 const optionEmbeds = require('../../src/utils/optionEmbeds');
+const priceUtil = require('../../src/utils/price');
 const giveawaysModel = require('../../src/database/models/giveaways');
 const giveawayTicketButtons = require('../../src/database/models/giveawayTicketButtons');
 const appModel = require('../../src/database/models/applications');
@@ -1392,6 +1393,11 @@ router.patch(
       const labels = (patch.options ?? current.options).map((o) => (typeof o === 'string' ? o : o.label));
       patch.option_embeds = optionEmbeds.sanitize(req.body.optionEmbeds !== undefined ? req.body.optionEmbeds : current.optionEmbeds, labels);
     }
+    if (req.body.optionPrices !== undefined || patch.options) {
+      const labels = (patch.options ?? current.options).map((o) => (typeof o === 'string' ? o : o.label));
+      patch.option_prices = priceUtil.sanitizePrices(req.body.optionPrices !== undefined ? req.body.optionPrices : current.optionPrices, labels);
+    }
+    if (req.body.isQuantity !== undefined) patch.is_quantity = req.body.isQuantity ? 1 : 0;
     if (req.body.description !== undefined) patch.description = String(req.body.description).slice(0, 100);
     if (req.body.placeholder !== undefined) patch.placeholder = String(req.body.placeholder).slice(0, 100);
     if (req.body.required !== undefined) patch.required = req.body.required ? 1 : 0;

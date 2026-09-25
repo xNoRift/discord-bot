@@ -786,6 +786,7 @@ const Q_ONLY = {
   required: new Set(['short', 'paragraph', 'select', 'radio', 'user', 'role', 'channel', 'mentionable']),
   options: new Set(['select', 'radio']),
   limit: new Set(['short', 'paragraph']),
+  quantity: new Set(['short']),
 };
 const FORM_TEXT = {
   open: ['Ticket-Öffnen Formular', 'Hat die Kategorie Felder, erscheint beim Öffnen ein Formular. Die Antworten landen im Ticket. Ohne Felder wird das Ticket sofort geöffnet.'],
@@ -829,11 +830,19 @@ function tqCard(q, i) {
       <textarea data-qf="options" rows="4" placeholder="Option 1&#10;Option 2">${esc(opts)}</textarea>
       ${(q.form || 'open') === 'open' ? `
       <input type="hidden" data-qf="optionEmbeds" value="${esc(JSON.stringify(q.optionEmbeds || {}))}">
-      <div class="row-inline" style="margin-top:8px;">
+      <input type="hidden" data-qf="optionPrices" value="${esc(JSON.stringify(q.optionPrices || {}))}">
+      <div class="row-inline" style="margin-top:8px;flex-wrap:wrap;">
         <button type="button" class="btn btn--outline btn--sm" data-qa="optemb">${icon('edit', 'icon--sm')} Embed pro Option</button>
         <span class="muted" data-optemb-count></span>
+        <button type="button" class="btn btn--outline btn--sm" data-qa="optprice">💰 Preise</button>
+        <span class="muted" data-optprice-count></span>
       </div>` : ''}
     </div>
+    ${(q.form || 'open') === 'open' ? `<div class="set-block" data-qonly="quantity">
+      <div class="set-block__title">Mengenfeld</div>
+      <div class="set-block__desc">Die Antwort ist die Menge für die Preis-Berechnung (Menge × Preis der gewählten Option).</div>
+      <label class="toggle"><input type="checkbox" data-qf="isQuantity" ${q.is_quantity ? 'checked' : ''}><span class="toggle__track"></span></label>
+    </div>` : ''}
     <div class="set-block" data-qonly="required">
       <div class="set-block__title">Erforderlich <span class="req">*</span></div>
       <div class="set-block__desc">Ist das Feld erforderlich?</div>
@@ -872,6 +881,51 @@ function wireOptionEmbeds(row) {
   };
 }
 
+const PRICE_RE = /^\d+(?:[.,]\d+)?[kmbt]?$/i;
+
+/** Button „Preise“: Preis pro Option (z. B. 14.2M, 500k, 2500). */
+function wireOptionPrices(row) {
+  const hidden = row.querySelector('[data-qf="optionPrices"]');
+  if (!hidden) return;
+  const count = row.querySelector('[data-optprice-count]');
+  const lines = () => row.querySelector('[data-qf="options"]').value.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  const refresh = () => {
+    const map = JSON.parse(hidden.value || '{}');
+    const n = lines().filter((o) => map[o]).length;
+    count.textContent = n ? `${n} mit Preis` : 'Keine Preise';
+  };
+  refresh();
+  row.querySelector('[data-qf="options"]').addEventListener('input', refresh);
+  row.querySelector('[data-qa="optprice"]').onclick = () => {
+    const opts = lines();
+    const map = JSON.parse(hidden.value || '{}');
+    const { modal, close } = openModal(`
+      <h2>Preise pro Option</h2>
+      <p class="muted" style="margin-top:-8px;">Zahl mit optionalem Kürzel: <code>2500</code>, <code>500k</code>, <code>14.2M</code>, <code>1.5B</code>. Leer = kein Preis.
+        Im Ticket steht dann <b>Menge × Preis</b> – die Menge kommt aus einem Textfeld mit aktiviertem „Mengenfeld“ (sonst 1). Platzhalter für Embeds: <code>{price}</code></p>
+      ${opts.length ? `<div class="form">${opts.map((o, i) => `<div class="field"><label>${esc(o)}</label><input data-pi="${i}" maxlength="20" value="${esc(map[o] || '')}" placeholder="z. B. 14.2M"></div>`).join('')}</div>`
+        : '<div class="empty">Trage zuerst Optionen ein (eine pro Zeile).</div>'}
+      <div class="modal__actions"><button type="button" class="btn btn--ghost" data-act="cancel">Abbrechen</button><button type="button" class="btn btn--primary" data-act="ok"${opts.length ? '' : ' disabled'}>Übernehmen</button></div>`);
+    modal.querySelector('[data-act="cancel"]').onclick = close;
+    modal.querySelector('[data-act="ok"]').onclick = () => {
+      const out = {};
+      let bad = '';
+      modal.querySelectorAll('[data-pi]').forEach((inp) => {
+        const v = inp.value.trim().replace(/\s+/g, '');
+        inp.classList.toggle('is-invalid', Boolean(v) && !PRICE_RE.test(v));
+        if (!v) return;
+        if (!PRICE_RE.test(v)) { bad = opts[Number(inp.dataset.pi)]; return; }
+        out[opts[Number(inp.dataset.pi)]] = v;
+      });
+      if (bad) { toast(`Ungültiger Preis bei „${bad}“.`, 'error'); return; }
+      hidden.value = JSON.stringify(out);
+      hidden.dispatchEvent(new Event('input', { bubbles: true }));
+      refresh();
+      close();
+    };
+  };
+}
+
 function applyQuestionTypes(row) {
   const type = row.querySelector('[data-qf="style"]').value;
   row.querySelectorAll('[data-qonly]').forEach((el) => { el.hidden = !Q_ONLY[el.dataset.qonly].has(type); });
@@ -885,11 +939,15 @@ function renderFormsSub(cb, body, c, form) {
     <div class="card" id="catFormCard">
       <div class="card__head"><h2>${title} <span class="muted">(max. 5 Felder – Discord-Limit)</span></h2></div>
       <p class="card__sub">${hint}</p>
+      ${form === 'open' ? `<form id="catAnsForm">${switchBlock('Antworten im Eröffnungs-Embed anzeigen?', 'Die Antworten stehen nummeriert direkt im Eröffnungs-Embed (samt Preis, falls Preise hinterlegt sind) statt in einem eigenen Embed darunter.', 'name', 'answersInEmbed', (c.cfg || {}).answersInEmbed)}</form>` : ''}
       <div id="tqList">${qs.map((q, i) => tqCard(q, i)).join('')}</div>
       <button class="tile tile--add" id="tqAdd" style="width:100%;margin-top:4px;">
         <span class="tile__name">Feld hinzufügen</span><span class="tile__ico">${icon('plus', 'icon--sm')}</span>
       </button>
     </div>`;
+
+  const ansForm = cb.querySelector('#catAnsForm');
+  if (ansForm) Dash.trackForm(ansForm, () => saveCategory(c, { cfg: { answersInEmbed: ansForm.elements.answersInEmbed.checked } }), { key: 'catAns-' + c.id });
 
   cb.querySelector('#tqAdd').onclick = async () => {
     try {
@@ -907,12 +965,14 @@ function renderFormsSub(cb, body, c, form) {
     const slider = row.querySelector('[data-qf="maxLength"]');
     slider.addEventListener('input', () => { row.querySelector('[data-ql]').textContent = slider.value; });
     wireOptionEmbeds(row);
+    wireOptionPrices(row);
     Dash.trackForm(row, async () => {
       const patch = {};
       row.querySelectorAll('[data-qf]').forEach((el) => {
         patch[el.dataset.qf] = el.type === 'checkbox' ? el.checked : el.value;
       });
       if (patch.optionEmbeds !== undefined) patch.optionEmbeds = JSON.parse(patch.optionEmbeds || '{}');
+      if (patch.optionPrices !== undefined) patch.optionPrices = JSON.parse(patch.optionPrices || '{}');
       try {
         await apiFor('PATCH', `/ticket-panels/${p.id}/categories/${c.id}/questions/${qid}`, patch);
         toast('Feld gespeichert.', 'success');

@@ -26,6 +26,7 @@ const ticketPanels = require('../database/models/ticketPanels');
 const logService = require('./logService');
 const embeds = require('../utils/embeds');
 const optionEmbeds = require('../utils/optionEmbeds');
+const priceUtil = require('../utils/price');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
 const i18n = require('../utils/i18n');
@@ -405,7 +406,8 @@ function readModalAnswers(fields, questions) {
     }
     // Gewählte Optionen mit eigenem Embed (nur Ticket-Formulare haben optionEmbeds)
     const optionPicks = picked.filter((v) => q.optionEmbeds?.[v]).map((v) => ({ map: q.optionEmbeds, option: v }));
-    return { question: q.label, answer, optionPicks };
+    const prices = picked.map((v) => q.optionPrices?.[v]).filter(Boolean);
+    return { question: q.label, answer, optionPicks, prices, isQuantity: Boolean(q.is_quantity) };
   });
 }
 
@@ -435,7 +437,7 @@ function buildTicketModal(category, questions) {
   return buildQuestionsModal(`ticket:form:${category.id}`, `Ticket: ${category.label}`, questions);
 }
 
-function fillPlaceholders(text, { member, guild, ticketNumber, category, prize }) {
+function fillPlaceholders(text, { member, guild, ticketNumber, category, prize, price }) {
   return String(text || '')
     .replaceAll('{user}', `<@${member.id}>`)
     .replaceAll('{user.tag}', member.user.tag)
@@ -443,6 +445,7 @@ function fillPlaceholders(text, { member, guild, ticketNumber, category, prize }
     .replaceAll('{guild}', guild.name)
     .replaceAll('{category}', category || '')
     .replaceAll('{prize}', prize || '')
+    .replaceAll('{price}', price || '')
     .replaceAll('{number}', String(ticketNumber));
 }
 
@@ -603,13 +606,24 @@ async function createTicket(guild, member, opts = {}) {
   ticketsModel.touch(ticket.id);
 
   // Eröffnungs-Embed: Kategorie-Überschreibung > Panel-Embed > Standard
-  const ctx = { member, guild, ticketNumber: number, category: cat?.label, prize: ov.prize };
   const oe = ccfg.openEmbedOverride ? ccfg.openEmbed : pcfg.openEmbed;
+  const answers = Array.isArray(opts.answers) ? opts.answers : [];
+  const priced = priceUtil.compute(answers); // Menge × Optionspreis (null = Formular ohne Preise)
+  const ctx = { member, guild, ticketNumber: number, category: cat?.label, prize: ov.prize, price: priced?.total };
+  const answerText = (a) => (a.answer && a.answer.trim() ? a.answer : tg('common.no_answer'));
+  const inEmbed = ccfg.answersInEmbed && answers.length > 0;
+  let description = renderWelcome(oe.description || welcomeTemplate, ctx);
+  if (inEmbed) {
+    // Antworten nummeriert direkt unter die Begrüßung (Beschreibung max. 4096 Zeichen)
+    const blocks = answers.slice(0, 24).map((a, i) => `**${i + 1}. ${String(a.question || tg('common.question')).slice(0, 256)}**\n${answerText(a).slice(0, 1024)}`);
+    if (priced) blocks.push(`**${blocks.length + 1}. Preis**\n__**${priced.total}**__\n${priced.detail}`);
+    description = `${description}\n\n${blocks.join('\n\n')}`;
+  }
   const defaultTitle = cat ? tg('tickets.welcome.title_cat', { number, category: cat.label }) : tg('tickets.welcome.title', { number });
   const welcomeEmbed = new EmbedBuilder()
     .setColor(parseColor(oe.color) ?? panelColor(panel, settings))
     .setTitle((oe.title ? fillPlaceholders(oe.title, ctx) : defaultTitle).slice(0, 256))
-    .setDescription(renderWelcome(oe.description || welcomeTemplate, ctx).slice(0, 4000))
+    .setDescription(description.slice(0, 4096))
     .addFields(
       { name: tg('tickets.welcome.field_opener'), value: `<@${member.id}>`, inline: true },
       { name: tg('tickets.welcome.field_created'), value: discordTimestamp(Date.now(), 'F'), inline: true },
@@ -634,21 +648,24 @@ async function createTicket(guild, member, opts = {}) {
   });
 
   // Formular-Antworten (falls die Kategorie ein Öffnen-Formular hat)
-  if (Array.isArray(opts.answers) && opts.answers.length) {
-    const answerEmbed = new EmbedBuilder()
-      .setColor(panelColor(panel, settings))
-      .setTitle(tg('tickets.form.title'))
-      .addFields(
-        opts.answers.slice(0, 24).map((a) => ({
-          name: String(a.question || tg('common.question')).slice(0, 256),
-          value: (a.answer && a.answer.trim() ? a.answer : tg('common.no_answer')).slice(0, 1024),
-        })),
-      );
-    await channel.send({ embeds: [answerEmbed] }).catch(() => null);
+  if (answers.length) {
+    if (!inEmbed) {
+      const answerEmbed = new EmbedBuilder()
+        .setColor(panelColor(panel, settings))
+        .setTitle(tg('tickets.form.title'))
+        .addFields([
+          ...answers.slice(0, 24).map((a) => ({
+            name: String(a.question || tg('common.question')).slice(0, 256),
+            value: answerText(a).slice(0, 1024),
+          })),
+          ...(priced ? [{ name: 'Preis', value: `__**${priced.total}**__\n${priced.detail}` }] : []),
+        ]);
+      await channel.send({ embeds: [answerEmbed] }).catch(() => null);
+    }
 
     // Eigene Embeds der gewählten Optionen (max. 10 Embeds pro Nachricht)
-    const optionVars = { user: `<@${member.id}>`, username: member.user.username, guild: guild.name, server: guild.name, category: cat?.label ?? '', number: String(number) };
-    const extra = opts.answers
+    const optionVars = { user: `<@${member.id}>`, username: member.user.username, guild: guild.name, server: guild.name, category: cat?.label ?? '', number: String(number), price: priced?.total ?? '' };
+    const extra = answers
       .flatMap((a) => a.optionPicks ?? [])
       .map((p) => optionEmbeds.build(p.map, p.option, optionVars, panelColor(panel, settings)))
       .filter(Boolean);

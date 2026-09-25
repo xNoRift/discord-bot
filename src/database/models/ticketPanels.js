@@ -2,6 +2,7 @@
 
 const db = require('../db');
 const optionEmbeds = require('../../utils/optionEmbeds');
+const price = require('../../utils/price');
 
 /* ---------------- Erweiterte Einstellungen (JSON) ---------------- */
 
@@ -32,6 +33,7 @@ const panelCfgDefaults = () => ({
 });
 const categoryCfgDefaults = () => ({
   onBehalf: false,
+  answersInEmbed: false, // Formular-Antworten direkt im Eröffnungs-Embed statt als eigenes Embed
   supportRoleIds: '',
   openEmbedOverride: false,
   openEmbed: embedDefaults(),
@@ -230,7 +232,7 @@ function parseQuestion(q) {
   if (!q) return q;
   let options = [];
   try { options = q.options ? JSON.parse(q.options) : []; } catch { options = []; }
-  return { ...q, form: q.form || 'open', options: Array.isArray(options) ? options : [], optionEmbeds: optionEmbeds.parse(q.option_embeds) };
+  return { ...q, form: q.form || 'open', options: Array.isArray(options) ? options : [], optionEmbeds: optionEmbeds.parse(q.option_embeds), optionPrices: price.parsePrices(q.option_prices) };
 }
 
 /** Felder eines Formulars ('open' | 'close' | 'rating') einer Kategorie. */
@@ -277,7 +279,7 @@ function addQuestion({ categoryId, label, style = 'short', placeholder = null, r
 }
 
 function updateQuestion(id, patch) {
-  const allowed = ['label', 'style', 'placeholder', 'required', 'min_length', 'max_length', 'position', 'options', 'description', 'option_embeds'];
+  const allowed = ['label', 'style', 'placeholder', 'required', 'min_length', 'max_length', 'position', 'options', 'description', 'option_embeds', 'option_prices', 'is_quantity'];
   const keys = Object.keys(patch).filter((k) => allowed.includes(k));
   if (!keys.length) return getQuestion(id);
   const setSql = keys.map((k) => `${k} = @${k}`).join(', ');
@@ -286,7 +288,7 @@ function updateQuestion(id, patch) {
     let v = patch[k];
     if (typeof v === 'boolean') v = v ? 1 : 0;
     if (k === 'options' && Array.isArray(v)) v = JSON.stringify(v);
-    if (k === 'option_embeds' && v && typeof v === 'object') v = Object.keys(v).length ? JSON.stringify(v) : null;
+    if ((k === 'option_embeds' || k === 'option_prices') && v && typeof v === 'object') v = Object.keys(v).length ? JSON.stringify(v) : null;
     params[k] = v === '' ? null : v;
   }
   db.prepare(`UPDATE ticket_category_questions SET ${setSql} WHERE id = @id`).run(params);

@@ -170,6 +170,8 @@ ensureColumn('ticket_category_questions', 'form', "TEXT DEFAULT 'open'");
 ensureColumn('ticket_category_questions', 'options', 'TEXT');
 ensureColumn('ticket_category_questions', 'description', 'TEXT');
 ensureColumn('ticket_category_questions', 'option_embeds', 'TEXT'); // JSON: eigenes Embed pro Option
+ensureColumn('ticket_category_questions', 'option_prices', 'TEXT'); // JSON: Preis pro Option ("14.2M")
+ensureColumn('ticket_category_questions', 'is_quantity', 'INTEGER DEFAULT 0'); // Textfeld = Menge für die Preis-Berechnung
 ensureColumn('tickets', 'alerted_at', 'INTEGER');
 ensureColumn('tickets', 'team_alerted_at', 'INTEGER');
 ensureColumn('tickets', 'close_request_by', 'TEXT');
