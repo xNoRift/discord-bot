@@ -54,6 +54,7 @@ ensureColumn('application_types', 'cfg', 'TEXT');
 ensureColumn('application_types', 'method', "TEXT DEFAULT 'dm'"); // historisch – es gibt nur noch Direktnachricht
 ensureColumn('application_questions', 'options', 'TEXT');
 ensureColumn('application_questions', 'description', 'TEXT');
+ensureColumn('application_questions', 'option_embeds', 'TEXT'); // JSON: eigenes Embed pro Antwortmöglichkeit
 ensureColumn('applications', 'thread_id', 'TEXT');
 ensureColumn('applications', 'duration_ms', 'INTEGER');
 ensureColumn('applications', 'source', 'TEXT');
@@ -168,6 +169,7 @@ ensureColumn('ticket_categories', 'cfg', 'TEXT');
 ensureColumn('ticket_category_questions', 'form', "TEXT DEFAULT 'open'");
 ensureColumn('ticket_category_questions', 'options', 'TEXT');
 ensureColumn('ticket_category_questions', 'description', 'TEXT');
+ensureColumn('ticket_category_questions', 'option_embeds', 'TEXT'); // JSON: eigenes Embed pro Option
 ensureColumn('tickets', 'alerted_at', 'INTEGER');
 ensureColumn('tickets', 'team_alerted_at', 'INTEGER');
 ensureColumn('tickets', 'close_request_by', 'TEXT');

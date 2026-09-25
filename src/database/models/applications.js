@@ -1,6 +1,7 @@
 'use strict';
 
 const db = require('../db');
+const optionEmbeds = require('../../utils/optionEmbeds');
 
 /**
  * Bewerbungssystem (Appy-Aufbau):
@@ -165,7 +166,8 @@ function duplicateType(id) {
   const copy = createType({ guildId: t.guild_id, name: `${t.name} (Kopie)`.slice(0, 80), emoji: t.emoji, description: t.description });
   updateType(copy.id, { cfg: t.cfg, chat_category_id: t.chat_category_id, auto_chat: t.auto_chat, enabled: t.enabled });
   for (const q of listQuestions(id)) {
-    addQuestion({ typeId: copy.id, label: q.label, style: q.style, required: q.required, minLength: q.min_length, maxLength: q.max_length, options: q.options, description: q.description });
+    const added = addQuestion({ typeId: copy.id, label: q.label, style: q.style, required: q.required, minLength: q.min_length, maxLength: q.max_length, options: q.options, description: q.description });
+    if (Object.keys(q.optionEmbeds).length) updateQuestion(added.id, { option_embeds: q.optionEmbeds });
   }
   return getType(copy.id);
 }
@@ -176,7 +178,7 @@ const QUESTION_STYLES = ['short', 'paragraph', 'choice', 'number'];
 
 function normQ(q) {
   if (!q) return q;
-  return { ...q, options: parseJson(q.options, []).filter((o) => typeof o === 'string' && o) };
+  return { ...q, options: parseJson(q.options, []).filter((o) => typeof o === 'string' && o), optionEmbeds: optionEmbeds.parse(q.option_embeds) };
 }
 
 function listQuestions(typeId) {
@@ -219,7 +221,7 @@ function addQuestion({ typeId, label, style = 'short', required = true, minLengt
 }
 
 function updateQuestion(id, patch) {
-  const allowed = ['label', 'style', 'required', 'min_length', 'max_length', 'position', 'options', 'description'];
+  const allowed = ['label', 'style', 'required', 'min_length', 'max_length', 'position', 'options', 'description', 'option_embeds'];
   const keys = Object.keys(patch).filter((k) => allowed.includes(k));
   if (!keys.length) return getQuestion(id);
   const setSql = keys.map((k) => `${k} = @${k}`).join(', ');
@@ -229,6 +231,7 @@ function updateQuestion(id, patch) {
     if (typeof v === 'boolean') v = v ? 1 : 0;
     if (k === 'options') v = JSON.stringify(cleanOptions(v));
     if (k === 'description') v = v ? String(v).slice(0, 100) : null;
+    if (k === 'option_embeds') v = v && typeof v === 'object' && Object.keys(v).length ? JSON.stringify(v) : null;
     params[k] = v;
   }
   db.prepare(`UPDATE application_questions SET ${setSql} WHERE id = @id`).run(params);

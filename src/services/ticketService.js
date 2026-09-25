@@ -25,6 +25,7 @@ const settingsModel = require('../database/models/settings');
 const ticketPanels = require('../database/models/ticketPanels');
 const logService = require('./logService');
 const embeds = require('../utils/embeds');
+const optionEmbeds = require('../utils/optionEmbeds');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
 const i18n = require('../utils/i18n');
@@ -383,10 +384,11 @@ function readModalAnswers(fields, questions) {
   return questions.slice(0, 5).map((q) => {
     const id = `q_${q.id}`;
     let answer = '';
+    let picked = [];
     try {
       switch (questionStyle(q)) {
-        case 'select': answer = fields.getStringSelectValues(id).join(', '); break;
-        case 'radio': answer = fields.getRadioGroup(id) || ''; break;
+        case 'select': picked = fields.getStringSelectValues(id); answer = picked.join(', '); break;
+        case 'radio': answer = fields.getRadioGroup(id) || ''; picked = answer ? [answer] : []; break;
         case 'checkbox': answer = fields.getCheckbox(id) ? '✅ Ja' : '❌ Nein'; break;
         case 'user': answer = [...(fields.getSelectedUsers(id)?.values() ?? [])].map((u) => `<@${u.id}>`).join(' '); break;
         case 'role': answer = [...(fields.getSelectedRoles(id)?.values() ?? [])].map((r) => `<@&${r.id}>`).join(' '); break;
@@ -401,7 +403,9 @@ function readModalAnswers(fields, questions) {
     } catch {
       answer = '';
     }
-    return { question: q.label, answer };
+    // Gewählte Optionen mit eigenem Embed (nur Ticket-Formulare haben optionEmbeds)
+    const optionPicks = picked.filter((v) => q.optionEmbeds?.[v]).map((v) => ({ map: q.optionEmbeds, option: v }));
+    return { question: q.label, answer, optionPicks };
   });
 }
 
@@ -641,6 +645,14 @@ async function createTicket(guild, member, opts = {}) {
         })),
       );
     await channel.send({ embeds: [answerEmbed] }).catch(() => null);
+
+    // Eigene Embeds der gewählten Optionen (max. 10 Embeds pro Nachricht)
+    const optionVars = { user: `<@${member.id}>`, username: member.user.username, guild: guild.name, server: guild.name, category: cat?.label ?? '', number: String(number) };
+    const extra = opts.answers
+      .flatMap((a) => a.optionPicks ?? [])
+      .map((p) => optionEmbeds.build(p.map, p.option, optionVars, panelColor(panel, settings)))
+      .filter(Boolean);
+    for (let i = 0; i < extra.length; i += 10) await channel.send({ embeds: extra.slice(i, i + 10) }).catch(() => null);
   }
 
   await ticketLog(ticket, {

@@ -14,6 +14,7 @@ const settingsModel = require('../../src/database/models/settings');
 const commandSettingsModel = require('../../src/database/models/commandSettings');
 const ticketsModel = require('../../src/database/models/tickets');
 const ticketPanels = require('../../src/database/models/ticketPanels');
+const optionEmbeds = require('../../src/utils/optionEmbeds');
 const giveawaysModel = require('../../src/database/models/giveaways');
 const giveawayTicketButtons = require('../../src/database/models/giveawayTicketButtons');
 const appModel = require('../../src/database/models/applications');
@@ -1380,11 +1381,17 @@ function ownedQuestion(req) {
 router.patch(
   '/guilds/:guildId/ticket-panels/:panelId/categories/:catId/questions/:qid',
   asyncHandler(async (req, res) => {
-    if (!ownedQuestion(req)) return res.status(404).json({ error: 'Formularfeld nicht gefunden.' });
+    const current = ownedQuestion(req);
+    if (!current) return res.status(404).json({ error: 'Formularfeld nicht gefunden.' });
     const patch = {};
     if (req.body.label !== undefined) patch.label = String(req.body.label).slice(0, 45);
     if (req.body.style !== undefined) patch.style = QUESTION_TYPES.includes(req.body.style) ? req.body.style : 'short';
     if (req.body.options !== undefined) patch.options = parseOptions(req.body.options);
+    if (req.body.optionEmbeds !== undefined || patch.options) {
+      // Nur Embeds für Optionen behalten, die es (noch) gibt
+      const labels = (patch.options ?? current.options).map((o) => (typeof o === 'string' ? o : o.label));
+      patch.option_embeds = optionEmbeds.sanitize(req.body.optionEmbeds !== undefined ? req.body.optionEmbeds : current.optionEmbeds, labels);
+    }
     if (req.body.description !== undefined) patch.description = String(req.body.description).slice(0, 100);
     if (req.body.placeholder !== undefined) patch.placeholder = String(req.body.placeholder).slice(0, 100);
     if (req.body.required !== undefined) patch.required = req.body.required ? 1 : 0;
@@ -2289,6 +2296,12 @@ function questionPatch(body, current) {
   if (body.maxLength !== undefined) patch.max_length = Math.min(4000, Math.max(0, num(body.maxLength, 0)));
   if (body.description !== undefined) patch.description = String(body.description).slice(0, 100);
   if (body.options !== undefined) patch.options = body.options;
+  if (body.optionEmbeds !== undefined || patch.options !== undefined) {
+    // Nur Embeds für Antwortmöglichkeiten behalten, die es (noch) gibt
+    const opts = patch.options !== undefined ? patch.options : current?.options ?? [];
+    const labels = (Array.isArray(opts) ? opts : String(opts ?? '').split('\n')).map((o) => String(o).trim().slice(0, 100)).filter(Boolean);
+    patch.option_embeds = optionEmbeds.sanitize(body.optionEmbeds !== undefined ? body.optionEmbeds : current?.optionEmbeds, labels);
+  }
   const style = patch.style ?? current?.style;
   if (style === 'choice') {
     const opts = body.options !== undefined ? body.options : current?.options;

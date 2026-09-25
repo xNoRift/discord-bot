@@ -5,6 +5,7 @@ const client = require('../core/client');
 const appModel = require('../database/models/applications');
 const applicationService = require('./applicationService');
 const embeds = require('../utils/embeds');
+const optionEmbeds = require('../utils/optionEmbeds');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
 
@@ -138,6 +139,12 @@ async function acceptAnswer(user, session, value) {
   const answers = JSON.parse(session.answers_json || '[]');
   answers.push({ question: q.label, answer: value });
   const next = appModel.updateSession(session.id, { step: session.step + 1, answers });
+  // Eigenes Embed der gewählten Antwortmöglichkeit
+  if (q.style === 'choice' && q.optionEmbeds?.[value]) {
+    const guild = client.guilds.cache.get(session.guild_id);
+    const vars = { applicationName: type?.name ?? '', applicant: `<@${user.id}>`, server: guild?.name ?? '' };
+    await user.send({ embeds: [optionEmbeds.build(q.optionEmbeds, value, vars, config.branding.color)] }).catch(() => null);
+  }
   if (next.step >= questions.length) return finish(user, next, type, questions, answers);
   return sendQuestion(user, next, type, questions);
 }

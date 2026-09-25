@@ -827,6 +827,12 @@ function tqCard(q, i) {
     <div class="field" data-qonly="options">
       <label>Optionen <span class="req">*</span></label><div class="field-hint">Eine Option pro Zeile (Auswahl: max. 25, Radio: 2 bis 10)</div>
       <textarea data-qf="options" rows="4" placeholder="Option 1&#10;Option 2">${esc(opts)}</textarea>
+      ${(q.form || 'open') === 'open' ? `
+      <input type="hidden" data-qf="optionEmbeds" value="${esc(JSON.stringify(q.optionEmbeds || {}))}">
+      <div class="row-inline" style="margin-top:8px;">
+        <button type="button" class="btn btn--outline btn--sm" data-qa="optemb">${icon('edit', 'icon--sm')} Embed pro Option</button>
+        <span class="muted" data-optemb-count></span>
+      </div>` : ''}
     </div>
     <div class="set-block" data-qonly="required">
       <div class="set-block__title">Erforderlich <span class="req">*</span></div>
@@ -839,6 +845,31 @@ function tqCard(q, i) {
       <div class="row-inline"><input type="range" data-qf="maxLength" min="1" max="4000" step="1" value="${max}" style="flex:1;"><b data-ql style="width:56px;text-align:right;">${max}</b></div>
     </div>
   </form>`;
+}
+
+/** Button „Embed pro Option“: bearbeitet das versteckte JSON-Feld, die Speicherleiste übernimmt das Speichern. */
+function wireOptionEmbeds(row) {
+  const hidden = row.querySelector('[data-qf="optionEmbeds"]');
+  if (!hidden) return;
+  const count = row.querySelector('[data-optemb-count]');
+  const lines = () => row.querySelector('[data-qf="options"]').value.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  const refresh = () => {
+    const map = JSON.parse(hidden.value || '{}');
+    const n = lines().filter((o) => map[o]).length;
+    count.textContent = n ? `${n} Option${n === 1 ? '' : 'en'} mit eigenem Embed` : 'Noch keine eigenen Embeds';
+  };
+  refresh();
+  row.querySelector('[data-qf="options"]').addEventListener('input', refresh);
+  row.querySelector('[data-qa="optemb"]').onclick = async () => {
+    const res = await Dash.optionEmbedsModal(lines(), JSON.parse(hidden.value || '{}'), {
+      hint: 'Wählt jemand beim Öffnen des Tickets diese Option, erscheint ihr Embed zusätzlich im Ticket. Leer lassen = kein Embed.',
+      vars: '<code>{user}</code> <code>{username}</code> <code>{number}</code> <code>{category}</code> <code>{server}</code>',
+    });
+    if (!res) return;
+    hidden.value = JSON.stringify(res);
+    hidden.dispatchEvent(new Event('input', { bubbles: true }));
+    refresh();
+  };
 }
 
 function applyQuestionTypes(row) {
@@ -875,11 +906,13 @@ function renderFormsSub(cb, body, c, form) {
     row.querySelector('[data-qf="style"]').addEventListener('change', () => applyQuestionTypes(row));
     const slider = row.querySelector('[data-qf="maxLength"]');
     slider.addEventListener('input', () => { row.querySelector('[data-ql]').textContent = slider.value; });
+    wireOptionEmbeds(row);
     Dash.trackForm(row, async () => {
       const patch = {};
       row.querySelectorAll('[data-qf]').forEach((el) => {
         patch[el.dataset.qf] = el.type === 'checkbox' ? el.checked : el.value;
       });
+      if (patch.optionEmbeds !== undefined) patch.optionEmbeds = JSON.parse(patch.optionEmbeds || '{}');
       try {
         await apiFor('PATCH', `/ticket-panels/${p.id}/categories/${c.id}/questions/${qid}`, patch);
         toast('Feld gespeichert.', 'success');

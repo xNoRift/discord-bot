@@ -361,7 +361,9 @@ function questionCard(q, i, total) {
     </div>
     <div class="form">
       <div class="field"><input data-f="label" maxlength="200" value="${escapeHtml(q.label)}" placeholder="Fragetext" /></div>
-      <div class="field q-opts"${q.style === 'choice' ? '' : ' hidden'}><label>Antwortmöglichkeiten (eine pro Zeile, mind. 2)</label><textarea data-f="options" rows="3">${escapeHtml((q.options || []).join('\n'))}</textarea></div>
+      <div class="field q-opts"${q.style === 'choice' ? '' : ' hidden'}><label>Antwortmöglichkeiten (eine pro Zeile, mind. 2)</label><textarea data-f="options" rows="3">${escapeHtml((q.options || []).join('\n'))}</textarea>
+        <input type="hidden" data-f="optionEmbeds" value="${escapeHtml(JSON.stringify(q.optionEmbeds || {}))}" />
+        <div class="row-inline" style="margin-top:8px;"><button type="button" class="btn btn--outline btn--sm" data-optemb>${icon('edit', 'icon--sm')} Embed pro Antwort</button><span class="muted" data-optemb-count></span></div></div>
       <details><summary style="cursor:pointer;font-weight:700;">Einstellungen</summary>
         <div class="form" style="margin-top:10px;">
           <div class="field"><label>Hilfetext (optional)</label><input data-f="description" maxlength="100" value="${escapeHtml(q.description || '')}" /></div>
@@ -374,6 +376,31 @@ function questionCard(q, i, total) {
       </details>
     </div>
   </form>`;
+}
+
+/** Button „Embed pro Antwort“: bearbeitet das versteckte JSON-Feld, die Speicherleiste übernimmt das Speichern. */
+function wireOptionEmbeds(row) {
+  const hidden = row.querySelector('[data-f=optionEmbeds]');
+  const opts = row.querySelector('[data-f=options]');
+  const count = row.querySelector('[data-optemb-count]');
+  const lines = () => opts.value.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  const refresh = () => {
+    const map = JSON.parse(hidden.value || '{}');
+    const n = lines().filter((o) => map[o]).length;
+    count.textContent = n ? `${n} Antwort${n === 1 ? '' : 'en'} mit eigenem Embed` : 'Noch keine eigenen Embeds';
+  };
+  refresh();
+  opts.addEventListener('input', refresh);
+  row.querySelector('[data-optemb]').onclick = async () => {
+    const res = await Dash.optionEmbedsModal(lines(), JSON.parse(hidden.value || '{}'), {
+      hint: 'Wählt der Bewerber diese Antwort, schickt der Bot ihm zusätzlich ihr Embed per Direktnachricht. Leer lassen = kein Embed.',
+      vars: '<code>{applicant}</code> <code>{applicationName}</code> <code>{server}</code>',
+    });
+    if (!res) return;
+    hidden.value = JSON.stringify(res);
+    hidden.dispatchEvent(new Event('input', { bubbles: true }));
+    refresh();
+  };
 }
 
 async function renderQuestions() {
@@ -397,6 +424,7 @@ async function renderQuestions() {
       if (s === 'number' && Number(max.value) === 400) max.value = 0;
       if (s !== 'number' && Number(max.value) === 0) max.value = 400;
     });
+    wireOptionEmbeds(row);
     Dash.trackForm(row, async () => {
       try {
         await apiFor('PATCH', `/application-types/${t.id}/questions/${qid}`, {
@@ -407,6 +435,7 @@ async function renderQuestions() {
           required: row.querySelector('[data-f=required]').checked,
           minLength: Number(row.querySelector('[data-f=minLength]').value) || 0,
           maxLength: Number(row.querySelector('[data-f=maxLength]').value) || 0,
+          optionEmbeds: JSON.parse(row.querySelector('[data-f=optionEmbeds]').value || '{}'),
         });
         toast('Frage gespeichert.', 'success');
       } catch (err) { toast(errMsg(err), 'error'); throw err; }

@@ -346,6 +346,61 @@ function confirmModal(message, { danger = false, confirmLabel = 'Bestätigen' } 
  * Eingabe-Fenster im Dashboard-Design (Ersatz für window.prompt).
  * Liefert den eingegebenen Text oder null bei Abbruch (Abbrechen, Esc, Klick daneben).
  */
+/**
+ * Eigenes Embed pro Antwortmöglichkeit bearbeiten (Ticket-Formular, Bewerbungs-Fragen).
+ * @param {string[]} options  aktuelle Optionen
+ * @param {Object<string,object>} current  { Option: { title, description, color, imageUrl, thumbnailUrl, footer } }
+ * @param {{ hint?: string }} [o]
+ * @returns {Promise<Object|null>}  neue Zuordnung oder null bei Abbruch
+ */
+function optionEmbedsModal(options, current, o = {}) {
+  const list = [...new Set((options || []).map((x) => String(x).trim()).filter(Boolean))];
+  const map = current || {};
+  const has = (e) => e && (e.title || e.description || e.imageUrl || e.thumbnailUrl);
+  const badge = (on) => `<span class="badge badge--${on ? 'green' : 'closed'}" data-state>${on ? 'Eigenes Embed' : 'Kein Embed'}</span>`;
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    const { modal, close } = openModal(`
+      <h2>Embed pro Option</h2>
+      <p class="muted" style="margin-top:-8px;">${o.hint || 'Wird eine Option gewählt, schickt der Bot zusätzlich ihr Embed. Leer lassen = kein Embed.'}
+        Platzhalter: <code>{option}</code> ${o.vars || ''}</p>
+      ${list.length ? list.map((opt, i) => {
+        const e = map[opt] || {};
+        return `<details class="card" data-opt="${i}" style="margin:0 0 10px;padding:12px 14px;">
+          <summary style="cursor:pointer;display:flex;gap:10px;align-items:center;"><b style="flex:1;">${escapeHtml(opt)}</b>${badge(has(e))}</summary>
+          <div class="form" style="margin-top:12px;">
+            <div class="field"><label>Titel</label><input data-k="title" maxlength="256" value="${escapeHtml(e.title || '')}" /></div>
+            <div class="field"><label>Beschreibung</label><textarea data-k="description" rows="4" maxlength="4000">${escapeHtml(e.description || '')}</textarea></div>
+            <div class="field"><label>Farbe</label><input data-k="color" data-color maxlength="7" value="${escapeHtml(e.color || '')}" /></div>
+            <div class="field"><label>Bild (groß)</label><input data-k="imageUrl" data-image value="${escapeHtml(e.imageUrl || '')}" placeholder="https://…" /></div>
+            <div class="field"><label>Vorschaubild (klein)</label><input data-k="thumbnailUrl" data-image value="${escapeHtml(e.thumbnailUrl || '')}" placeholder="https://…" /></div>
+            <div class="field"><label>Fußzeile</label><input data-k="footer" maxlength="2048" value="${escapeHtml(e.footer || '')}" /></div>
+          </div>
+        </details>`;
+      }).join('') : '<div class="empty">Trage zuerst Optionen ein (eine pro Zeile).</div>'}
+      <div class="modal__actions"><button type="button" class="btn btn--ghost" data-act="cancel">Abbrechen</button><button type="button" class="btn btn--primary" data-act="ok"${list.length ? '' : ' disabled'}>Übernehmen</button></div>`,
+    { onClose: () => finish(null) });
+    modal.style.maxWidth = '760px';
+    enhanceWidgets(modal);
+    const read = (box) => Object.fromEntries([...box.querySelectorAll('[data-k]')].map((el) => [el.dataset.k, el.value.trim()]));
+    modal.addEventListener('input', (e) => {
+      const box = e.target.closest('[data-opt]');
+      if (box) box.querySelector('[data-state]').outerHTML = badge(has(read(box)));
+    });
+    modal.querySelector('[data-act="cancel"]').onclick = () => close();
+    modal.querySelector('[data-act="ok"]').onclick = () => {
+      const out = {};
+      modal.querySelectorAll('[data-opt]').forEach((box) => {
+        const e = read(box);
+        if (has(e)) out[list[Number(box.dataset.opt)]] = e;
+      });
+      finish(out);
+      close();
+    };
+  });
+}
+
 function promptModal(message, { title = 'Eingabe', placeholder = '', value = '', maxLength = 200, required = true, multiline = false, confirmLabel = 'OK', hint = '' } = {}) {
   return new Promise((resolve) => {
     const attrs = `data-input maxlength="${maxLength}" placeholder="${escapeHtml(placeholder)}"`;
@@ -1049,6 +1104,7 @@ new MutationObserver((muts) => {
 
 window.Dash = {
   promptModal,
+  optionEmbedsModal,
   uploadImage,
   enhanceWidgets,
   moduleForm,
