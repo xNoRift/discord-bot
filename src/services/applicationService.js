@@ -49,6 +49,18 @@ function fillTemplate(text, vars) {
   return out;
 }
 
+/** Eigene Gestaltung einer Bewerbung (cfg.embeds[key]) auf ein Embed anwenden; leere Felder = Standard. */
+function styleEmbed(embed, style, vars) {
+  if (!style) return embed;
+  if (style.title) embed.setTitle(fillTemplate(style.title, vars).slice(0, 256));
+  const color = parseColor(style.color);
+  if (color !== null) embed.setColor(color);
+  if (style.imageUrl) embed.setImage(style.imageUrl);
+  if (style.thumbnailUrl) embed.setThumbnail(style.thumbnailUrl);
+  if (style.footer) embed.setFooter({ text: fillTemplate(style.footer, vars).slice(0, 2048) });
+  return embed;
+}
+
 function formatDuration(ms) {
   const s = Math.max(1, Math.round(ms / 1000));
   if (s < 60) return `${s} Sek.`;
@@ -206,8 +218,9 @@ async function beginApplication(interaction, typeId) {
     cfg.confirmationMessage ||
     `Möchtest du dich auf **${type.name}** bewerben?\n\nNach dem Start schicke ich dir eine Reihe von Fragen per Direktnachricht. ` +
       `Du hast **${formatDuration(cfg.timeLimitMin * 60_000)}** Zeit, sie zu beantworten. Mit dem Button unten (oder \`abbrechen\`) kannst du jederzeit stoppen.`;
+  const vars = { applicationName: type.name, applicant: `<@${interaction.user.id}>`, server: interaction.guild.name };
   return reply(
-    embeds.info(`📋 Bewerbung: ${type.name}`, fillTemplate(text, { applicationName: type.name, server: interaction.guild.name })),
+    styleEmbed(embeds.info(`📋 Bewerbung: ${type.name}`, fillTemplate(text, vars)), cfg.embeds.confirmation, vars),
     [
       new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`app:begin:${type.id}`).setLabel('Starten').setEmoji('▶️').setStyle(ButtonStyle.Success),
@@ -416,7 +429,9 @@ async function reviewApplication(guild, applicationId, reviewer, decision, note)
     const vars = { applicationName: updated.type_name ?? '', user: `<@${reviewer.id}>`, applicant: `<@${updated.user_id}>`, server: guild.name, note: note ?? '' };
     const body = fillTemplate(accepted ? cfg.acceptedMessage : cfg.deniedMessage, vars) + (note ? `\n\n**Nachricht vom Team:** ${note}` : '');
     const dm = accepted ? embeds.success('✅ Bewerbung angenommen', body) : embeds.error('❌ Bewerbung abgelehnt', body);
-    await member.send({ embeds: [dm.setFooter({ text: guild.name })] }).catch(() => null);
+    dm.setFooter({ text: guild.name });
+    styleEmbed(dm, accepted ? cfg.embeds.accepted : cfg.embeds.denied, vars);
+    await member.send({ embeds: [dm] }).catch(() => null);
   }
 
   // Ist ein Chat offen, das Ergebnis dort festhalten
@@ -563,16 +578,21 @@ async function openChat(guild, application, staff) {
   const ticket = ticketsModel.createApplicationChat({ guildId: guild.id, channelId: channel.id, applicationId: application.id, openerId: member.id });
   ticketsModel.touch(ticket.id);
 
+  const typeCfg = appModel.typeCfg(type);
+  const vars = { applicationName: application.type_name ?? '', applicant: `<@${member.id}>`, user: staff ? `<@${staff.id}>` : '', server: guild.name, id: String(application.id) };
   const welcome = new EmbedBuilder()
     .setColor(embedColor)
     .setTitle(`💬 Bewerbung #${application.id}${application.type_name ? ` – ${application.type_name}` : ''}`)
-    .setDescription(`Hallo <@${member.id}>, das Team möchte sich mit dir über deine Bewerbung unterhalten.\nBitte beantworte Rückfragen hier im Chat.`)
+    .setDescription(
+      fillTemplate(typeCfg.chatMessage || `Hallo {applicant}, das Team möchte sich mit dir über deine Bewerbung unterhalten.\nBitte beantworte Rückfragen hier im Chat.`, vars).slice(0, 4000),
+    )
     .addFields(
       { name: 'Bewerber', value: `<@${member.id}>`, inline: true },
       { name: 'Status', value: statusLabel(application.status), inline: true },
       ...(staff ? [{ name: 'Geöffnet von', value: `<@${staff.id}>`, inline: true }] : []),
     )
     .setTimestamp();
+  styleEmbed(welcome, typeCfg.embeds.chat, vars);
 
   await channel.send({
     content: [`<@${member.id}>`, ...teamRoleIds.map((id) => `<@&${id}>`)].join(' • '),
@@ -623,6 +643,7 @@ async function openChat(guild, application, staff) {
 module.exports = {
   METHOD_LABEL,
   fillTemplate,
+  styleEmbed,
   formatDuration,
   buildPanelMessage,
   sendPanel,

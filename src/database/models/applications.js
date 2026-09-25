@@ -40,6 +40,27 @@ const ROLE_KEYS = [
   'acceptedRemovalRoleIds', 'deniedRemovalRoleIds', 'pendingRoleIds', 'submitRemovalRoleIds', 'managerRoleIds',
 ];
 
+/** Embeds, die pro Bewerbung eigen gestaltet werden können (der Text steht in den *Message-Feldern). */
+const EMBED_KEYS = ['confirmation', 'completion', 'accepted', 'denied', 'chat'];
+
+function sanitizeEmbedStyle(v) {
+  const i = v && typeof v === 'object' ? v : {};
+  const url = (u) => (/^https:\/\/\S+$/i.test(String(u ?? '').trim()) ? String(u).trim().slice(0, 500) : '');
+  const color = String(i.color ?? '').trim();
+  return {
+    title: text(i.title, 256),
+    color: /^#?[0-9a-f]{6}$/i.test(color) ? (color[0] === '#' ? color : '#' + color) : '',
+    imageUrl: url(i.imageUrl),
+    thumbnailUrl: url(i.thumbnailUrl),
+    footer: text(i.footer, 2048),
+  };
+}
+
+function sanitizeEmbeds(v, base = {}) {
+  const i = v && typeof v === 'object' ? v : {};
+  return Object.fromEntries(EMBED_KEYS.map((k) => [k, sanitizeEmbedStyle(k in i ? i[k] : base[k])]));
+}
+
 const TYPE_CFG_DEFAULTS = {
   pendingChannelId: '',
   acceptedChannelId: '',
@@ -48,6 +69,8 @@ const TYPE_CFG_DEFAULTS = {
   deniedMessage: 'Deine Bewerbung für `{applicationName}` wurde von {user} abgelehnt.',
   confirmationMessage: '',
   completionMessage: 'Deine Bewerbung wurde eingereicht.',
+  chatMessage: '',
+  embeds: sanitizeEmbeds({}),
   showStats: true,
   hideAnswers: false,
   restrictedMode: 'all',
@@ -65,6 +88,8 @@ function sanitizeTypeCfg(input) {
   for (const k of ['pendingChannelId', 'acceptedChannelId', 'deniedChannelId']) if (k in i) out[k] = idOnly(i[k]);
   for (const k of ['acceptedMessage', 'deniedMessage', 'completionMessage']) if (k in i) out[k] = text(i[k], 1000);
   if ('confirmationMessage' in i) out.confirmationMessage = text(i.confirmationMessage, 1500);
+  if ('chatMessage' in i) out.chatMessage = text(i.chatMessage, 2000);
+  if ('embeds' in i) out.embeds = sanitizeEmbeds(i.embeds);
   for (const k of ['showStats', 'hideAnswers', 'staffThreads']) if (k in i) out[k] = bool(i[k], TYPE_CFG_DEFAULTS[k]);
   for (const k of ['restrictedMode', 'requiredMode']) if (k in i) out[k] = i[k] === 'any' ? 'any' : 'all';
   for (const k of ROLE_KEYS) if (k in i) out[k] = idList(i[k]);
@@ -81,7 +106,11 @@ function typeCfg(type) {
 
 /** Gespeicherte Einstellungen mit einem Teil-Update zusammenführen -> JSON-Text. */
 function mergeTypeCfg(type, patch) {
-  return JSON.stringify({ ...sanitizeTypeCfg(parseJson(type?.cfg, {})), ...sanitizeTypeCfg(patch) });
+  const current = sanitizeTypeCfg(parseJson(type?.cfg, {}));
+  const next = { ...current, ...sanitizeTypeCfg(patch) };
+  // Embeds einzeln zusammenführen, damit ein Teil-Update die übrigen nicht leert
+  if (patch && typeof patch === 'object' && patch.embeds) next.embeds = sanitizeEmbeds(patch.embeds, current.embeds);
+  return JSON.stringify(next);
 }
 
 /* ---------------- Bewerbungen (Formulare) ---------------- */

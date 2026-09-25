@@ -1,4 +1,4 @@
-/* global document, window, Dash */
+/* global document, window, Dash, Event */
 'use strict';
 
 const {
@@ -136,6 +136,67 @@ const VARS_HINT = 'Platzhalter: <code>{applicationName}</code> <code>{user}</cod
 const toggle = (name, checked) => `<label class="toggle"><input type="checkbox" name="${name}"${checked ? ' checked' : ''} /><span class="toggle__track"></span></label>`;
 const settingRow = (title, text, control) => `<div class="setting-row"><div class="setting-row__text"><b>${title}</b><span>${text}</span></div>${control}</div>`;
 
+/* Pro Bewerbung gestaltbare Embeds: [Schlüssel in cfg.embeds, Textfeld in cfg, Titel, Hinweis, max. Länge, Platzhalter, Standardtitel] */
+const EMBED_MSGS = [
+  ['confirmation', 'confirmationMessage', 'Bestätigung', 'Erste Nachricht, wenn jemand die Bewerbung startet.', 1500, 'Leer = Standardtext („Möchtest du dich bewerben? …“)', '📋 Bewerbung: {applicationName}'],
+  ['completion', 'completionMessage', 'Abschluss', 'Wird nach dem Einreichen per Direktnachricht an den Bewerber geschickt.', 1000, '', '✅ Bewerbung eingereicht'],
+  ['accepted', 'acceptedMessage', 'Annahme', 'Direktnachricht an den Bewerber, wenn die Bewerbung angenommen wird.', 1000, '', '✅ Bewerbung angenommen'],
+  ['denied', 'deniedMessage', 'Ablehnung', 'Direktnachricht an den Bewerber, wenn die Bewerbung abgelehnt wird.', 1000, '', '❌ Bewerbung abgelehnt'],
+  ['chat', 'chatMessage', 'Bewerber-Chat', 'Begrüßung im privaten Chat mit dem Bewerber. Zusätzlich: <code>{id}</code> (Nummer der Bewerbung).', 2000, 'Leer = Standardtext („Hallo …, das Team möchte sich mit dir unterhalten“)', '💬 Bewerbung #{id} – {applicationName}'],
+];
+const colorHex = (v) => (/^#?[0-9a-f]{6}$/i.test(v || '') ? (String(v)[0] === '#' ? v : '#' + v) : '#7c5cff');
+
+function embedMsgBlock([key, field, title, hint, max, ph, defTitle], c) {
+  const e = (c.embeds && c.embeds[key]) || {};
+  const p = `em_${key}`;
+  const col = colorHex(e.color);
+  return `
+    <div class="field"><label>${title}</label>
+      <div class="embed-edit">
+        <div class="embed-edit__bar" data-bar="${p}" style="background:${col}"></div>
+        <div class="embed-edit__body">
+          <input name="${p}_title" maxlength="256" value="${escapeHtml(e.title || '')}" placeholder="Titel (Standard: ${escapeHtml(defTitle)})" />
+          <textarea name="${field}" rows="3" maxlength="${max}" placeholder="${escapeHtml(ph || 'Beschreibung')}">${escapeHtml(c[field] || '')}</textarea>
+          <details class="embed-edit__more">
+            <summary>${icon('edit', 'icon--sm')} Farbe, Bilder &amp; Fußzeile bearbeiten</summary>
+            <div class="fgrid fgrid--2">
+              <div class="field"><label>Farbe</label><div class="row-inline"><input type="color" data-colorfor="${p}_color" value="${col}" style="max-width:70px;" /><input name="${p}_color" value="${escapeHtml(e.color || '')}" placeholder="leer = Standard" maxlength="7" /></div></div>
+              <div class="field"><label>Fußzeile</label><input name="${p}_footer" maxlength="2048" value="${escapeHtml(e.footer || '')}" placeholder="leer = Standard" /></div>
+            </div>
+            <div class="fgrid fgrid--2">
+              <div class="field"><label>Bild (groß)</label><input name="${p}_image" value="${escapeHtml(e.imageUrl || '')}" placeholder="https://…" /></div>
+              <div class="field"><label>Vorschaubild (klein)</label><input name="${p}_thumb" value="${escapeHtml(e.thumbnailUrl || '')}" placeholder="https://…" /></div>
+            </div>
+          </details>
+        </div>
+      </div>
+      <small>${hint}</small>
+    </div>`;
+}
+
+function wireEmbedColors(root) {
+  root.querySelectorAll('[data-colorfor]').forEach((pick) => {
+    const txt = root.querySelector(`[name="${pick.dataset.colorfor}"]`);
+    const bar = root.querySelector(`[data-bar="${pick.dataset.colorfor.replace(/_color$/, '')}"]`);
+    pick.addEventListener('input', () => {
+      txt.value = pick.value;
+      if (bar) bar.style.background = pick.value;
+      txt.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    txt.addEventListener('input', () => {
+      if (/^#?[0-9a-f]{6}$/i.test(txt.value.trim())) {
+        pick.value = colorHex(txt.value.trim());
+        if (bar) bar.style.background = pick.value;
+      }
+    });
+  });
+}
+
+const readEmbeds = (f) => Object.fromEntries(EMBED_MSGS.map(([key]) => {
+  const p = `em_${key}`;
+  return [key, { title: f[`${p}_title`], color: f[`${p}_color`].trim(), footer: f[`${p}_footer`], imageUrl: f[`${p}_image`].trim(), thumbnailUrl: f[`${p}_thumb`].trim() }];
+}));
+
 function editorHtml(t) {
   const c = t.cfg;
   const cd = c.cooldownMin;
@@ -178,14 +239,8 @@ function editorHtml(t) {
         <div class="card__head"><h2>${icon('chat')} Nachrichten</h2></div>
         <div class="form">
           <p class="muted" style="margin:0;">${VARS_HINT}</p>
-          <div class="col-2">
-            <div class="field"><label>Nachricht bei Annahme</label><textarea name="acceptedMessage" rows="3" maxlength="1000">${escapeHtml(c.acceptedMessage)}</textarea></div>
-            <div class="field"><label>Nachricht bei Ablehnung</label><textarea name="deniedMessage" rows="3" maxlength="1000">${escapeHtml(c.deniedMessage)}</textarea></div>
-          </div>
-          <div class="col-2">
-            <div class="field"><label>Bestätigungs-Nachricht</label><textarea name="confirmationMessage" rows="4" maxlength="1500" placeholder="Leer = Standardtext („Möchtest du dich bewerben? …“)">${escapeHtml(c.confirmationMessage)}</textarea><small>Erste Nachricht, wenn jemand die Bewerbung startet.</small></div>
-            <div class="field"><label>Abschluss-Nachricht</label><textarea name="completionMessage" rows="4" maxlength="1000">${escapeHtml(c.completionMessage)}</textarea><small>Wird nach dem Einreichen an den Bewerber geschickt.</small></div>
-          </div>
+          <p class="muted" style="margin:0;">Jede Nachricht ist ein eigenes Embed – Titel, Farbe, Bilder und Fußzeile kannst du pro Bewerbung anpassen. Leere Felder = Standard.</p>
+          ${EMBED_MSGS.map((m) => embedMsgBlock(m, c)).join('')}
           <hr class="divider" />
           ${settingRow('Statistiken anzeigen', 'Zeigt Methode und Ausfüllzeit in der Einreichung.', toggle('showStats', c.showStats))}
           ${settingRow('Antworten ausblenden', 'Die Antworten stehen nicht in der Discord-Nachricht, nur im Dashboard.', toggle('hideAnswers', c.hideAnswers))}
@@ -240,6 +295,7 @@ function typeBody(form) {
   const cfg = {
     pendingChannelId: f.pendingChannelId, acceptedChannelId: f.acceptedChannelId, deniedChannelId: f.deniedChannelId,
     acceptedMessage: f.acceptedMessage, deniedMessage: f.deniedMessage, confirmationMessage: f.confirmationMessage, completionMessage: f.completionMessage,
+    chatMessage: f.chatMessage, embeds: readEmbeds(f),
     showStats: f.showStats, hideAnswers: f.hideAnswers, staffThreads: f.staffThreads, onLeave: f.onLeave,
     restrictedMode: f.restrictedMode, requiredMode: f.requiredMode,
     timeLimitMin: Number(f.timeLimitMin) || 180,
@@ -258,6 +314,7 @@ async function openEditor(typeId) {
   ED.innerHTML = editorHtml(t);
   initEmojiInputs(ED);
   const form = ED.querySelector('#typeForm');
+  wireEmbedColors(form);
   form.restrictedMode.value = t.cfg.restrictedMode; form.requiredMode.value = t.cfg.requiredMode; form.onLeave.value = t.cfg.onLeave;
   await fillSelectors({
     pendingChannelId: t.cfg.pendingChannelId, acceptedChannelId: t.cfg.acceptedChannelId, deniedChannelId: t.cfg.deniedChannelId,

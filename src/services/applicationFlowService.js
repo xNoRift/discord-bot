@@ -119,13 +119,11 @@ async function finish(user, session, type, questions, answers) {
   try {
     await applicationService.submitApplication(guild, { id: user.id, tag: user.tag }, type, answers, { source: 'dm', durationMs: Date.now() - session.started_at });
     const cfg = appModel.typeCfg(type);
-    await user.send({
-      embeds: [
-        embeds
-          .success('✅ Bewerbung eingereicht', applicationService.fillTemplate(cfg.completionMessage || 'Deine Bewerbung wurde eingereicht.', { applicationName: type.name, server: guild.name }))
-          .setFooter({ text: guild.name }),
-      ],
-    });
+    const vars = { applicationName: type.name, applicant: `<@${user.id}>`, server: guild.name };
+    const done = embeds
+      .success('✅ Bewerbung eingereicht', applicationService.fillTemplate(cfg.completionMessage || 'Deine Bewerbung wurde eingereicht.', vars))
+      .setFooter({ text: guild.name });
+    await user.send({ embeds: [applicationService.styleEmbed(done, cfg.embeds.completion, vars)] });
   } catch (err) {
     logger.warn(`[application] DM-Bewerbung abschließen: ${err.message}`);
     await user.send({ embeds: [embeds.error(undefined, `Deine Bewerbung konnte nicht gespeichert werden: ${err.message}`)] }).catch(() => null);
