@@ -2,6 +2,7 @@
 
 const { PermissionsBitField } = require('discord.js');
 const config = require('../../config/config');
+const { L } = require('./i18n');
 
 /**
  * Zentrale Berechtigungs-Checks fuer Bot-Interaktionen.
@@ -73,16 +74,16 @@ function isApplicationTeam(member, settings, application) {
  */
 function botCanManageRole(guild, role) {
   const me = guild.members.me;
-  if (!me) return { ok: false, reason: 'Bot-Member nicht geladen.' };
+  if (!me) return { ok: false, reason: L('Bot-Mitglied nicht geladen.', 'Bot member not loaded.') };
   if (!me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-    return { ok: false, reason: 'Dem Bot fehlt die Berechtigung "Rollen verwalten".' };
+    return { ok: false, reason: L('Dem Bot fehlt die Berechtigung „Rollen verwalten“.', 'The bot is missing the “Manage Roles” permission.') };
   }
-  if (!role) return { ok: false, reason: 'Rolle nicht gefunden.' };
-  if (role.managed) return { ok: false, reason: 'Diese Rolle wird von einer Integration verwaltet.' };
+  if (!role) return { ok: false, reason: L('Rolle nicht gefunden.', 'Role not found.') };
+  if (role.managed) return { ok: false, reason: L('Diese Rolle wird von einer Integration verwaltet.', 'This role is managed by an integration.') };
   if (role.comparePositionTo(me.roles.highest) >= 0) {
     return {
       ok: false,
-      reason: 'Die Bot-Rolle steht in der Rollenliste nicht über der Zielrolle.',
+      reason: L('Die Bot-Rolle steht in der Rollenliste nicht über der Zielrolle.', 'The bot role is not above the target role in the role list.'),
     };
   }
   return { ok: true };

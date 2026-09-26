@@ -5,6 +5,7 @@ const settingsModel = require('../database/models/settings');
 const logService = require('./logService');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
+const { L } = require('../utils/i18n');
 
 /**
  * Vorschlagssystem: Schreibt jemand in den Vorschläge-Kanal, wird die
@@ -34,7 +35,7 @@ async function handleMessage(message) {
     .setColor(config.branding.color)
     .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() })
     .setDescription(text.slice(0, 4000))
-    .setFooter({ text: 'Vorschlag • 👍 dafür · 👎 dagegen' })
+    .setFooter({ text: L('Vorschlag • 👍 dafür · 👎 dagegen', 'Suggestion • 👍 for · 👎 against') })
     .setTimestamp();
 
   let posted;
@@ -62,7 +63,7 @@ async function handleMessage(message) {
       title: '💡 Neuer Vorschlag',
       color: config.branding.color,
       fields: [
-        { name: 'Von', value: `<@${message.author.id}>`, inline: true },
+        { name: L('Von', 'From'), value: `<@${message.author.id}>`, inline: true },
         { name: 'Vorschlag', value: text.slice(0, 1000) },
       ],
       targetId: message.author.id,

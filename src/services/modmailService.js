@@ -11,6 +11,7 @@ const embeds = require('../utils/embeds');
 const config = require('../../config/config');
 const i18n = require('../utils/i18n');
 const { discordTimestamp } = require('../utils/time');
+const { L } = require('../utils/i18n');
 
 /**
  * ModMail (Bot-Support per DM).
@@ -35,7 +36,7 @@ function relayEmbed({ name, iconURL, color, content, files }) {
   return new EmbedBuilder()
     .setColor(color)
     .setAuthor({ name: String(name).slice(0, 256), iconURL })
-    .setDescription([content, ...files].filter(Boolean).join('\n').slice(0, 4000) || '*(kein Text)*')
+    .setDescription([content, ...files].filter(Boolean).join('\n').slice(0, 4000) || L('*(kein Text)*', '*(no text)*'))
     .setTimestamp();
 }
 
@@ -169,11 +170,11 @@ async function openThread(user, firstContent, files = []) {
     guildId: guild.id,
     category: 'ticket',
     type: 'modmail_create',
-    title: '📨 ModMail-Ticket erstellt',
+    title: L('📨 ModMail-Ticket erstellt', '📨 ModMail ticket created'),
     color: config.branding.success,
     fields: [
       { name: 'Ticket', value: `#${number} (<#${channel.id}>)`, inline: true },
-      { name: 'Von', value: `<@${user.id}>`, inline: true },
+      { name: L('Von', 'From'), value: `<@${user.id}>`, inline: true },
     ],
     actorId: user.id,
     overrideChannelId: c.modmail_log_channel_id || undefined,

@@ -5,6 +5,7 @@ const { EmbedBuilder, MessageFlags } = require('discord.js');
 const embeds = require('../../utils/embeds');
 const giveaways = require('../../database/models/giveaways');
 const config = require('../../../config/config');
+const { L } = require('../../utils/i18n');
 
 const MAX_SHOWN = 60;
 
@@ -16,7 +17,7 @@ module.exports = {
 
     if (!giveaway) {
       return interaction.reply({
-        embeds: [embeds.error(undefined, 'Dieses Giveaway wurde nicht gefunden.')],
+        embeds: [embeds.error(undefined, L('Dieses Giveaway wurde nicht gefunden.', 'This giveaway was not found.'))],
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -34,15 +35,15 @@ module.exports = {
       .setTitle(`👥 Teilnehmer – ${giveaway.prize}`)
       .setDescription(
         count
-          ? shown.map((id) => `<@${id}>`).join(', ') + (more > 0 ? `\n… und ${more} weitere` : '')
-          : 'Noch keine Teilnahmen.',
+          ? shown.map((id) => `<@${id}>`).join(', ') + (more > 0 ? '\n' + L('… und {n} weitere', '… and {n} more', { n: more }) : '')
+          : L('Noch keine Teilnahmen.', 'No entries yet.'),
       )
       .addFields(
-        { name: 'Teilnehmer', value: String(count), inline: true },
-        { name: 'Gewinner', value: String(giveaway.winner_count), inline: true },
+        { name: L('Teilnehmer', 'Entrants'), value: String(count), inline: true },
+        { name: L('Gewinner', 'Winners'), value: String(giveaway.winner_count), inline: true },
         {
           name: 'Deine Gewinnchance',
-          value: isIn ? `${chance.toFixed(1).replace(/\.0$/, '')} %` : 'Du nimmst noch nicht teil',
+          value: isIn ? `${chance.toFixed(1).replace(/\.0$/, '')} %` : L('Du nimmst noch nicht teil', 'You haven\'t entered yet'),
           inline: true,
         },
       );

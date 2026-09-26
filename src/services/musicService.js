@@ -9,6 +9,7 @@ const embeds = require('../utils/embeds');
 const settingsModel = require('../database/models/settings');
 const stationsModel = require('../database/models/musicStations');
 const playlistsModel = require('../database/models/musicPlaylists');
+const { L } = require('../utils/i18n');
 
 let BUILTIN_STATIONS = [];
 try {
@@ -59,7 +60,7 @@ function assertMusic() {
 /** Vom Server-Admin im Dashboard abschaltbar (guild_settings.music_enabled). */
 function assertMusicAllowed(guildId) {
   if (settingsModel.get(guildId).music_enabled === 0) {
-    throw new Error('Das Musik-Modul ist auf diesem Server deaktiviert.');
+    throw new Error(L('Das Musik-Modul ist auf diesem Server deaktiviert.', 'The music module is disabled on this server.'));
   }
 }
 
@@ -157,7 +158,7 @@ class Session {
     });
     this.connection.subscribe(this.player);
     await voice.entersState(this.connection, voice.VoiceConnectionStatus.Ready, 20000).catch(() => {
-      throw new Error('Konnte dem Sprachkanal nicht beitreten.');
+      throw new Error(L('Konnte dem Sprachkanal nicht beitreten.', 'Could not join the voice channel.'));
     });
   }
 
@@ -287,11 +288,11 @@ class Session {
   _panelEmbed() {
     const c = this.current;
     const link = c.url && /^https?:/.test(c.url) ? ` — [öffnen](${c.url})` : '';
-    const e = embeds.brand(c.live ? '🔴 Live' : '🎵 Läuft gerade', `**${c.title}**${link}`);
+    const e = embeds.brand(c.live ? '🔴 Live' : L('🎵 Läuft gerade', '🎵 Now playing'), `**${c.title}**${link}`);
     if (c.thumbnail) e.setThumbnail(c.thumbnail);
     e.addFields(
-      { name: 'Länge', value: c.live ? 'LIVE' : fmtDuration(c.duration), inline: true },
-      { name: 'Lautstärke', value: `${Math.round(this.volume * 100)} %`, inline: true },
+      { name: L('Länge', 'Length'), value: c.live ? 'LIVE' : fmtDuration(c.duration), inline: true },
+      { name: L('Lautstärke', 'Volume'), value: `${Math.round(this.volume * 100)} %`, inline: true },
       { name: 'Loop', value: this.loop ? 'an 🔁' : 'aus', inline: true },
     );
     const footer = [
@@ -502,7 +503,7 @@ async function resolveTracks(guildId, query, requestedBy) {
   const sp = spotify.parse(q);
   if (sp) {
     if (!ytdlp.available()) {
-      throw new Error('Spotify-Links werden über YouTube abgespielt – dafür fehlt auf diesem Server yt-dlp.');
+      throw new Error(L('Spotify-Links werden über YouTube abgespielt – dafür fehlt auf diesem Server yt-dlp.', 'Spotify links are played via YouTube – yt-dlp is missing on this server.'));
     }
     const list = await spotify.fetchTracks(sp);
     const tracks = list.tracks.map((t) => ({
@@ -524,7 +525,7 @@ async function resolveTracks(guildId, query, requestedBy) {
       const isPlaylist = /[?&]list=/.test(q) && !/[?&]v=/.test(q);
       if (isPlaylist) {
         const items = await ytdlp.playlist(q);
-        if (!items.length) throw new Error('Playlist ist leer oder nicht abrufbar.');
+        if (!items.length) throw new Error(L('Playlist ist leer oder nicht abrufbar.', 'Playlist is empty or unavailable.'));
         return { tracks: items.map((t) => ({ ...t, source: 'youtube', requestedBy })), label: null };
       }
       const v = await ytdlp.info(q);
@@ -582,7 +583,7 @@ async function join(guild, voiceChannel, textChannelId) {
 
 async function _playPlaylistRow(guild, voiceChannel, textChannelId, pl, requestedBy) {
   const rows = playlistsModel.tracks(pl.id);
-  if (!rows.length) throw new Error('Diese Playlist ist leer.');
+  if (!rows.length) throw new Error(L('Diese Playlist ist leer.', 'This playlist is empty.'));
   const session = getOrCreate(guild);
   await session.connect(voiceChannel, textChannelId);
   const tracks = rows.map((t) => ({
@@ -612,7 +613,7 @@ async function playPlaylist(guild, voiceChannel, textChannelId, name, requestedB
 async function playPlaylistById(guild, voiceChannel, textChannelId, id, requestedBy) {
   assertMusicAllowed(guild.id);
   const pl = playlistsModel.get(guild.id, id);
-  if (!pl) throw new Error('Playlist wurde auf diesem Server nicht gefunden.');
+  if (!pl) throw new Error(L('Playlist wurde auf diesem Server nicht gefunden.', 'Playlist was not found on this server.'));
   return _playPlaylistRow(guild, voiceChannel, textChannelId, pl, requestedBy);
 }
 
@@ -624,7 +625,7 @@ async function playPlaylistById(guild, voiceChannel, textChannelId, id, requeste
 async function savePlaylist(guild, name, query, createdBy) {
   assertMusicAllowed(guild.id);
   const n = String(name || '').trim().slice(0, 80);
-  if (!n) throw new Error('Bitte einen Namen für die Playlist angeben.');
+  if (!n) throw new Error(L('Bitte einen Namen für die Playlist angeben.', 'Please enter a name for the playlist.'));
   if (playlistsModel.getByName(guild.id, n)) {
     throw new Error(`Es gibt auf diesem Server schon eine Playlist namens „${n}". Lösche sie erst oder wähle einen anderen Namen.`);
   }
@@ -639,7 +640,7 @@ async function savePlaylist(guild, name, query, createdBy) {
     const session = getSession(guild.id);
     items = [...(session?.current ? [session.current] : []), ...(session?.queue || [])];
     if (!items.length) {
-      throw new Error('Es läuft gerade nichts und die Warteschlange ist leer. Gib einen Link/Suchbegriff an oder starte erst etwas mit /play.');
+      throw new Error(L('Es läuft gerade nichts und die Warteschlange ist leer. Gib einen Link/Suchbegriff an oder starte erst etwas mit /play.', 'Nothing is playing and the queue is empty. Provide a link/search term or start something with /play first.'));
     }
   }
   const tracks = items.slice(0, MAX_QUEUE).map((t) => ({

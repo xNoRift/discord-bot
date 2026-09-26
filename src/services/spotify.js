@@ -1,5 +1,7 @@
 'use strict';
 
+const { L } = require('../utils/i18n');
+
 /**
  * Spotify-Links (Playlist / Album / Titel) in eine Titelliste auflösen.
  *
@@ -41,7 +43,7 @@ function toTrack(t) {
  * @returns {Promise<{ type: string, name: string, tracks: Array<{id,title,artist,duration,url}> }>}
  */
 async function fetchTracks({ type, id }) {
-  if (!TYPES.has(type)) throw new Error('Dieser Spotify-Link wird nicht unterstützt (nur Playlist, Album oder Titel).');
+  if (!TYPES.has(type)) throw new Error(L('Dieser Spotify-Link wird nicht unterstützt (nur Playlist, Album oder Titel).', 'This Spotify link is not supported (only playlist, album or track).'));
   let res;
   try {
     res = await fetch(`https://open.spotify.com/embed/${type}/${id}`, {
@@ -49,7 +51,7 @@ async function fetchTracks({ type, id }) {
       signal: AbortSignal.timeout(15000),
     });
   } catch {
-    throw new Error('Spotify ist gerade nicht erreichbar – bitte später nochmal versuchen.');
+    throw new Error(L('Spotify ist gerade nicht erreichbar – bitte später nochmal versuchen.', 'Spotify is not reachable right now – please try again later.'));
   }
   if (!res.ok) throw new Error(`Spotify hat die Anfrage abgelehnt (HTTP ${res.status}).`);
 
@@ -62,7 +64,7 @@ async function fetchTracks({ type, id }) {
     /* unten: Fehlermeldung */
   }
   if (!entity) {
-    throw new Error('Spotify-Link nicht gefunden. Die Playlist muss öffentlich sein (nicht privat) – Link nochmal prüfen.');
+    throw new Error(L('Spotify-Link nicht gefunden. Die Playlist muss öffentlich sein (nicht privat) – Link nochmal prüfen.', 'Spotify link not found. The playlist must be public (not private) – please check the link.'));
   }
 
   let raw;
@@ -77,7 +79,7 @@ async function fetchTracks({ type, id }) {
     raw = entity.trackList || [];
   }
   const tracks = raw.map(toTrack).filter((t) => t.title);
-  if (!tracks.length) throw new Error('Die Spotify-Liste ist leer oder konnte nicht gelesen werden.');
+  if (!tracks.length) throw new Error(L('Die Spotify-Liste ist leer oder konnte nicht gelesen werden.', 'The Spotify list is empty or could not be read.'));
   return { type, name: clean(entity.name || entity.title), tracks };
 }
 

@@ -1,5 +1,7 @@
 'use strict';
 
+const { L } = require('./i18n');
+
 /**
  * Hilfsfunktionen zum Parsen und Formatieren von Zeitangaben.
  */
@@ -59,7 +61,7 @@ function parseDuration(input) {
  * @returns {string}
  */
 function formatDuration(ms) {
-  if (!Number.isFinite(ms) || ms <= 0) return '0 Sekunden';
+  if (!Number.isFinite(ms) || ms <= 0) return L('0 Sekunden', '0 seconds');
 
   const parts = [];
   const days = Math.floor(ms / UNITS.d);
@@ -67,12 +69,13 @@ function formatDuration(ms) {
   const minutes = Math.floor((ms % UNITS.h) / UNITS.m);
   const seconds = Math.floor((ms % UNITS.m) / UNITS.s);
 
-  if (days) parts.push(`${days} ${days === 1 ? 'Tag' : 'Tage'}`);
-  if (hours) parts.push(`${hours} ${hours === 1 ? 'Stunde' : 'Stunden'}`);
-  if (minutes) parts.push(`${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'}`);
-  if (seconds && !days && !hours) parts.push(`${seconds} ${seconds === 1 ? 'Sekunde' : 'Sekunden'}`);
+  const unit = (n, de1, deN, en1, enN) => `${n} ${n === 1 ? L(de1, en1) : L(deN, enN)}`;
+  if (days) parts.push(unit(days, 'Tag', 'Tage', 'day', 'days'));
+  if (hours) parts.push(unit(hours, 'Stunde', 'Stunden', 'hour', 'hours'));
+  if (minutes) parts.push(unit(minutes, 'Minute', 'Minuten', 'minute', 'minutes'));
+  if (seconds && !days && !hours) parts.push(unit(seconds, 'Sekunde', 'Sekunden', 'second', 'seconds'));
 
-  return parts.join(', ') || '0 Sekunden';
+  return parts.join(', ') || L('0 Sekunden', '0 seconds');
 }
 
 /**

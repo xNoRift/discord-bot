@@ -3,6 +3,7 @@
 const { MessageFlags } = require('discord.js');
 const embeds = require('./embeds');
 const { isManager } = require('./permissions');
+const { L } = require('./i18n');
 
 /**
  * Gemeinsame Helfer für die Musik-Slash-Commands.
@@ -13,16 +14,16 @@ async function requireVoice(interaction) {
   const member = interaction.member;
   const vc = member?.voice?.channel;
   if (!vc) {
-    throw new Error('Du musst zuerst einem Sprachkanal beitreten.');
+    throw new Error(L('Du musst zuerst einem Sprachkanal beitreten.', 'You need to join a voice channel first.'));
   }
   const me = interaction.guild.members.me;
   const perms = vc.permissionsFor(me);
   if (!perms?.has('Connect') || !perms?.has('Speak')) {
-    throw new Error('Der Bot darf diesem Sprachkanal nicht beitreten oder dort nicht sprechen.');
+    throw new Error(L('Der Bot darf diesem Sprachkanal nicht beitreten oder dort nicht sprechen.', 'The bot is not allowed to join or speak in this voice channel.'));
   }
   const botVc = me.voice?.channel;
   if (botVc && botVc.id !== vc.id) {
-    throw new Error(`Der Bot spielt gerade in **${botVc.name}**.`);
+    throw new Error(L('Der Bot spielt gerade in **{channel}**.', 'The bot is currently playing in **{channel}**.', { channel: botVc.name }));
   }
   return vc;
 }

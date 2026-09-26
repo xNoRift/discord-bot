@@ -1,9 +1,12 @@
 'use strict';
 
+const i18n = require('../utils/i18n');
+
 const { ChannelType, PermissionFlagsBits } = require('discord.js');
 const client = require('../core/client');
 const moduleSettings = require('../database/models/moduleSettings');
 const logger = require('../utils/logger');
+const { L } = require('../utils/i18n');
 
 /**
  * Server-Statistiken als Sprachkanäle ("👥 Mitglieder: 128"), die nur angezeigt und
@@ -11,13 +14,13 @@ const logger = require('../utils/logger');
  */
 
 const STATS = [
-  { show: 'showMembers', id: 'membersChannelId', label: '👥 Mitglieder', value: (g) => g.memberCount ?? 0 },
-  { show: 'showBoosts', id: 'boostsChannelId', label: '🚀 Boosts', value: (g) => g.premiumSubscriptionCount ?? 0 },
-  { show: 'showBots', id: 'botsChannelId', label: '🤖 Bots', value: (g) => g.members.cache.filter((m) => m.user.bot).size },
-  { show: 'showRoles', id: 'rolesChannelId', label: '🎭 Rollen', value: (g) => Math.max(0, g.roles.cache.size - 1) },
+  { show: 'showMembers', id: 'membersChannelId', label: () => L('👥 Mitglieder', '👥 Members'), value: (g) => g.memberCount ?? 0 },
+  { show: 'showBoosts', id: 'boostsChannelId', label: () => '🚀 Boosts', value: (g) => g.premiumSubscriptionCount ?? 0 },
+  { show: 'showBots', id: 'botsChannelId', label: () => '🤖 Bots', value: (g) => g.members.cache.filter((m) => m.user.bot).size },
+  { show: 'showRoles', id: 'rolesChannelId', label: () => L('🎭 Rollen', '🎭 Roles'), value: (g) => Math.max(0, g.roles.cache.size - 1) },
 ];
 
-const nameOf = (stat, guild) => `${stat.label}: ${stat.value(guild)}`;
+const nameOf = (stat, guild) => `${stat.label()}: ${stat.value(guild)}`;
 
 /** Legt fehlende Kanäle an, entfernt abgewählte und lässt vorhandene bestehen. */
 async function create(guild) {
@@ -69,7 +72,7 @@ async function update(guild) {
 async function sweep() {
   for (const guild of client.guilds.cache.values()) {
     if (!moduleSettings.get(guild.id, 'stats').enabled) continue;
-    await update(guild).catch((err) => logger.warn(`[stats] ${guild.id}: ${err.message}`));
+    await i18n.runFor(guild.id, () => update(guild)).catch((err) => logger.warn(`[stats] ${guild.id}: ${err.message}`));
   }
 }
 

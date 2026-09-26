@@ -1,5 +1,7 @@
 'use strict';
 
+const i18n = require('../utils/i18n');
+
 const {
   ActionRowBuilder,
   ButtonBuilder,
@@ -17,6 +19,7 @@ const config = require('../../config/config');
 const buttonEmojis = require('../utils/buttonEmojis');
 const logger = require('../utils/logger');
 const { formatDuration, discordTimestamp } = require('../utils/time');
+const { L } = require('../utils/i18n');
 
 /**
  * Giveaway-Logik: Erstellen, Anzeige aktualisieren, Beenden, Neu-Auslosen.
@@ -60,10 +63,10 @@ function buildActiveMessage(giveaway, entryCount) {
     .setTitle('🎉 Giveaway')
     .setDescription([`### ${giveaway.prize}`, giveaway.description || ''].filter(Boolean).join('\n'))
     .addFields(
-      { name: '⏰ Endet', value: `${discordTimestamp(giveaway.ends_at, 'R')}\n${discordTimestamp(giveaway.ends_at, 'f')}`, inline: true },
-      { name: '🏆 Gewinner', value: String(giveaway.winner_count), inline: true },
-      ...(giveaway.host_id ? [{ name: '👤 Veranstalter', value: `<@${giveaway.host_id}>`, inline: true }] : []),
-      ...(giveaway.required_role_id ? [{ name: '🔑 Teilnahme nur mit', value: `<@&${giveaway.required_role_id}>`, inline: true }] : []),
+      { name: L('⏰ Endet', '⏰ Ends'), value: `${discordTimestamp(giveaway.ends_at, 'R')}\n${discordTimestamp(giveaway.ends_at, 'f')}`, inline: true },
+      { name: L('🏆 Gewinner', '🏆 Winners'), value: String(giveaway.winner_count), inline: true },
+      ...(giveaway.host_id ? [{ name: L('👤 Veranstalter', '👤 Host'), value: `<@${giveaway.host_id}>`, inline: true }] : []),
+      ...(giveaway.required_role_id ? [{ name: L('🔑 Teilnahme nur mit', '🔑 Required role'), value: `<@&${giveaway.required_role_id}>`, inline: true }] : []),
       ...(giveaway.winner_role_id
         ? [{
             name: '🎖️ Gewinnerrolle',
@@ -80,12 +83,12 @@ function buildActiveMessage(giveaway, entryCount) {
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`giveaway:enter:${giveaway.id}`)
-      .setLabel('Teilnehmen')
+      .setLabel(L('Teilnehmen', 'Enter'))
       .setEmoji(buttonEmojis.forGuild(giveaway.guild_id, 'giveaways')('join'))
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId(`giveaway:list:${giveaway.id}`)
-      .setLabel('Teilnehmer')
+      .setLabel(L('Teilnehmer', 'Entrants'))
       .setEmoji(buttonEmojis.forGuild(giveaway.guild_id, 'giveaways')('entrants'))
       .setStyle(ButtonStyle.Secondary),
   );
@@ -100,11 +103,11 @@ function buildEndedMessage(giveaway, winnerIds, entryCount) {
     .setDescription([`### ${giveaway.prize}`, giveaway.description || ''].filter(Boolean).join('\n'))
     .addFields(
       {
-        name: '🏆 Gewinner',
-        value: winnerIds.length ? winnerIds.map((id) => `<@${id}>`).join('\n').slice(0, 1024) : 'Keine gültigen Teilnahmen – kein Gewinner.',
+        name: L('🏆 Gewinner', '🏆 Winners'),
+        value: winnerIds.length ? winnerIds.map((id) => `<@${id}>`).join('\n').slice(0, 1024) : L('Keine gültigen Teilnahmen – kein Gewinner.', 'No valid entries – no winner.'),
       },
-      { name: '⏰ Beendet', value: discordTimestamp(Date.now(), 'f'), inline: true },
-      ...(giveaway.host_id ? [{ name: '👤 Veranstalter', value: `<@${giveaway.host_id}>`, inline: true }] : []),
+      { name: L('⏰ Beendet', '⏰ Ended'), value: discordTimestamp(Date.now(), 'f'), inline: true },
+      ...(giveaway.host_id ? [{ name: L('👤 Veranstalter', '👤 Host'), value: `<@${giveaway.host_id}>`, inline: true }] : []),
     )
     .setFooter({ text: `${entryCount} Teilnahme${entryCount === 1 ? '' : 'n'} • Giveaway-ID ${giveaway.id}` })
     .setTimestamp();
@@ -112,7 +115,7 @@ function buildEndedMessage(giveaway, winnerIds, entryCount) {
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`giveaway:enter:${giveaway.id}`)
-      .setLabel('Teilnehmen')
+      .setLabel(L('Teilnehmen', 'Enter'))
       .setEmoji(buttonEmojis.forGuild(giveaway.guild_id, 'giveaways')('join'))
       .setStyle(ButtonStyle.Success)
       .setDisabled(true),
@@ -184,7 +187,7 @@ async function refreshEndedMessage(giveawayId) {
 async function createGiveaway(guild, data) {
   const settings = settingsModel.get(guild.id);
   if (settings.giveaways_enabled === 0 && !data.bypass) {
-    throw new Error('Das Giveaway-Modul ist auf diesem Server deaktiviert.');
+    throw new Error(L('Das Giveaway-Modul ist auf diesem Server deaktiviert.', 'The giveaway module is disabled on this server.'));
   }
   const channelId = data.channelId || settings.giveaway_channel_id;
   if (!channelId) throw new Error('Kein Giveaway-Kanal angegeben oder konfiguriert.');
@@ -233,14 +236,14 @@ async function createGiveaway(guild, data) {
     title: '🎉 Giveaway erstellt',
     color: config.branding.color,
     fields: [
-      { name: 'Preis', value: giveaway.prize, inline: true },
-      { name: 'Gewinner', value: String(winnerCount), inline: true },
-      { name: 'Dauer', value: formatDuration(durationMs), inline: true },
-      { name: 'Kanal', value: `<#${channelId}>`, inline: true },
-      { name: 'Endet', value: discordTimestamp(endsAt, 'F'), inline: true },
+      { name: L('Preis', 'Prize'), value: giveaway.prize, inline: true },
+      { name: L('Gewinner', 'Winners'), value: String(winnerCount), inline: true },
+      { name: L('Dauer', 'Duration'), value: formatDuration(durationMs), inline: true },
+      { name: L('Kanal', 'Channel'), value: `<#${channelId}>`, inline: true },
+      { name: L('Endet', 'Ends'), value: discordTimestamp(endsAt, 'F'), inline: true },
       winnerRoleId
         ? { name: 'Gewinnerrolle', value: `<@&${winnerRoleId}> (${formatDuration(winnerRoleDurationMs)})`, inline: true }
-        : { name: 'Gewinnerrolle', value: 'keine', inline: true },
+        : { name: 'Gewinnerrolle', value: L('keine', 'none'), inline: true },
     ],
     actorId: data.hostId,
     meta: { giveawayId: giveaway.id },
@@ -296,11 +299,11 @@ async function assignWinnerRoles(giveaway, winnerIds) {
         guildId: giveaway.guild_id,
         category: 'giveaway',
         type: 'giveaway_role_failed',
-        title: '⚠️ Gewinnerrolle konnte nicht vergeben werden',
+        title: L('⚠️ Gewinnerrolle konnte nicht vergeben werden', '⚠️ Could not give the winner role'),
         color: config.branding.danger,
         fields: [
-          { name: 'Nutzer', value: `<@${userId}>`, inline: true },
-          { name: 'Grund', value: res.reason || 'unbekannt', inline: false },
+          { name: L('Nutzer', 'User'), value: `<@${userId}>`, inline: true },
+          { name: L('Grund', 'Reason'), value: res.reason || 'unbekannt', inline: false },
         ],
       });
     }
@@ -341,7 +344,7 @@ async function announceWinners(giveaway, winnerIds) {
               `**Preis:** ${giveaway.prize}`,
               `**Gewinner:** ${winnerIds.map((id) => `<@${id}>`).join(', ')}`,
               link ? `[Zum Giveaway](${link})` : '',
-              components.length ? '\nErstellt euch über den Button unten ein Ticket, um euren Preis abzuholen.' : '',
+              components.length ? L('\nErstellt euch über den Button unten ein Ticket, um euren Preis abzuholen.', '\nCreate a ticket with the button below to claim your prize.') : '',
             ]
               .filter(Boolean)
               .join('\n'),
@@ -374,7 +377,7 @@ async function announceWinners(giveaway, winnerIds) {
 async function endGiveaway(giveawayId, opts = {}) {
   clearGiveawayTimer(giveawayId);
   const giveaway = giveaways.get(giveawayId);
-  if (!giveaway) throw new Error('Giveaway nicht gefunden.');
+  if (!giveaway) throw new Error(L('Giveaway nicht gefunden.', 'Giveaway not found.'));
   if (giveaway.ended) return giveaway;
 
   const winnerIds = await pickEligibleWinners(giveaway, { count: giveaway.winner_count });
@@ -400,14 +403,14 @@ async function endGiveaway(giveawayId, opts = {}) {
     title: '🎉 Giveaway beendet',
     color: config.branding.color,
     fields: [
-      { name: 'Preis', value: giveaway.prize, inline: true },
+      { name: L('Preis', 'Prize'), value: giveaway.prize, inline: true },
       { name: 'Teilnahmen', value: String(entryCount), inline: true },
       {
-        name: 'Gewinner',
-        value: winnerIds.length ? winnerIds.map((id) => `<@${id}>`).join(', ') : 'keine',
+        name: L('Gewinner', 'Winners'),
+        value: winnerIds.length ? winnerIds.map((id) => `<@${id}>`).join(', ') : L('keine', 'none'),
         inline: false,
       },
-      { name: 'Ausgelöst durch', value: opts.actorId ? `<@${opts.actorId}>` : 'Zeitablauf', inline: true },
+      { name: L('Ausgelöst durch', 'Triggered by'), value: opts.actorId ? `<@${opts.actorId}>` : 'Zeitablauf', inline: true },
     ],
     actorId: opts.actorId,
     meta: { giveawayId, winnerIds },
@@ -418,11 +421,11 @@ async function endGiveaway(giveawayId, opts = {}) {
       guildId: giveaway.guild_id,
       category: 'giveaway',
       type: 'giveaway_winners',
-      title: '🏆 Gewinner ausgewählt',
+      title: L('🏆 Gewinner ausgewählt', '🏆 Winners drawn'),
       color: config.branding.success,
       fields: [
-        { name: 'Preis', value: giveaway.prize, inline: true },
-        { name: 'Gewinner', value: winnerIds.map((id) => `<@${id}>`).join(', '), inline: false },
+        { name: L('Preis', 'Prize'), value: giveaway.prize, inline: true },
+        { name: L('Gewinner', 'Winners'), value: winnerIds.map((id) => `<@${id}>`).join(', '), inline: false },
       ],
       meta: { giveawayId, winnerIds },
     });
@@ -442,7 +445,7 @@ async function endGiveaway(giveawayId, opts = {}) {
  */
 async function rerollGiveaway(giveawayId, opts = {}) {
   const giveaway = giveaways.get(giveawayId);
-  if (!giveaway) throw new Error('Giveaway nicht gefunden.');
+  if (!giveaway) throw new Error(L('Giveaway nicht gefunden.', 'Giveaway not found.'));
   if (!giveaway.ended) throw new Error('Das Giveaway läuft noch. Beende es zuerst.');
 
   const previousWinners = JSON.parse(giveaway.winners_json || '[]');
@@ -483,8 +486,8 @@ async function rerollGiveaway(giveawayId, opts = {}) {
     title: '🔁 Giveaway neu ausgelost',
     color: config.branding.warning,
     fields: [
-      { name: 'Preis', value: giveaway.prize, inline: true },
-      { name: 'Neue Gewinner', value: newWinners.map((id) => `<@${id}>`).join(', '), inline: false },
+      { name: L('Preis', 'Prize'), value: giveaway.prize, inline: true },
+      { name: L('Neue Gewinner', 'New winners'), value: newWinners.map((id) => `<@${id}>`).join(', '), inline: false },
     ],
     actorId: opts.actorId,
     meta: { giveawayId, newWinners },
@@ -496,7 +499,7 @@ async function rerollGiveaway(giveawayId, opts = {}) {
 async function cancelGiveaway(giveawayId, opts = {}) {
   clearGiveawayTimer(giveawayId);
   const giveaway = giveaways.get(giveawayId);
-  if (!giveaway) throw new Error('Giveaway nicht gefunden.');
+  if (!giveaway) throw new Error(L('Giveaway nicht gefunden.', 'Giveaway not found.'));
   giveaways.markCancelled(giveawayId);
 
   const found = await fetchGiveawayMessage(giveaway);
@@ -515,7 +518,7 @@ async function cancelGiveaway(giveawayId, opts = {}) {
     type: 'giveaway_cancel',
     title: '🚫 Giveaway abgebrochen',
     color: config.branding.danger,
-    fields: [{ name: 'Preis', value: giveaway.prize, inline: true }],
+    fields: [{ name: L('Preis', 'Prize'), value: giveaway.prize, inline: true }],
     actorId: opts.actorId,
     meta: { giveawayId },
   });
@@ -529,23 +532,27 @@ async function restoreAll() {
   const active = giveaways.listAllActive();
   logger.info(`[giveaway] ${active.length} aktive Giveaway(s) werden wiederhergestellt.`);
   for (const g of active) {
-    if (g.ends_at <= Date.now()) {
-      await endGiveaway(g.id, { reason: 'time' }).catch((err) =>
-        logger.error(`[giveaway] restore/end #${g.id}:`, err.message),
-      );
-    } else {
-      scheduleEnd(g);
-    }
+    await i18n.runFor(g.guild_id, async () => {
+      if (g.ends_at <= Date.now()) {
+        await endGiveaway(g.id, { reason: 'time' }).catch((err) =>
+          logger.error(`[giveaway] restore/end #${g.id}:`, err.message),
+        );
+      } else {
+        scheduleEnd(g); // Timer übernimmt den Sprach-Kontext
+      }
+    });
   }
 }
 
 async function sweep() {
   for (const g of giveaways.listAllActive()) {
-    if (g.ends_at <= Date.now() && !timers.has(g.id)) {
-      await endGiveaway(g.id, { reason: 'time' }).catch(() => null);
-    } else if (!timers.has(g.id)) {
-      scheduleEnd(g);
-    }
+    await i18n.runFor(g.guild_id, async () => {
+      if (g.ends_at <= Date.now() && !timers.has(g.id)) {
+        await endGiveaway(g.id, { reason: 'time' }).catch(() => null);
+      } else if (!timers.has(g.id)) {
+        scheduleEnd(g);
+      }
+    });
   }
 }
 

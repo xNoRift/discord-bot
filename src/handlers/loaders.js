@@ -3,6 +3,16 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const logger = require('../utils/logger');
+const i18n = require('../utils/i18n');
+
+/** Server-ID aus dem ersten Event-Argument (Interaction, Message, Member, VoiceState, Guild …). */
+function guildIdOf(arg) {
+  if (!arg || typeof arg !== 'object') return null;
+  if (arg.guildId) return arg.guildId;
+  if (arg.guild?.id) return arg.guild.id;
+  if (arg.constructor?.name === 'Guild') return arg.id;
+  return null;
+}
 
 /**
  * Rekursiv alle .js-Dateien in einem Ordner sammeln.
@@ -66,7 +76,8 @@ function loadEvents(client) {
       logger.warn(`[loader] Event übersprungen: ${path.basename(file)}`);
       continue;
     }
-    const handler = (...args) => mod.execute(...args, client);
+    // Jedes Event läuft in der Sprache seines Servers (i18n.L() funktioniert dann überall darunter)
+    const handler = (...args) => i18n.runFor(guildIdOf(args[0]), () => mod.execute(...args, client));
     if (mod.once) client.once(mod.name, handler);
     else client.on(mod.name, handler);
     count++;

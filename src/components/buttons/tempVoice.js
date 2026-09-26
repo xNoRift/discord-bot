@@ -13,42 +13,44 @@ const {
 const embeds = require('../../utils/embeds');
 const tempVoiceService = require('../../services/tempVoiceService');
 const tempVoice = require('../../database/models/tempVoice');
+const { L } = require('../../utils/i18n');
 
 function ephemeral(interaction, text, ok = false) {
   const embed = ok ? embeds.success(undefined, text) : embeds.error(undefined, text);
   return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
-// Sprachserver-Regionen (Discord RTC-Region-IDs). "auto" = Automatisch.
-const REGION_OPTIONS = [
-  { label: 'Automatisch', value: 'auto', emoji: '🌍' },
+// Sprachserver-Regionen (Discord RTC-Region-IDs). "auto" = Automatisch. Als Funktion, damit die Sprache pro Server passt.
+const regionOptions = () => [
+  { label: L('Automatisch', 'Automatic'), value: 'auto', emoji: '🌍' },
   { label: 'Frankfurt', value: 'frankfurt' },
   { label: 'Rotterdam', value: 'rotterdam' },
   { label: 'Stockholm', value: 'stockholm' },
-  { label: 'Finnland', value: 'finland' },
+  { label: L('Finnland', 'Finland'), value: 'finland' },
   { label: 'Madrid', value: 'madrid' },
-  { label: 'Mailand', value: 'milan' },
-  { label: 'Bukarest', value: 'bucharest' },
-  { label: 'Russland', value: 'russia' },
-  { label: 'US Ost', value: 'us-east' },
-  { label: 'US Zentral', value: 'us-central' },
-  { label: 'US West', value: 'us-west' },
-  { label: 'Singapur', value: 'singapore' },
+  { label: L('Mailand', 'Milan'), value: 'milan' },
+  { label: L('Bukarest', 'Bucharest'), value: 'bucharest' },
+  { label: L('Russland', 'Russia'), value: 'russia' },
+  { label: L('US Ost', 'US East'), value: 'us-east' },
+  { label: L('US Zentral', 'US Central'), value: 'us-central' },
+  { label: L('US West', 'US West'), value: 'us-west' },
+  { label: L('Singapur', 'Singapore'), value: 'singapore' },
   { label: 'Japan', value: 'japan' },
-  { label: 'Indien', value: 'india' },
+  { label: L('Indien', 'India'), value: 'india' },
   { label: 'Sydney', value: 'sydney' },
-  { label: 'Brasilien', value: 'brazil' },
-  { label: 'Südafrika', value: 'southafrica' },
+  { label: L('Brasilien', 'Brazil'), value: 'brazil' },
+  { label: L('Südafrika', 'South Africa'), value: 'southafrica' },
 ];
 
 // Aktion -> Text im ephemeren Auswahl-Prompt
-const USER_PROMPTS = {
-  permit: 'Wen möchtest du hinzufügen (Zugriff geben)?',
-  reject: 'Wen möchtest du entfernen (Zugriff nehmen)?',
-  block: 'Wen möchtest du blockieren?',
-  unblock: 'Wen möchtest du entblockieren?',
-  disconnect: 'Wen möchtest du aus dem Kanal trennen?',
-};
+const userPrompt = (action) =>
+  ({
+    permit: L('Wen möchtest du hinzufügen (Zugriff geben)?', 'Who do you want to add (give access)?'),
+    reject: L('Wen möchtest du entfernen (Zugriff nehmen)?', 'Who do you want to remove (take access)?'),
+    block: L('Wen möchtest du blockieren?', 'Who do you want to block?'),
+    unblock: L('Wen möchtest du entblockieren?', 'Who do you want to unblock?'),
+    disconnect: L('Wen möchtest du aus dem Kanal trennen?', 'Who do you want to disconnect from the channel?'),
+  })[action];
 
 module.exports = {
   prefix: 'tempvoice:btn',
@@ -58,7 +60,7 @@ module.exports = {
       tempVoiceService.resolveUserChannel(interaction.member) ||
       (tempVoice.get(interaction.channel?.id) ? interaction.channel : null);
     if (!channel) {
-      return ephemeral(interaction, 'Du sitzt in keinem eigenen Temp-Voice-Kanal. Betritt zuerst deinen Kanal.');
+      return ephemeral(interaction, L('Du sitzt in keinem eigenen Temp-Voice-Kanal. Betritt zuerst deinen Kanal.', 'You are not in your own temp voice channel. Join your channel first.'));
     }
     const row = tempVoice.get(channel.id);
 
@@ -70,7 +72,7 @@ module.exports = {
         return interaction.showModal(
           new ModalBuilder()
             .setCustomId('tempvoice:modal:rename')
-            .setTitle('Kanal umbenennen')
+            .setTitle(L('Kanal umbenennen', 'Rename channel'))
             .addComponents(
               new ActionRowBuilder().addComponents(
                 new TextInputBuilder()
@@ -93,7 +95,7 @@ module.exports = {
               new ActionRowBuilder().addComponents(
                 new TextInputBuilder()
                   .setCustomId('limit')
-                  .setLabel(`Anzahl (0 = kein Limit, max. ${tempVoiceService.MAX_LIMIT})`)
+                  .setLabel(L('Anzahl (0 = kein Limit, max. {max})', 'Number (0 = no limit, max. {max})', { max: tempVoiceService.MAX_LIMIT }))
                   .setStyle(TextInputStyle.Short)
                   .setMaxLength(2)
                   .setRequired(true),
@@ -109,33 +111,33 @@ module.exports = {
         return ephemeral(interaction, await tempVoiceService.toggleHide(channel, row), true);
       }
       if (action === 'delete') {
-        await interaction.reply({ embeds: [embeds.info(undefined, 'Kanal wird gelöscht …')], flags: MessageFlags.Ephemeral });
+        await interaction.reply({ embeds: [embeds.info(undefined, L('Kanal wird gelöscht …', 'Deleting channel …'))], flags: MessageFlags.Ephemeral });
         return tempVoiceService.destroy(channel);
       }
 
       if (action === 'region') {
         return interaction.reply({
-          content: 'Wähle die Sprachserver-Region:',
+          content: L('Wähle die Sprachserver-Region:', 'Choose the voice server region:'),
           components: [
             new ActionRowBuilder().addComponents(
               new StringSelectMenuBuilder()
                 .setCustomId('tempvoice:sel:region')
                 .setPlaceholder('Region …')
-                .addOptions(REGION_OPTIONS),
+                .addOptions(regionOptions()),
             ),
           ],
           flags: MessageFlags.Ephemeral,
         });
       }
 
-      if (USER_PROMPTS[action]) {
+      if (userPrompt(action)) {
         return interaction.reply({
-          content: USER_PROMPTS[action],
+          content: userPrompt(action),
           components: [
             new ActionRowBuilder().addComponents(
               new UserSelectMenuBuilder()
                 .setCustomId(`tempvoice:sel:${action}`)
-                .setPlaceholder('Mitglied wählen …')
+                .setPlaceholder(L('Mitglied wählen …', 'Choose a member …'))
                 .setMinValues(1)
                 .setMaxValues(1),
             ),
@@ -144,7 +146,7 @@ module.exports = {
         });
       }
 
-      return ephemeral(interaction, 'Unbekannte Aktion.');
+      return ephemeral(interaction, L('Unbekannte Aktion.', 'Unknown action.'));
     } catch (err) {
       return ephemeral(interaction, err.message);
     }

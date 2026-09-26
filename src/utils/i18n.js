@@ -46,7 +46,45 @@ function forGuild(guildId) {
   const lang = langOf(guildId);
   const fn = (key, vars) => t(lang, key, vars);
   fn.lang = lang;
+  fn.pick = (deText, enText, vars) => fill(lang === 'en' ? enText : deText, vars);
   return fn;
 }
 
-module.exports = { t, langOf, forGuild };
+/**
+ * Kurzform für Texte direkt im Code – beide Sprachen stehen nebeneinander:
+ *   const L = i18n.pick(guild.id);  L('Ticket geschlossen', 'Ticket closed')
+ * Platzhalter wie bei t(): L('Hallo {user}', 'Hello {user}', { user })
+ * guildId leer (z. B. DM ohne Server) -> Deutsch.
+ */
+function pick(guildId) {
+  const lang = guildId ? langOf(guildId) : 'de';
+  const fn = (deText, enText, vars) => fill(lang === 'en' ? enText : deText, vars);
+  fn.lang = lang;
+  return fn;
+}
+
+/* ---------------- Sprach-Kontext ----------------
+ * Jede Interaktion, jedes Discord-Event, jede Dashboard-Anfrage und jeder Hintergrund-Job
+ * läuft in runFor(guildId, …). Darin liefert L() automatisch die Sprache dieses Servers –
+ * auch tief in Services und Helfern, ohne die guildId durchreichen zu müssen.
+ */
+const { AsyncLocalStorage } = require('node:async_hooks');
+
+const als = new AsyncLocalStorage();
+
+/** Führt fn in der Sprache des Servers aus. */
+function runFor(guildId, fn) {
+  return als.run({ lang: guildId ? langOf(guildId) : 'de' }, fn);
+}
+
+/** Aktuelle Sprache ('de' | 'en') – außerhalb eines Kontexts Deutsch. */
+function currentLang() {
+  return als.getStore()?.lang || 'de';
+}
+
+/** Text in der aktuellen Sprache: L('Deutsch', 'English', { vars }) */
+function L(deText, enText, vars) {
+  return fill(currentLang() === 'en' ? enText : deText, vars);
+}
+
+module.exports = { t, langOf, forGuild, pick, fill, runFor, currentLang, L };

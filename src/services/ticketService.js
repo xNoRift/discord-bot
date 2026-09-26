@@ -34,6 +34,7 @@ const logger = require('../utils/logger');
 const i18n = require('../utils/i18n');
 const { discordTimestamp } = require('../utils/time');
 const { isSupport } = require('../utils/permissions');
+const { L } = require('../utils/i18n');
 
 /**
  * Ticketsystem mit MEHREREN Panels pro Server und MEHREREN Kategorien pro Panel.
@@ -117,7 +118,7 @@ function buildPanelMessage(panel, categories) {
   // Die Kategorie-Beschreibungen stehen im Auswahlmenü bzw. auf den Buttons –
   // nicht mehr zusätzlich als Feldliste im Embed. Optional: Ticketauslastung.
   if (categories.length && ticketPanels.panelCfg(panel).showLoad) {
-    embed.addFields({ name: 'Auslastung', value: loadLines(categories) });
+    embed.addFields({ name: L('Auslastung', 'Workload'), value: loadLines(categories) });
   }
 
   const components = [];
@@ -273,7 +274,7 @@ function buildManagementRow(ticket) {
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId('ticket:closereq')
-      .setLabel('Anfrage')
+      .setLabel(L('Anfrage', 'Request'))
       .setEmoji(emoji('request'))
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(closed),
@@ -555,7 +556,7 @@ async function createTicket(guild, member, opts = {}) {
 
   // Auslastung der Kategorie (0 = unbegrenzt)
   if (cat && cat.max_open > 0 && ticketsModel.countOpenByCategory(cat.id) >= cat.max_open) {
-    throw new Error('Diese Kategorie ist gerade ausgelastet. Bitte versuche es später erneut.');
+    throw new Error(L('Diese Kategorie ist gerade ausgelastet. Bitte versuche es später erneut.', 'This category is currently full. Please try again later.'));
   }
 
   const number = settingsModel.incrementTicketCounter(guild.id);
@@ -626,7 +627,7 @@ async function createTicket(guild, member, opts = {}) {
       { name: tg('tickets.welcome.field_opener'), value: `<@${member.id}>`, inline: true },
       ...(cat ? [{ name: tg('tickets.welcome.field_category'), value: cat.label, inline: true }] : []),
       { name: tg('tickets.welcome.field_created'), value: discordTimestamp(Date.now(), 'R'), inline: true },
-      ...(ov.prize ? [{ name: '🎁 Gewinn', value: String(ov.prize).slice(0, 1024), inline: true }] : []),
+      ...(ov.prize ? [{ name: L('🎁 Gewinn', '🎁 Prize'), value: String(ov.prize).slice(0, 1024), inline: true }] : []),
     )
     .setTimestamp();
   if (/^https:\/\//i.test(oe.imageUrl || '')) welcomeEmbed.setImage(oe.imageUrl);
@@ -664,12 +665,12 @@ async function createTicket(guild, member, opts = {}) {
     guildId: guild.id,
     category: 'ticket',
     type: 'ticket_create',
-    title: '🎫 Ticket erstellt',
+    title: L('🎫 Ticket erstellt', '🎫 Ticket created'),
     color: config.branding.success,
     fields: [
       { name: 'Ticket', value: `#${number} (<#${channel.id}>)`, inline: true },
-      { name: 'Ersteller', value: `<@${member.id}>`, inline: true },
-      ...(cat ? [{ name: 'Kategorie', value: cat.label, inline: true }] : []),
+      { name: L('Ersteller', 'Creator'), value: `<@${member.id}>`, inline: true },
+      ...(cat ? [{ name: L('Kategorie', 'Category'), value: cat.label, inline: true }] : []),
     ],
     actorId: member.id,
     overrideChannelId: ticketLogOverride(ticket),
@@ -719,10 +720,10 @@ async function claimTicket(channel, member) {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_claim',
-    title: '📌 Ticket übernommen',
+    title: L('📌 Ticket übernommen', '📌 Ticket claimed'),
     fields: [
       { name: 'Ticket', value: `#${ticket.number}`, inline: true },
-      { name: 'Übernommen von', value: `<@${member.id}>`, inline: true },
+      { name: L('Übernommen von', 'Claimed by'), value: `<@${member.id}>`, inline: true },
     ],
     actorId: member.id,
     overrideChannelId: ticketLogOverride(ticket),
@@ -758,11 +759,11 @@ async function unclaimTicket(channel, member) {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_unclaim',
-    title: '📌 Ticket freigegeben',
+    title: L('📌 Ticket freigegeben', '📌 Ticket unclaimed'),
     fields: [
       { name: 'Ticket', value: `#${ticket.number}`, inline: true },
-      { name: 'Freigegeben von', value: `<@${member.id}>`, inline: true },
-      { name: 'Vorher übernommen von', value: `<@${previousClaimer}>`, inline: true },
+      { name: L('Freigegeben von', 'Unclaimed by'), value: `<@${member.id}>`, inline: true },
+      { name: L('Vorher übernommen von', 'Previously claimed by'), value: `<@${previousClaimer}>`, inline: true },
     ],
     actorId: member.id,
     overrideChannelId: ticketLogOverride(ticket),
@@ -795,12 +796,12 @@ async function renameTicket(channel, member, rawName) {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_rename',
-    title: '✏️ Ticket umbenannt',
+    title: L('✏️ Ticket umbenannt', '✏️ Ticket renamed'),
     fields: [
       { name: 'Ticket', value: `#${ticket.number}`, inline: true },
-      { name: 'Von', value: `#${oldName}`, inline: true },
-      { name: 'Zu', value: `#${clean}`, inline: true },
-      { name: 'Durch', value: `<@${member.id}>`, inline: true },
+      { name: L('Von', 'From'), value: `#${oldName}`, inline: true },
+      { name: L('Zu', 'To'), value: `#${clean}`, inline: true },
+      { name: L('Durch', 'By'), value: `<@${member.id}>`, inline: true },
     ],
     actorId: member.id,
     overrideChannelId: ticketLogOverride(ticket),
@@ -835,11 +836,11 @@ async function addMemberToTicket(channel, actor, targetUser) {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_user_add',
-    title: '➕ Nutzer zu Ticket hinzugefügt',
+    title: L('➕ Nutzer zu Ticket hinzugefügt', '➕ User added to ticket'),
     fields: [
       { name: 'Ticket', value: `#${ticket.number}`, inline: true },
-      { name: 'Nutzer', value: `<@${targetUser.id}>`, inline: true },
-      { name: 'Durch', value: `<@${actor.id}>`, inline: true },
+      { name: L('Nutzer', 'User'), value: `<@${targetUser.id}>`, inline: true },
+      { name: L('Durch', 'By'), value: `<@${actor.id}>`, inline: true },
     ],
     actorId: actor.id,
     targetId: targetUser.id,
@@ -867,11 +868,11 @@ async function removeMemberFromTicket(channel, actor, targetUser) {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_user_remove',
-    title: '➖ Nutzer aus Ticket entfernt',
+    title: L('➖ Nutzer aus Ticket entfernt', '➖ User removed from ticket'),
     fields: [
       { name: 'Ticket', value: `#${ticket.number}`, inline: true },
-      { name: 'Nutzer', value: `<@${targetUser.id}>`, inline: true },
-      { name: 'Durch', value: `<@${actor.id}>`, inline: true },
+      { name: L('Nutzer', 'User'), value: `<@${targetUser.id}>`, inline: true },
+      { name: L('Durch', 'By'), value: `<@${actor.id}>`, inline: true },
     ],
     actorId: actor.id,
     targetId: targetUser.id,
@@ -923,14 +924,14 @@ async function closeTicket(channel, member, opts = {}) {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_close',
-    title: '🔒 Ticket geschlossen',
+    title: L('🔒 Ticket geschlossen', '🔒 Ticket closed'),
     color: config.branding.warning,
     fields: [
       { name: 'Ticket', value: `#${ticket.number}`, inline: true },
-      { name: 'Ersteller', value: `<@${ticket.opener_id}>`, inline: true },
-      { name: 'Geschlossen von', value: `<@${member.id}>`, inline: true },
-      ticket.claimed_by ? { name: 'Übernommen von', value: `<@${ticket.claimed_by}>`, inline: true } : null,
-      { name: 'Erstellt am', value: discordTimestamp(ticket.created_at, 'F'), inline: true },
+      { name: L('Ersteller', 'Creator'), value: `<@${ticket.opener_id}>`, inline: true },
+      { name: L('Geschlossen von', 'Closed by'), value: `<@${member.id}>`, inline: true },
+      ticket.claimed_by ? { name: L('Übernommen von', 'Claimed by'), value: `<@${ticket.claimed_by}>`, inline: true } : null,
+      { name: L('Erstellt am', 'Created at'), value: discordTimestamp(ticket.created_at, 'F'), inline: true },
       ...answerFields,
     ].filter(Boolean),
     actorId: member.id,
@@ -979,11 +980,11 @@ async function reopenTicket(channel, member) {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_reopen',
-    title: '🔓 Ticket wieder geöffnet',
+    title: L('🔓 Ticket wieder geöffnet', '🔓 Ticket reopened'),
     color: config.branding.success,
     fields: [
       { name: 'Ticket', value: `#${ticket.number}`, inline: true },
-      { name: 'Geöffnet von', value: `<@${member.id}>`, inline: true },
+      { name: L('Geöffnet von', 'Opened by'), value: `<@${member.id}>`, inline: true },
     ],
     actorId: member.id,
     overrideChannelId: ticketLogOverride(ticket),
@@ -1006,15 +1007,15 @@ async function deleteTicket(channel, member) {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_delete',
-    title: '🗑️ Ticket gelöscht',
+    title: L('🗑️ Ticket gelöscht', '🗑️ Ticket deleted'),
     color: config.branding.danger,
     fields: [
       { name: 'Ticket', value: `#${ticket.number}`, inline: true },
-      { name: 'Ersteller', value: `<@${ticket.opener_id}>`, inline: true },
-      { name: 'Gelöscht von', value: `<@${member.id}>`, inline: true },
-      ticket.claimed_by ? { name: 'Übernommen von', value: `<@${ticket.claimed_by}>`, inline: true } : null,
-      { name: 'Erstellt am', value: discordTimestamp(ticket.created_at, 'F'), inline: true },
-      ticket.closed_at ? { name: 'Geschlossen am', value: discordTimestamp(ticket.closed_at, 'F'), inline: true } : null,
+      { name: L('Ersteller', 'Creator'), value: `<@${ticket.opener_id}>`, inline: true },
+      { name: L('Gelöscht von', 'Deleted by'), value: `<@${member.id}>`, inline: true },
+      ticket.claimed_by ? { name: L('Übernommen von', 'Claimed by'), value: `<@${ticket.claimed_by}>`, inline: true } : null,
+      { name: L('Erstellt am', 'Created at'), value: discordTimestamp(ticket.created_at, 'F'), inline: true },
+      ticket.closed_at ? { name: L('Geschlossen am', 'Closed at'), value: discordTimestamp(ticket.closed_at, 'F'), inline: true } : null,
     ].filter(Boolean),
     actorId: member.id,
     overrideChannelId: ticketLogOverride(ticket),
@@ -1078,15 +1079,15 @@ async function submitRating(guild, ticketId, stars, member, answers = []) {
 
   // Team-Kanal: Angezeigte Werte laut Panel-Einstellung (Ersteller, Kategorie, Bearbeitungszeit)
   const teamEmbed = embeds
-    .brand('⭐ Ticket-Bewertung', `${'⭐'.repeat(stars)} (${stars}/5)`)
+    .brand(L('⭐ Ticket-Bewertung', '⭐ Ticket rating'), `${'⭐'.repeat(stars)} (${stars}/5)`)
     .addFields(
       { name: 'Ticket', value: `#${ticket.number}`, inline: true },
-      ...(pcfg.ratingShow.includes('creator') ? [{ name: 'Ersteller', value: `<@${ticket.opener_id}>`, inline: true }] : []),
-      ...(pcfg.ratingShow.includes('category') && ticket.category_label ? [{ name: 'Kategorie', value: ticket.category_label, inline: true }] : []),
+      ...(pcfg.ratingShow.includes('creator') ? [{ name: L('Ersteller', 'Creator'), value: `<@${ticket.opener_id}>`, inline: true }] : []),
+      ...(pcfg.ratingShow.includes('category') && ticket.category_label ? [{ name: L('Kategorie', 'Category'), value: ticket.category_label, inline: true }] : []),
       ...(pcfg.ratingShow.includes('time') && ticket.created_at
-        ? [{ name: 'Bearbeitungszeit', value: formatDuration((ticket.closed_at || Date.now()) - ticket.created_at), inline: true }]
+        ? [{ name: L('Bearbeitungszeit', 'Handling time'), value: formatDuration((ticket.closed_at || Date.now()) - ticket.created_at), inline: true }]
         : []),
-      { name: 'Bewertet von', value: `<@${member.id}>`, inline: true },
+      { name: L('Bewertet von', 'Rated by'), value: `<@${member.id}>`, inline: true },
       ...formFields,
     );
   await send(panel?.rating_channel_id || panel?.log_channel_id, teamEmbed);
@@ -1096,9 +1097,9 @@ async function submitRating(guild, ticketId, stars, member, answers = []) {
     const publicEmbed = embeds
       .brand('⭐ Neue Bewertung', `${'⭐'.repeat(stars)} (${stars}/5)`)
       .addFields(
-        ...(pcfg.ratingShow.includes('category') && ticket.category_label ? [{ name: 'Kategorie', value: ticket.category_label, inline: true }] : []),
+        ...(pcfg.ratingShow.includes('category') && ticket.category_label ? [{ name: L('Kategorie', 'Category'), value: ticket.category_label, inline: true }] : []),
         ...(pcfg.ratingShow.includes('time') && ticket.created_at
-          ? [{ name: 'Bearbeitungszeit', value: formatDuration((ticket.closed_at || Date.now()) - ticket.created_at), inline: true }]
+          ? [{ name: L('Bearbeitungszeit', 'Handling time'), value: formatDuration((ticket.closed_at || Date.now()) - ticket.created_at), inline: true }]
           : []),
         ...formFields,
       );
@@ -1133,7 +1134,7 @@ async function autoCloseSweep() {
   const candidates = ticketsModel.listStaleOpen(now - HOUR);
   for (const ticket of candidates) {
     try {
-      await autoProcess(ticket, now);
+      await i18n.runFor(ticket.guild_id, () => autoProcess(ticket, now));
     } catch (err) {
       logger.warn(`[ticket] Automation #${ticket.id}: ${err.message}`);
     }
@@ -1165,7 +1166,7 @@ async function autoProcess(ticket, now) {
   if (a.closeUnresponsive.enabled && ticket.alerted_at && now - ticket.alerted_at >= a.closeUnresponsive.hours * HOUR) {
     await closeTicket(channel, me);
     await channel
-      .send({ embeds: [embeds.warning('⏰ Automatisch geschlossen', `Der Ersteller hat auf die Erinnerung nicht geantwortet (${a.closeUnresponsive.hours} Std.).`)] })
+      .send({ embeds: [embeds.warning(L('⏰ Automatisch geschlossen', '⏰ Closed automatically'), `Der Ersteller hat auf die Erinnerung nicht geantwortet (${a.closeUnresponsive.hours} Std.).`)] })
       .catch(() => null);
     return;
   }
@@ -1182,7 +1183,7 @@ async function autoProcess(ticket, now) {
       await channel
         .send({
           content: `<@${ticket.claimed_by}>`,
-          embeds: [embeds.warning('⏰ Team-Erinnerung', `Dieses Ticket ist seit ${a.autoTeamAlert.hours} Std. inaktiv. Bitte kümmere dich darum – sonst wird es wieder freigegeben.`)],
+          embeds: [embeds.warning(L('⏰ Team-Erinnerung', '⏰ Team reminder'), `Dieses Ticket ist seit ${a.autoTeamAlert.hours} Std. inaktiv. Bitte kümmere dich darum – sonst wird es wieder freigegeben.`)],
           allowedMentions: { users: [ticket.claimed_by] },
         })
         .catch(() => null);
@@ -1199,7 +1200,7 @@ async function autoProcess(ticket, now) {
     await channel
       .send({
         content: `<@${ticket.opener_id}>`,
-        embeds: [embeds.warning('⏰ Erinnerung', `Dieses Ticket ist seit ${a.autoAlert.hours} Std. inaktiv. Brauchst du noch Hilfe? Schreibe eine Nachricht, sonst wird es eventuell geschlossen.`)],
+        embeds: [embeds.warning(L('⏰ Erinnerung', '⏰ Reminder'), `Dieses Ticket ist seit ${a.autoAlert.hours} Std. inaktiv. Brauchst du noch Hilfe? Schreibe eine Nachricht, sonst wird es eventuell geschlossen.`)],
         allowedMentions: { users: [ticket.opener_id] },
       })
       .catch(() => null);
@@ -1221,17 +1222,17 @@ async function autoProcess(ticket, now) {
 async function requestClose(channel, member) {
   const ticket = ticketsModel.getByChannel(channel.id);
   if (!ticket) throw new Error(i18n.forGuild(channel.guild.id)('tickets.errors.not_a_ticket'));
-  if (ticket.status !== 'open') throw new Error('Das Ticket ist nicht offen.');
+  if (ticket.status !== 'open') throw new Error(L('Das Ticket ist nicht offen.', 'The ticket is not open.'));
 
   ticketsModel.setCloseRequest(ticket.id, member.id);
   const emoji = buttonEmojis.forGuild(ticket.guild_id, 'tickets');
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`ticket:closereq:accept:${ticket.id}`).setLabel('Ja, schließen').setEmoji(emoji('closeAccept')).setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`ticket:closereq:decline:${ticket.id}`).setLabel('Nein, offen lassen').setEmoji(emoji('closeDecline')).setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`ticket:closereq:accept:${ticket.id}`).setLabel(L('Ja, schließen', 'Yes, close')).setEmoji(emoji('closeAccept')).setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`ticket:closereq:decline:${ticket.id}`).setLabel(L('Nein, offen lassen', 'No, keep it open')).setEmoji(emoji('closeDecline')).setStyle(ButtonStyle.Secondary),
   );
   await channel.send({
     content: `<@${ticket.opener_id}>`,
-    embeds: [embeds.info('🔒 Kann dieses Ticket geschlossen werden?', `<@${member.id}> möchte dieses Ticket schließen. Ist dein Anliegen gelöst?`)],
+    embeds: [embeds.info(L('🔒 Kann dieses Ticket geschlossen werden?', '🔒 Can this ticket be closed?'), `<@${member.id}> möchte dieses Ticket schließen. Ist dein Anliegen gelöst?`)],
     components: [row],
     allowedMentions: { users: [ticket.opener_id] },
   });
@@ -1239,10 +1240,10 @@ async function requestClose(channel, member) {
     guildId: channel.guild.id,
     category: 'ticket',
     type: 'ticket_close_request',
-    title: '🔒 Close-Request gesendet',
+    title: L('🔒 Close-Request gesendet', '🔒 Close request sent'),
     fields: [
       { name: 'Ticket', value: `#${ticket.number}`, inline: true },
-      { name: 'Angefragt von', value: `<@${member.id}>`, inline: true },
+      { name: L('Angefragt von', 'Requested by'), value: `<@${member.id}>`, inline: true },
     ],
     actorId: member.id,
     overrideChannelId: ticketLogOverride(ticket),
@@ -1253,11 +1254,11 @@ async function requestClose(channel, member) {
 /** Antwort auf eine Close-Request: schließt das Ticket (wenn „nach Close-Request schließen“ aktiv ist) oder meldet die Zustimmung. */
 async function answerCloseRequest(channel, member, accept) {
   const ticket = ticketsModel.getByChannel(channel.id);
-  if (!ticket || ticket.status !== 'open' || !ticket.close_request_by) throw new Error('Es gibt keine offene Close-Request.');
+  if (!ticket || ticket.status !== 'open' || !ticket.close_request_by) throw new Error(L('Es gibt keine offene Close-Request.', 'There is no open close request.'));
   ticketsModel.setCloseRequest(ticket.id, null);
 
   if (!accept) {
-    await channel.send({ embeds: [embeds.info('❌ Close-Request abgelehnt', `<@${member.id}> möchte, dass das Ticket offen bleibt.`)] }).catch(() => null);
+    await channel.send({ embeds: [embeds.info(L('❌ Close-Request abgelehnt', '❌ Close request declined'), `<@${member.id}> möchte, dass das Ticket offen bleibt.`)] }).catch(() => null);
     return 'declined';
   }
   const panel = ticket.panel_id ? ticketPanels.getPanel(ticket.panel_id) : null;
@@ -1267,7 +1268,7 @@ async function answerCloseRequest(channel, member, accept) {
     return 'closed';
   }
   await channel
-    .send({ embeds: [embeds.success('✅ Close-Request angenommen', `<@${member.id}> stimmt zu – das Team kann das Ticket jetzt schließen.`)] })
+    .send({ embeds: [embeds.success(L('✅ Close-Request angenommen', '✅ Close request accepted'), `<@${member.id}> stimmt zu – das Team kann das Ticket jetzt schließen.`)] })
     .catch(() => null);
   return 'accepted';
 }
@@ -1297,12 +1298,12 @@ function onBehalfCategories(guildId, member, settings) {
 async function openOnBehalf(guild, staff, targetUser, categoryId) {
   const settings = settingsModel.get(guild.id);
   const allowed = onBehalfCategories(guild.id, staff, settings).some((c) => c.id === categoryId);
-  if (!allowed) throw new Error('Für diese Kategorie darfst du keine Tickets im Auftrag öffnen.');
+  if (!allowed) throw new Error(L('Für diese Kategorie darfst du keine Tickets im Auftrag öffnen.', 'You are not allowed to open tickets on behalf of others in this category.'));
   const target = await guild.members.fetch(targetUser.id).catch(() => null);
-  if (!target) throw new Error('Das Mitglied ist nicht auf diesem Server.');
+  if (!target) throw new Error(L('Das Mitglied ist nicht auf diesem Server.', 'The member is not on this server.'));
   const { channel, ticket } = await createTicket(guild, target, { categoryId });
   await channel
-    .send({ embeds: [embeds.info('📝 Im Auftrag erstellt', `Dieses Ticket wurde von <@${staff.id}> für <@${target.id}> geöffnet.`)] })
+    .send({ embeds: [embeds.info(L('📝 Im Auftrag erstellt', '📝 Created on behalf'), `Dieses Ticket wurde von <@${staff.id}> für <@${target.id}> geöffnet.`)] })
     .catch(() => null);
   return { channel, ticket };
 }

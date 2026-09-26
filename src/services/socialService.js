@@ -1,5 +1,7 @@
 'use strict';
 
+const i18n = require('../utils/i18n');
+
 const { EmbedBuilder } = require('discord.js');
 const client = require('../core/client');
 const config = require('../../config/config');
@@ -418,6 +420,10 @@ function renderTemplate(tpl, sub, data, mentionText) {
 }
 
 async function announce(sub, data) {
+  return i18n.runFor(sub.guild_id, () => announceInner(sub, data));
+}
+
+async function announceInner(sub, data) {
   const channel =
     client.channels.cache.get(sub.channel_id) ??
     (await client.channels.fetch(sub.channel_id).catch(() => null));

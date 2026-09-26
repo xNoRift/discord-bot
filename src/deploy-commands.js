@@ -17,6 +17,25 @@ const config = require('../config/config');
 const logger = require('./utils/logger');
 const { collectFiles } = require('./handlers/loaders');
 
+const COMMAND_EN = require('./locales/commands.json');
+
+/**
+ * Beschreibungen zweisprachig: Englisch als Standard, Deutsch für deutsche Discord-Clients.
+ * (Discord zeigt Befehlsbeschreibungen in der Sprache des Nutzers, nicht des Servers.)
+ * Rekursiv für Unterbefehle und Optionen.
+ */
+function localize(cmd) {
+  const en = COMMAND_EN[cmd.description];
+  if (en) {
+    cmd.description_localizations = { ...(cmd.description_localizations || {}), de: cmd.description };
+    cmd.description = en;
+  } else if (cmd.description && /[äöüÄÖÜß]|\b(der|die|das|und|ein|eine|dein)\b/.test(cmd.description)) {
+    logger.warn(`Keine englische Beschreibung für: „${cmd.description}“ (src/locales/commands.json)`);
+  }
+  for (const o of cmd.options || []) localize(o);
+  return cmd;
+}
+
 async function main() {
   const missing = config.validate('bot');
   if (missing.length) {
@@ -35,7 +54,7 @@ async function main() {
     for (const file of collectFiles(dir)) {
       const mod = require(file);
       if (mod?.data?.toJSON) {
-        commands.push(mod.data.toJSON());
+        commands.push(localize(mod.data.toJSON()));
         logger.info(`+ /${mod.data.name}`);
       }
     }

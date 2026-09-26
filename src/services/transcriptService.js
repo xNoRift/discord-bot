@@ -5,6 +5,7 @@ const settingsModel = require('../database/models/settings');
 const ticketPanels = require('../database/models/ticketPanels');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
+const { L } = require('../utils/i18n');
 
 /**
  * Ticket-Transkripte: hält den Verlauf eines Tickets als Textdatei fest und schickt ihn in den
@@ -87,9 +88,9 @@ async function send(channel, ticket) {
     .setColor(config.branding.color)
     .setTitle(ticket.application_id ? `📄 Transkript – Bewerber-Chat #${ticket.application_id}` : `📄 Transkript – Ticket #${ticket.number}`)
     .addFields(
-      { name: 'Ersteller', value: `<@${ticket.opener_id}>`, inline: true },
-      { name: 'Nachrichten', value: String(messages.length), inline: true },
-      ...(ticket.category_label ? [{ name: 'Kategorie', value: ticket.category_label, inline: true }] : []),
+      { name: L('Ersteller', 'Creator'), value: `<@${ticket.opener_id}>`, inline: true },
+      { name: L('Nachrichten', 'Messages'), value: String(messages.length), inline: true },
+      ...(ticket.category_label ? [{ name: L('Kategorie', 'Category'), value: ticket.category_label, inline: true }] : []),
     )
     .setTimestamp();
   return target.send({ embeds: [embed], files: [file] });

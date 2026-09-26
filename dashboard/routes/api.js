@@ -27,6 +27,7 @@ const giveawayService = require('../../src/services/giveawayService');
 const applicationService = require('../../src/services/applicationService');
 
 const { parseDuration } = require('../../src/utils/time');
+const i18n = require('../../src/utils/i18n');
 const { parseHexColor, validEmoji } = require('../../src/utils/embeds');
 const newsModel = require('../../src/database/models/news');
 
@@ -219,6 +220,8 @@ router.get('/security/logins', requireOwner, (req, res) => {
  * ---------------------------------------------------------------- */
 
 router.use('/guilds/:guildId', loadGuild);
+// Alles, was der Bot aus dem Dashboard heraus in Discord sendet, in der Sprache dieses Servers
+router.use('/guilds/:guildId', (req, res, next) => i18n.runFor(req.params.guildId, next));
 
 /* --- Bot-Serverprofil: Nickname + Server-Avatar (nur auf DIESEM Server) --- */
 

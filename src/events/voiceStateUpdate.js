@@ -5,6 +5,7 @@ const musicService = require('../services/musicService');
 const levelService = require('../services/levelService');
 const voiceSupportService = require('../services/voiceSupportService');
 const logger = require('../utils/logger');
+const { L } = require('../utils/i18n');
 
 module.exports = {
   name: 'voiceStateUpdate',
@@ -17,9 +18,9 @@ module.exports = {
         const session = musicService.getSession(guild.id);
         if (session) {
           if (!newState.channelId) {
-            session.destroy('🚪 Ich wurde aus dem Sprachkanal entfernt.');
+            session.destroy(L('🚪 Ich wurde aus dem Sprachkanal entfernt.', '🚪 I was removed from the voice channel.'));
           } else if (oldState.channelId && newState.channelId !== oldState.channelId) {
-            session.destroy('🚪 Ich wurde in einen anderen Kanal verschoben – ich verlasse ihn wieder.');
+            session.destroy(L('🚪 Ich wurde in einen anderen Kanal verschoben – ich verlasse ihn wieder.', '🚪 I was moved to another channel – leaving it again.'));
           }
         }
       }
@@ -57,7 +58,7 @@ module.exports = {
             const s = musicService.getSession(guild.id);
             const c = s && guild.channels.cache.get(s.voiceChannelId);
             if (s && (!c || c.members.filter((m) => !m.user.bot).size === 0)) {
-              s.destroy('👋 Niemand mehr im Sprachkanal – ich verlasse ihn.');
+              s.destroy(L('👋 Niemand mehr im Sprachkanal – ich verlasse ihn.', '👋 Nobody left in the voice channel – leaving.'));
             }
           }, 20000);
         }

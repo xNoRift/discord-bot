@@ -8,6 +8,7 @@ const activity = require('../database/models/activity');
 const logger = require('../utils/logger');
 const logEvents = require('../utils/logEvents');
 const config = require('../../config/config');
+const { L } = require('../utils/i18n');
 
 /**
  * Zentrales Logging.
@@ -96,7 +97,7 @@ async function log(opts) {
     if (description) embed.setDescription(String(description).slice(0, 4096));
     const allFields = [...fields];
     if (actorId && !mentions(fields, description, actorId)) {
-      allFields.push({ name: 'Ausgelöst von', value: `<@${actorId}>`, inline: true });
+      allFields.push({ name: L('Ausgelöst von', 'Triggered by'), value: `<@${actorId}>`, inline: true });
     }
     if (allFields.length) embed.addFields(allFields.slice(0, 25));
 

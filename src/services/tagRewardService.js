@@ -1,5 +1,7 @@
 'use strict';
 
+const i18n = require('../utils/i18n');
+
 const client = require('../core/client');
 const config = require('../../config/config');
 const moduleSettings = require('../database/models/moduleSettings');
@@ -38,7 +40,7 @@ async function sweep() {
   for (const guild of client.guilds.cache.values()) {
     const cfg = moduleSettings.get(guild.id, 'levels');
     if (!cfg.tagRewardEnabled || !cfg.tagRoleId) continue;
-    await syncGuild(guild, cfg).catch((err) => logger.warn(`[tagReward] ${guild.id}: ${err.message}`));
+    await i18n.runFor(guild.id, () => syncGuild(guild, cfg)).catch((err) => logger.warn(`[tagReward] ${guild.id}: ${err.message}`));
   }
 }
 

@@ -6,6 +6,7 @@ const embeds = require('../../utils/embeds');
 const appModel = require('../../database/models/applications');
 const applicationService = require('../../services/applicationService');
 const { isApplicationTeam } = require('../../utils/permissions');
+const { L } = require('../../utils/i18n');
 
 module.exports = {
   prefix: 'app:review',
@@ -17,7 +18,7 @@ module.exports = {
 
     if (!isApplicationTeam(interaction.member, interaction.settings, appModel.getApplication(applicationId))) {
       return interaction.reply({
-        embeds: [embeds.error(undefined, 'Du bist nicht berechtigt, Bewerbungen zu bearbeiten.')],
+        embeds: [embeds.error(undefined, L('Du bist nicht berechtigt, Bewerbungen zu bearbeiten.', 'You are not allowed to review applications.'))],
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -36,8 +37,8 @@ module.exports = {
       await interaction.editReply({
         embeds: [
           decision === 'accepted'
-            ? embeds.success('✅ Bewerbung angenommen', `Bewerbung #${applicationId} wurde angenommen.${roleNote}`)
-            : embeds.error('❌ Bewerbung abgelehnt', `Bewerbung #${applicationId} wurde abgelehnt.`),
+            ? embeds.success(L('✅ Bewerbung angenommen', '✅ Application accepted'), L('Bewerbung #{id} wurde angenommen.', 'Application #{id} has been accepted.', { id: applicationId }) + roleNote)
+            : embeds.error(L('❌ Bewerbung abgelehnt', '❌ Application rejected'), L('Bewerbung #{id} wurde abgelehnt.', 'Application #{id} has been rejected.', { id: applicationId })),
         ],
       });
     } catch (err) {

@@ -7,6 +7,7 @@ const i18n = require('../../utils/i18n');
 const ticketService = require('../../services/ticketService');
 const ticketsModel = require('../../database/models/tickets');
 const ticketPanels = require('../../database/models/ticketPanels');
+const { L } = require('../../utils/i18n');
 
 module.exports = {
   prefix: 'ticket:close',
@@ -23,7 +24,7 @@ module.exports = {
     // Hat die Kategorie ein Schließen-Formular, zuerst danach fragen.
     const closeQs = ticketService.closeFormQuestions(ticket);
     if (closeQs.length) {
-      return interaction.showModal(ticketService.buildQuestionsModal(`ticket:closeform:${ticket.id}`, 'Ticket schließen', closeQs));
+      return interaction.showModal(ticketService.buildQuestionsModal(`ticket:closeform:${ticket.id}`, L('Ticket schließen', 'Close ticket'), closeQs));
     }
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     try {

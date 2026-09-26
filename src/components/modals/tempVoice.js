@@ -5,6 +5,7 @@ const { MessageFlags } = require('discord.js');
 const embeds = require('../../utils/embeds');
 const tempVoiceService = require('../../services/tempVoiceService');
 const tempVoice = require('../../database/models/tempVoice');
+const { L } = require('../../utils/i18n');
 
 module.exports = {
   prefix: 'tempvoice:modal',
@@ -27,7 +28,7 @@ module.exports = {
       } else if (action === 'limit') {
         msg = await tempVoiceService.setLimit(channel, interaction.fields.getTextInputValue('limit'));
       } else {
-        msg = 'Unbekannte Aktion.';
+        msg = L('Unbekannte Aktion.', 'Unknown action.');
       }
       await interaction.editReply({ embeds: [embeds.success(undefined, msg)] });
     } catch (err) {

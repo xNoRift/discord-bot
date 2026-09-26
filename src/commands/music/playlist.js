@@ -4,6 +4,7 @@ const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const music = require('../../services/musicService');
 const embeds = require('../../utils/embeds');
 const { requireVoice, canControl } = require('../../utils/music');
+const { L } = require('../../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -38,7 +39,7 @@ module.exports = {
       .listPlaylists(interaction.guildId)
       .filter((p) => p.name.toLowerCase().includes(focused))
       .slice(0, 25)
-      .map((p) => ({ name: `${p.name} (${p.track_count} Titel)`, value: p.name }));
+      .map((p) => ({ name: `${p.name} (${p.track_count} ${L('Titel', 'tracks')})`, value: p.name }));
     await interaction.respond(choices);
   },
 
@@ -49,25 +50,25 @@ module.exports = {
       const list = music.listPlaylists(interaction.guildId);
       if (!list.length) {
         return interaction.reply({
-          embeds: [embeds.brand('🎶 Playlists', 'Auf diesem Server gibt es noch keine Playlists. Speichere eine mit `/playlist save`.')],
+          embeds: [embeds.brand('🎶 Playlists', L('Auf diesem Server gibt es noch keine Playlists. Speichere eine mit `/playlist save`.', 'There are no playlists on this server yet. Save one with `/playlist save`.'))],
           flags: MessageFlags.Ephemeral,
         });
       }
-      const lines = list.map((p) => `**${p.name}** — ${p.track_count} Titel`);
-      return interaction.reply({ embeds: [embeds.brand('🎶 Playlists dieses Servers', lines.join('\n'))], flags: MessageFlags.Ephemeral });
+      const lines = list.map((p) => `**${p.name}** — ${p.track_count} ${L('Titel', 'tracks')}`);
+      return interaction.reply({ embeds: [embeds.brand(L('🎶 Playlists dieses Servers', '🎶 Playlists on this server'), lines.join('\n'))], flags: MessageFlags.Ephemeral });
     }
 
     if (!canControl(interaction.member, interaction.settings)) {
-      return interaction.reply({ embeds: [embeds.error(undefined, 'Dir fehlt die DJ-Rolle.')], flags: MessageFlags.Ephemeral });
+      return interaction.reply({ embeds: [embeds.error(undefined, L('Dir fehlt die DJ-Rolle.', 'You don\'t have the DJ role.'))], flags: MessageFlags.Ephemeral });
     }
 
     if (sub === 'delete') {
       const name = interaction.options.getString('name');
       const pl = music.listPlaylists(interaction.guildId).find((p) => p.name.toLowerCase() === name.toLowerCase());
       if (!pl || !music.deletePlaylist(interaction.guildId, pl.id)) {
-        return interaction.reply({ embeds: [embeds.error(undefined, `Playlist „${name}" wurde nicht gefunden.`)], flags: MessageFlags.Ephemeral });
+        return interaction.reply({ embeds: [embeds.error(undefined, L('Playlist „{name}“ wurde nicht gefunden.', 'Playlist “{name}” was not found.', { name }))], flags: MessageFlags.Ephemeral });
       }
-      return interaction.reply({ embeds: [embeds.success('🗑️ Gelöscht', `Playlist **${pl.name}** wurde gelöscht.`)], flags: MessageFlags.Ephemeral });
+      return interaction.reply({ embeds: [embeds.success(L('🗑️ Gelöscht', '🗑️ Deleted'), L('Playlist **{name}** wurde gelöscht.', 'Playlist **{name}** has been deleted.', { name: pl.name }))], flags: MessageFlags.Ephemeral });
     }
 
     if (sub === 'save') {
@@ -77,7 +78,7 @@ module.exports = {
       try {
         const r = await music.savePlaylist(interaction.guild, name, query, interaction.user.id);
         await interaction.editReply({
-          embeds: [embeds.success('💾 Gespeichert', `Playlist **${r.name}** mit **${r.count}** Titel${r.count === 1 ? '' : 'n'} gespeichert – nur auf diesem Server abrufbar.`)],
+          embeds: [embeds.success(L('💾 Gespeichert', '💾 Saved'), L('Playlist **{name}** mit **{n}** Titel(n) gespeichert – nur auf diesem Server abrufbar.', 'Saved playlist **{name}** with **{n}** track(s) – only available on this server.', { name: r.name, n: r.count }))],
         });
       } catch (e) {
         await interaction.editReply({ embeds: [embeds.error(undefined, e.message)] });
@@ -99,7 +100,7 @@ module.exports = {
           id: interaction.user.id,
           tag: interaction.user.tag,
         });
-        await interaction.editReply({ embeds: [embeds.success('🎵 Playlist', `➕ **${r.added}** Titel aus **${r.label}** zur Warteschlange hinzugefügt.`)] });
+        await interaction.editReply({ embeds: [embeds.success('🎵 Playlist', L('➕ **{n}** Titel aus **{from}** zur Warteschlange hinzugefügt.', '➕ Added **{n}** tracks from **{from}** to the queue.', { n: r.added, from: r.label }))] });
       } catch (e) {
         await interaction.editReply({ embeds: [embeds.error(undefined, e.message)] });
       }

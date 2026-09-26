@@ -6,6 +6,7 @@ const embeds = require('../../utils/embeds');
 const appModel = require('../../database/models/applications');
 const applicationService = require('../../services/applicationService');
 const { isApplicationTeam } = require('../../utils/permissions');
+const { L } = require('../../utils/i18n');
 
 /**
  * Button "app:chat:<id>" an der Bewerbungs-Nachricht:
@@ -18,11 +19,11 @@ module.exports = {
     const application = appModel.getApplication(applicationId);
 
     if (!application || application.guild_id !== interaction.guildId) {
-      return interaction.reply({ embeds: [embeds.error(undefined, 'Bewerbung nicht gefunden.')], flags: MessageFlags.Ephemeral });
+      return interaction.reply({ embeds: [embeds.error(undefined, L('Bewerbung nicht gefunden.', 'Application not found.'))], flags: MessageFlags.Ephemeral });
     }
     if (!isApplicationTeam(interaction.member, interaction.settings, application)) {
       return interaction.reply({
-        embeds: [embeds.error(undefined, 'Du bist nicht berechtigt, Bewerber-Chats zu öffnen.')],
+        embeds: [embeds.error(undefined, L('Du bist nicht berechtigt, Bewerber-Chats zu öffnen.', 'You are not allowed to open applicant chats.'))],
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -35,8 +36,8 @@ module.exports = {
       await interaction.editReply({
         embeds: [
           embeds.success(
-            created ? '💬 Chat geöffnet' : '💬 Chat bereits vorhanden',
-            `Der Chat mit <@${application.user_id}> ist hier: <#${channel.id}>`,
+            created ? L('💬 Chat geöffnet', '💬 Chat opened') : L('💬 Chat bereits vorhanden', '💬 Chat already exists'),
+            L('Der Chat mit {user} ist hier: {channel}', 'The chat with {user} is here: {channel}', { user: `<@${application.user_id}>`, channel: `<#${channel.id}>` }),
           ),
         ],
       });

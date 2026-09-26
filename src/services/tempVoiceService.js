@@ -1,5 +1,7 @@
 'use strict';
 
+const i18n = require('../utils/i18n');
+
 const {
   ChannelType,
   OverwriteType,
@@ -16,6 +18,7 @@ const { isManager } = require('../utils/permissions');
 const config = require('../../config/config');
 const buttonEmojis = require('../utils/buttonEmojis');
 const logger = require('../utils/logger');
+const { L } = require('../utils/i18n');
 
 /**
  * Temp-Voice ("Join to Create").
@@ -68,29 +71,29 @@ function panelComponents(row = {}, guildId = row.guild_id) {
   const e = buttonEmojis.forGuild(guildId, 'tempvoice');
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('tempvoice:btn:rename').setLabel('Umbenennen').setEmoji(e('rename')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('tempvoice:btn:rename').setLabel(L('Umbenennen', 'Rename')).setEmoji(e('rename')).setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('tempvoice:btn:limit').setLabel('Benutzerlimit').setEmoji(e('limit')).setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('tempvoice:btn:lock')
-        .setLabel(locked ? 'Entsperren' : 'Sperren')
+        .setLabel(locked ? L('Entsperren', 'Unlock') : L('Sperren', 'Lock'))
         .setEmoji(locked ? e('unlock') : e('lock'))
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('tempvoice:btn:hide')
-        .setLabel(hidden ? 'Zeigen' : 'Verstecken')
+        .setLabel(hidden ? L('Zeigen', 'Show') : L('Verstecken', 'Hide'))
         .setEmoji(hidden ? e('show') : e('hide'))
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('tempvoice:btn:region').setLabel('Region').setEmoji(e('region')).setStyle(ButtonStyle.Secondary),
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('tempvoice:btn:permit').setLabel('Hinzufügen').setEmoji(e('permit')).setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('tempvoice:btn:reject').setLabel('Entfernen').setEmoji(e('reject')).setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('tempvoice:btn:block').setLabel('Blockieren').setEmoji(e('block')).setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('tempvoice:btn:unblock').setLabel('Entblockieren').setEmoji(e('unblock')).setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('tempvoice:btn:disconnect').setLabel('Trennen').setEmoji(e('disconnect')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('tempvoice:btn:permit').setLabel(L('Hinzufügen', 'Add')).setEmoji(e('permit')).setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('tempvoice:btn:reject').setLabel(L('Entfernen', 'Remove')).setEmoji(e('reject')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('tempvoice:btn:block').setLabel(L('Blockieren', 'Block')).setEmoji(e('block')).setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('tempvoice:btn:unblock').setLabel(L('Entblockieren', 'Unblock')).setEmoji(e('unblock')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('tempvoice:btn:disconnect').setLabel(L('Trennen', 'Disconnect')).setEmoji(e('disconnect')).setStyle(ButtonStyle.Secondary),
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('tempvoice:btn:delete').setLabel('Löschen').setEmoji(e('delete')).setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('tempvoice:btn:delete').setLabel(L('Löschen', 'Delete')).setEmoji(e('delete')).setStyle(ButtonStyle.Danger),
     ),
   ];
 }
@@ -106,14 +109,14 @@ function panelEmbed(row, channel) {
     )
     .addFields(
       { name: 'Besitzer', value: `<@${row.owner_id}>`, inline: true },
-      { name: 'Benutzerlimit', value: limit ? String(limit) : 'kein Limit', inline: true },
+      { name: 'Benutzerlimit', value: limit ? String(limit) : L('kein Limit', 'no limit'), inline: true },
       {
         name: 'Status',
         value: `${row.locked ? '🔒 Gesperrt' : '🔓 Offen'} · ${row.hidden ? '🙈 Versteckt' : '👁️ Sichtbar'}`,
         inline: true,
       },
     )
-    .setFooter({ text: 'Umbenennen · Limit · Sperren · Verstecken · Region · Hinzufügen/Entfernen · Blockieren · Trennen' });
+    .setFooter({ text: L('Umbenennen · Limit · Sperren · Verstecken · Region · Hinzufügen/Entfernen · Blockieren · Trennen', 'Rename · Limit · Lock · Hide · Region · Add/Remove · Block · Disconnect') });
 }
 
 /* ---- Fester Interface-Kanal (eine dauerhafte Nachricht, steuert den Kanal, in dem der Klickende gerade sitzt) ---- */
@@ -164,7 +167,7 @@ async function postOrUpdateInterface(guild) {
 /** Beim Start für alle Server die Interface-Nachricht sicherstellen. */
 async function ensureInterfaces(client) {
   for (const guild of client.guilds.cache.values()) {
-    await postOrUpdateInterface(guild).catch((err) =>
+    await i18n.runFor(guild.id, () => postOrUpdateInterface(guild)).catch((err) =>
       logger.warn(`[tempvoice] Interface ${guild.id}: ${err.message}`),
     );
   }
@@ -419,9 +422,9 @@ async function cleanup(client) {
 /** @returns {{ ok: boolean, row?: object, reason?: string }} */
 function assertControl(channelId, member) {
   const row = tempVoice.get(channelId);
-  if (!row) return { ok: false, reason: 'Das ist kein temporärer Sprachkanal.' };
+  if (!row) return { ok: false, reason: L('Das ist kein temporärer Sprachkanal.', 'This is not a temporary voice channel.') };
   if (row.owner_id === member.id || isManager(member)) return { ok: true, row };
-  return { ok: false, reason: 'Nur der Besitzer dieses Kanals kann das ändern.' };
+  return { ok: false, reason: L('Nur der Besitzer dieses Kanals kann das ändern.', 'Only the owner of this channel can change that.') };
 }
 
 async function rename(channel, newName) {
@@ -445,8 +448,8 @@ async function toggleLock(channel, row) {
   tempVoice.setFlags(channel.id, { locked });
   await refreshPanel(channel);
   return locked
-    ? '🔒 Kanal **gesperrt** – nur hinzugefügte Leute dürfen rein.'
-    : '🔓 Kanal ist wieder **frei**.';
+    ? L('🔒 Kanal **gesperrt** – nur hinzugefügte Leute dürfen rein.', '🔒 Channel **locked** – only added people can join.')
+    : L('🔓 Kanal ist wieder **frei**.', '🔓 Channel is **open** again.');
 }
 
 async function toggleHide(channel, row) {
@@ -454,13 +457,13 @@ async function toggleHide(channel, row) {
   await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: hidden ? false : null });
   tempVoice.setFlags(channel.id, { hidden });
   await refreshPanel(channel);
-  return hidden ? '🙈 Kanal ist jetzt **versteckt**.' : '👁️ Kanal ist wieder **sichtbar**.';
+  return hidden ? L('🙈 Kanal ist jetzt **versteckt**.', '🙈 Channel is now **hidden**.') : L('👁️ Kanal ist wieder **sichtbar**.', '👁️ Channel is **visible** again.');
 }
 
 async function setRegion(channel, region) {
   const value = !region || region === 'auto' ? null : region;
   await channel.setRTCRegion(value, 'Temp-Voice: Region');
-  return value ? `🌍 Region auf **${value}** gesetzt.` : '🌍 Region auf **Automatisch** gesetzt.';
+  return value ? `🌍 Region auf **${value}** gesetzt.` : L('🌍 Region auf **Automatisch** gesetzt.', '🌍 Region set to **Automatic**.');
 }
 
 async function permitUser(channel, targetId) {
@@ -469,7 +472,7 @@ async function permitUser(channel, targetId) {
 }
 
 async function rejectUser(channel, targetId, row) {
-  if (targetId === row.owner_id) throw new Error('Den Besitzer kannst du nicht entfernen.');
+  if (targetId === row.owner_id) throw new Error(L('Den Besitzer kannst du nicht entfernen.', 'You can\'t remove the owner.'));
   await channel.permissionOverwrites.delete(targetId, 'Temp-Voice: Zugriff entfernt').catch(() => null);
   const m = channel.members.get(targetId);
   if (m) await m.voice.disconnect('Temp-Voice: entfernt').catch(() => null);
@@ -477,7 +480,7 @@ async function rejectUser(channel, targetId, row) {
 }
 
 async function blockUser(channel, targetId, row) {
-  if (targetId === row.owner_id) throw new Error('Den Besitzer kannst du nicht blockieren.');
+  if (targetId === row.owner_id) throw new Error(L('Den Besitzer kannst du nicht blockieren.', 'You can\'t block the owner.'));
   await channel.permissionOverwrites.edit(targetId, { ViewChannel: false, Connect: false });
   const m = channel.members.get(targetId);
   if (m) await m.voice.disconnect('Temp-Voice: blockiert').catch(() => null);
@@ -490,9 +493,9 @@ async function unblockUser(channel, targetId) {
 }
 
 async function disconnectUser(channel, targetId, row) {
-  if (targetId === row.owner_id) throw new Error('Dich selbst kannst du hier nicht trennen.');
+  if (targetId === row.owner_id) throw new Error(L('Dich selbst kannst du hier nicht trennen.', 'You can\'t disconnect yourself here.'));
   const m = channel.members.get(targetId);
-  if (!m) throw new Error('Diese Person ist nicht in deinem Kanal.');
+  if (!m) throw new Error(L('Diese Person ist nicht in deinem Kanal.', 'This person is not in your channel.'));
   await m.voice.disconnect('Temp-Voice: getrennt');
   return `🔌 <@${targetId}> wurde aus dem Kanal getrennt.`;
 }

@@ -3,6 +3,7 @@
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const embeds = require('../../utils/embeds');
 const config = require('../../../config/config');
+const { L } = require('../../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -12,18 +13,18 @@ module.exports = {
     const embed = embeds
       .brand(
         '🤖 ' + config.branding.name,
-        'Tickets, Giveaways, Bewerbungen, Willkommen, Moderation u. v. m. werden über das **Web-Dashboard** verwaltet.',
+        L('Tickets, Giveaways, Bewerbungen, Willkommen, Moderation u. v. m. werden über das **Web-Dashboard** verwaltet.', 'Tickets, giveaways, applications, welcome messages, moderation and more are managed in the **web dashboard**.'),
       )
       .addFields(
         {
-          name: '🎵 Musik-Befehle',
+          name: L('🎵 Musik-Befehle', '🎵 Music commands'),
           value:
             '`/join` · `/play` · `/radio` · `/skip` · `/stop` · `/pause` · `/resume` · `/queue` · `/np` · `/volume` · `/loop` · `/shuffle` · `/leave`',
         },
-        { name: '🎫 Tickets · 🎉 Giveaways · 📋 Bewerbungen', value: 'Alles im Dashboard. Bewerben: `/apply`' },
-        { name: '🌐 Dashboard öffnen', value: config.dashboard.url },
+        { name: L('🎫 Tickets · 🎉 Giveaways · 📋 Bewerbungen', '🎫 Tickets · 🎉 Giveaways · 📋 Applications'), value: L('Alles im Dashboard. Bewerben: `/apply`', 'Everything is in the dashboard. Apply: `/apply`') },
+        { name: L('🌐 Dashboard öffnen', '🌐 Open dashboard'), value: config.dashboard.url },
       )
-      .setFooter({ text: 'Anmeldung am Dashboard mit deinem Discord-Konto.' });
+      .setFooter({ text: L('Anmeldung am Dashboard mit deinem Discord-Konto.', 'Log in to the dashboard with your Discord account.') });
 
     await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   },

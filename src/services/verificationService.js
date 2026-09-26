@@ -4,6 +4,7 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFl
 const moduleSettings = require('../database/models/moduleSettings');
 const config = require('../../config/config');
 const buttonEmojis = require('../utils/buttonEmojis');
+const { L } = require('../utils/i18n');
 
 /** Verifizierung per Button: vergibt eine Rolle (und entfernt optional eine "Unverifiziert"-Rolle). */
 
@@ -22,7 +23,7 @@ async function postPanel(guild) {
   const payload = {
     embeds: [new EmbedBuilder().setColor(config.branding.color).setTitle(cfg.title || 'Verifizierung').setDescription(cfg.message || '​')],
     components: [new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('verify:go').setLabel(cfg.buttonLabel || 'Verifizieren').setEmoji(buttonEmojis.forGuild(guild.id, 'verification')('verify')).setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('verify:go').setLabel(cfg.buttonLabel || L('Verifizieren', 'Verify')).setEmoji(buttonEmojis.forGuild(guild.id, 'verification')('verify')).setStyle(ButtonStyle.Success),
     )],
   };
   let msg = null;

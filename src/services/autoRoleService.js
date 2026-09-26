@@ -5,6 +5,7 @@ const { botCanManageRole } = require('../utils/permissions');
 const logService = require('./logService');
 const logger = require('../utils/logger');
 const config = require('../../config/config');
+const { L } = require('../utils/i18n');
 
 /**
  * Auto-Rolle: vergibt neuen Mitgliedern automatisch konfigurierte Rollen.
@@ -48,11 +49,11 @@ async function applyOnJoin(member) {
       guildId: member.guild.id,
       category: 'general',
       type: 'autorole',
-      title: '➕ Auto-Rolle vergeben',
+      title: L('➕ Auto-Rolle vergeben', '➕ Auto role given'),
       color: config.branding.success,
       fields: [
-        { name: 'Mitglied', value: `<@${member.id}>`, inline: true },
-        { name: 'Rollen', value: added.map((r) => `<@&${r.id}>`).join(', '), inline: true },
+        { name: L('Mitglied', 'Member'), value: `<@${member.id}>`, inline: true },
+        { name: L('Rollen', 'Roles'), value: added.map((r) => `<@&${r.id}>`).join(', '), inline: true },
       ],
       targetId: member.id,
     });

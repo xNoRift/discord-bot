@@ -1,5 +1,7 @@
 'use strict';
 
+const { L } = require('./i18n');
+
 /**
  * Einheitliche Darstellung von Formular-Angaben in Discord-Embeds
  * (Ticket-Eröffnung, Bewerbung fürs Team, Bewerber-Chat):
@@ -18,11 +20,11 @@
 function blocks(answers, o = {}) {
   const quote = (text) => String(text).slice(0, 1000).split('\n').map((l) => `> ${l}`).join('\n');
   const out = (answers || []).slice(0, 25).map((a) => {
-    const q = String(a.question || o.question || 'Frage').slice(0, 200);
-    const ans = a.answer && String(a.answer).trim() ? String(a.answer).trim() : o.noAnswer || '*(keine Angabe)*';
+    const q = String(a.question || o.question || L('Frage', 'Question')).slice(0, 200);
+    const ans = a.answer && String(a.answer).trim() ? String(a.answer).trim() : o.noAnswer || L('*(keine Angabe)*', '*(no answer)*');
     return `**${q}**\n${quote(ans)}`;
   });
-  if (o.priced) out.push(`💰 **Preis:** __**${o.priced.total}**__ · ${o.priced.detail}`);
+  if (o.priced) out.push(`💰 **${L('Preis', 'Price')}:** __**${o.priced.total}**__ · ${o.priced.detail}`);
   return out;
 }
 

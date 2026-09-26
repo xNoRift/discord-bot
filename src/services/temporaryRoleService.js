@@ -1,5 +1,7 @@
 'use strict';
 
+const i18n = require('../utils/i18n');
+
 const client = require('../core/client');
 const tempRoles = require('../database/models/temporaryRoles');
 const settingsModel = require('../database/models/settings');
@@ -8,6 +10,7 @@ const { formatDuration, discordTimestamp } = require('../utils/time');
 const embeds = require('../utils/embeds');
 const logService = require('./logService');
 const logger = require('../utils/logger');
+const { L } = require('../utils/i18n');
 
 /**
  * Verwaltung temporaerer Rollen (Giveaway-Gewinnerrolle).
@@ -75,13 +78,13 @@ async function grantGiveawayRole(guild, userId, options = {}) {
   if (!roleId) return { ok: false, reason: 'Keine Giveaway-Gewinnerrolle konfiguriert.' };
 
   const role = guild.roles.cache.get(roleId) ?? (await guild.roles.fetch(roleId).catch(() => null));
-  if (!role) return { ok: false, reason: 'Die konfigurierte Gewinnerrolle existiert nicht mehr.' };
+  if (!role) return { ok: false, reason: L('Die konfigurierte Gewinnerrolle existiert nicht mehr.', 'The configured winner role no longer exists.') };
 
   const can = botCanManageRole(guild, role);
   if (!can.ok) return { ok: false, reason: can.reason };
 
   const member = await guild.members.fetch(userId).catch(() => null);
-  if (!member) return { ok: false, reason: 'Mitglied nicht auf dem Server gefunden.' };
+  if (!member) return { ok: false, reason: L('Mitglied nicht auf dem Server gefunden.', 'Member not found on the server.') };
 
   await member.roles.add(role, 'Giveaway-Gewinnerrolle').catch((err) => {
     throw new Error(`roles.add: ${err.message}`);
@@ -136,9 +139,9 @@ async function grantGiveawayRole(guild, userId, options = {}) {
     title: '🎉 Gewinnerrolle vergeben',
     color: require('../../config/config').branding.success,
     fields: [
-      { name: 'Nutzer', value: `<@${userId}>`, inline: true },
-      { name: 'Rolle', value: `<@&${roleId}>`, inline: true },
-      { name: 'Dauer', value: formatDuration(durationMs), inline: true },
+      { name: L('Nutzer', 'User'), value: `<@${userId}>`, inline: true },
+      { name: L('Rolle', 'Role'), value: `<@&${roleId}>`, inline: true },
+      { name: L('Dauer', 'Duration'), value: formatDuration(durationMs), inline: true },
       { name: 'Entfernt am', value: discordTimestamp(expiresAt, 'F'), inline: false },
     ],
     targetId: userId,
@@ -216,8 +219,8 @@ async function removeExpired(id) {
     title: '⏰ Gewinnerrolle entfernt',
     color: require('../../config/config').branding.warning,
     fields: [
-      { name: 'Nutzer', value: `<@${row.user_id}>`, inline: true },
-      { name: 'Rolle', value: `<@&${row.role_id}>`, inline: true },
+      { name: L('Nutzer', 'User'), value: `<@${row.user_id}>`, inline: true },
+      { name: L('Rolle', 'Role'), value: `<@&${row.role_id}>`, inline: true },
     ],
     targetId: row.user_id,
     meta: { roleId: row.role_id, giveawayId: row.giveaway_id },
@@ -231,13 +234,15 @@ async function restoreAll() {
   const rows = tempRoles.listActive();
   logger.info(`[tempRole] ${rows.length} aktive temporäre Rolle(n) werden wiederhergestellt.`);
   for (const row of rows) {
-    if (row.expires_at <= Date.now()) {
-      await removeExpired(row.id).catch((err) =>
-        logger.error(`[tempRole] restore/remove #${row.id}:`, err.message),
-      );
-    } else {
-      schedule(row);
-    }
+    await i18n.runFor(row.guild_id, async () => {
+      if (row.expires_at <= Date.now()) {
+        await removeExpired(row.id).catch((err) =>
+          logger.error(`[tempRole] restore/remove #${row.id}:`, err.message),
+        );
+      } else {
+        schedule(row);
+      }
+    });
   }
 }
 
@@ -247,11 +252,13 @@ async function restoreAll() {
 async function sweep() {
   const rows = tempRoles.listActive();
   for (const row of rows) {
-    if (row.expires_at <= Date.now() && !timers.has(row.id)) {
-      await removeExpired(row.id).catch(() => null);
-    } else if (!timers.has(row.id)) {
-      schedule(row);
-    }
+    await i18n.runFor(row.guild_id, async () => {
+      if (row.expires_at <= Date.now() && !timers.has(row.id)) {
+        await removeExpired(row.id).catch(() => null);
+      } else if (!timers.has(row.id)) {
+        schedule(row);
+      }
+    });
   }
 }
 

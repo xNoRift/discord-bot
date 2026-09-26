@@ -4,6 +4,7 @@ const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const embeds = require('../../utils/embeds');
 const appModel = require('../../database/models/applications');
 const applicationService = require('../../services/applicationService');
+const { L } = require('../../utils/i18n');
 
 /** /apply – sich auf eine offene Bewerbung des Servers bewerben. */
 module.exports = {
@@ -28,7 +29,7 @@ module.exports = {
   async execute(interaction) {
     const typeId = Number.parseInt(interaction.options.getString('bewerbung'), 10);
     if (!Number.isFinite(typeId)) {
-      return interaction.reply({ embeds: [embeds.error(undefined, 'Bitte wähle eine Bewerbung aus der Liste.')], flags: MessageFlags.Ephemeral });
+      return interaction.reply({ embeds: [embeds.error(undefined, L('Bitte wähle eine Bewerbung aus der Liste.', 'Please choose an application from the list.'))], flags: MessageFlags.Ephemeral });
     }
     await applicationService.beginApplication(interaction, typeId);
   },

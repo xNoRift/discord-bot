@@ -4,6 +4,7 @@ const { MessageFlags } = require('discord.js');
 const embeds = require('../../utils/embeds');
 const tempVoiceService = require('../../services/tempVoiceService');
 const tempVoice = require('../../database/models/tempVoice');
+const { L } = require('../../utils/i18n');
 
 /**
  * Auswahlmenüs des TempVoice-Interfaces:
@@ -37,7 +38,7 @@ module.exports = {
         else if (action === 'block') msg = await tempVoiceService.blockUser(channel, targetId, row);
         else if (action === 'unblock') msg = await tempVoiceService.unblockUser(channel, targetId);
         else if (action === 'disconnect') msg = await tempVoiceService.disconnectUser(channel, targetId, row);
-        else msg = 'Unbekannte Aktion.';
+        else msg = L('Unbekannte Aktion.', 'Unknown action.');
       }
       await interaction.update({ embeds: [embeds.success(undefined, msg)], components: [], content: '' });
     } catch (err) {

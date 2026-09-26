@@ -2,6 +2,7 @@
 
 const { EmbedBuilder } = require('discord.js');
 const config = require('../../config/config');
+const { L } = require('./i18n');
 
 /**
  * Einheitliche, moderne Embeds fuer den gesamten Bot.
@@ -23,7 +24,7 @@ function success(title, description) {
 }
 
 function error(title, description) {
-  return brand(title ?? '❌ Fehler', description).setColor(config.branding.danger);
+  return brand(title ?? L('❌ Fehler', '❌ Error'), description).setColor(config.branding.danger);
 }
 
 function warning(title, description) {

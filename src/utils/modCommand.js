@@ -3,6 +3,7 @@
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const moduleSettings = require('../database/models/moduleSettings');
 const moderationService = require('../services/moderationService');
+const { L } = require('./i18n');
 
 /**
  * Baut einen Moderations-Slash-Command. Prüft Modul-Status und Rollenrechte
@@ -21,8 +22,8 @@ function makeModCommand({ name, description, needs, extra, run }) {
     async execute(interaction) {
       const cfg = moduleSettings.get(interaction.guildId, 'moderation');
       const reply = (content) => interaction.reply({ content, flags: MessageFlags.Ephemeral });
-      if (!cfg.enabled) return reply('Das Moderations-Modul ist auf diesem Server nicht aktiviert.');
-      if (!moderationService.canUse(interaction.member, needs, cfg)) return reply('Dafür hast du keine Berechtigung.');
+      if (!cfg.enabled) return reply(L('Das Moderations-Modul ist auf diesem Server nicht aktiviert.', 'The moderation module is not enabled on this server.'));
+      if (!moderationService.canUse(interaction.member, needs, cfg)) return reply(L('Dafür hast du keine Berechtigung.', 'You do not have permission to do that.'));
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       try {
         const user = interaction.options.getUser('nutzer');

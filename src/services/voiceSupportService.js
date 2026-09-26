@@ -3,6 +3,7 @@
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const moduleSettings = require('../database/models/moduleSettings');
 const config = require('../../config/config');
+const { L } = require('../utils/i18n');
 
 /**
  * Voice-Support: Betritt jemand den Warteraum, wird das Support-Team im Benachrichtigungs-Kanal gepingt.
@@ -28,7 +29,7 @@ async function onVoice(oldState, newState) {
 
   const embed = new EmbedBuilder()
     .setColor(config.branding.color)
-    .setTitle('🎧 Jemand wartet auf Support')
+    .setTitle(L('🎧 Jemand wartet auf Support', '🎧 Someone is waiting for support'))
     .setDescription(`<@${newState.id}> wartet im Sprachkanal <#${channelId}>.`)
     .setTimestamp();
   const role = cfg.roleId && newState.guild.roles.cache.has(cfg.roleId) ? cfg.roleId : null;

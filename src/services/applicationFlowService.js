@@ -1,5 +1,7 @@
 'use strict';
 
+const i18n = require('../utils/i18n');
+
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, StringSelectMenuBuilder } = require('discord.js');
 const client = require('../core/client');
 const appModel = require('../database/models/applications');
@@ -8,6 +10,7 @@ const embeds = require('../utils/embeds');
 const optionEmbeds = require('../utils/optionEmbeds');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
+const { L } = require('../utils/i18n');
 
 /**
  * Bewerbung per Direktnachricht: Der Bot stellt die Fragen nacheinander in der DM.
@@ -18,14 +21,14 @@ const CANCEL_WORDS = ['abbrechen', 'cancel', 'stop'];
 
 function cancelRow(sessionId) {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`app:dmcancel:${sessionId}`).setLabel('Abbrechen').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`app:dmcancel:${sessionId}`).setLabel(L('Abbrechen', 'Cancel')).setStyle(ButtonStyle.Secondary),
   );
 }
 
 function questionEmbed(session, type, questions) {
   const q = questions[session.step];
   const hints = [];
-  hints.push(q.required ? 'Pflichtfrage' : 'Optional – schreibe `-` zum Überspringen');
+  hints.push(q.required ? 'Pflichtfrage' : L('Optional – schreibe `-` zum Überspringen', 'Optional – type `-` to skip'));
   if (q.style === 'number') {
     hints.push(`Antworte mit einer Zahl${q.min_length > 0 || q.max_length > 0 ? ` (${q.min_length > 0 ? `min. ${q.min_length}` : ''}${q.min_length > 0 && q.max_length > 0 ? ', ' : ''}${q.max_length > 0 ? `max. ${q.max_length}` : ''})` : ''}`);
   } else if (q.style === 'choice') {
@@ -52,7 +55,7 @@ async function sendQuestion(user, session, type, questions) {
         new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
             .setCustomId(`app:dmsel:${session.id}:${session.step}:${k}`)
-            .setPlaceholder(q.options.length > 25 ? `Wähle eine Option … (${k + 1})` : 'Wähle eine Option …')
+            .setPlaceholder(q.options.length > 25 ? `Wähle eine Option … (${k + 1})` : L('Wähle eine Option …', 'Choose an option …'))
             .addOptions(q.options.slice(start, start + 25).map((o, i) => ({ label: o.slice(0, 100), value: String(start + i) }))),
         ),
       );
@@ -67,7 +70,7 @@ async function sendQuestion(user, session, type, questions) {
 
 /** Startet die DM-Sitzung (nach „Starten“). Wirft bei Problemen eine verständliche Fehlermeldung. */
 async function start(user, guild, type) {
-  if (appModel.getSessionByUser(user.id)) throw new Error('Du hast bereits eine laufende Bewerbung.');
+  if (appModel.getSessionByUser(user.id)) throw new Error(L('Du hast bereits eine laufende Bewerbung.', 'You already have an application in progress.'));
   const cfg = appModel.typeCfg(type);
   const questions = appModel.listQuestions(type.id);
   const session = appModel.createSession({ guildId: guild.id, typeId: type.id, userId: user.id, timeLimitMin: cfg.timeLimitMin });
@@ -93,15 +96,15 @@ async function start(user, guild, type) {
 /** Prüft eine Antwort; liefert { value } oder { error }. */
 function validate(q, raw) {
   const text = String(raw ?? '').trim();
-  if (!text || text === '-') return q.required ? { error: 'Diese Frage ist ein Pflichtfeld – bitte antworte.' } : { value: '' };
+  if (!text || text === '-') return q.required ? { error: L('Diese Frage ist ein Pflichtfeld – bitte antworte.', 'This question is required – please answer.') } : { value: '' };
 
   if (q.style === 'choice') {
     const hit = q.options.find((o) => o.toLowerCase() === text.toLowerCase());
-    return hit ? { value: hit } : { error: 'Bitte wähle eine der Optionen im Menü (oder schreibe sie genau so).' };
+    return hit ? { value: hit } : { error: L('Bitte wähle eine der Optionen im Menü (oder schreibe sie genau so).', 'Please pick one of the options in the menu (or type it exactly).') };
   }
   if (q.style === 'number') {
     const n = Number(text.replace(',', '.'));
-    if (!Number.isFinite(n)) return { error: 'Bitte antworte mit einer Zahl.' };
+    if (!Number.isFinite(n)) return { error: L('Bitte antworte mit einer Zahl.', 'Please answer with a number.') };
     if (q.min_length > 0 && n < q.min_length) return { error: `Die Zahl muss mindestens ${q.min_length} sein.` };
     if (q.max_length > 0 && n > q.max_length) return { error: `Die Zahl darf höchstens ${q.max_length} sein.` };
     return { value: String(n) };
@@ -115,14 +118,14 @@ async function finish(user, session, type, questions, answers) {
   const guild = client.guilds.cache.get(session.guild_id);
   appModel.deleteSession(session.id);
   if (!guild) {
-    return user.send({ embeds: [embeds.error(undefined, 'Der Server ist nicht mehr erreichbar. Deine Bewerbung wurde nicht gespeichert.')] }).catch(() => null);
+    return user.send({ embeds: [embeds.error(undefined, L('Der Server ist nicht mehr erreichbar. Deine Bewerbung wurde nicht gespeichert.', 'The server is no longer reachable. Your application was not saved.'))] }).catch(() => null);
   }
   try {
     await applicationService.submitApplication(guild, { id: user.id, tag: user.tag }, type, answers, { source: 'dm', durationMs: Date.now() - session.started_at });
     const cfg = appModel.typeCfg(type);
     const vars = { applicationName: type.name, applicant: `<@${user.id}>`, server: guild.name };
     const done = embeds
-      .success('✅ Bewerbung eingereicht', applicationService.fillTemplate(cfg.completionMessage || 'Deine Bewerbung wurde eingereicht.', vars))
+      .success(L('✅ Bewerbung eingereicht', '✅ Application submitted'), applicationService.fillTemplate(cfg.completionMessage || L('Deine Bewerbung wurde eingereicht.', 'Your application has been submitted.'), vars))
       .setFooter({ text: guild.name });
     await user.send({ embeds: [applicationService.styleEmbed(done, cfg.embeds.completion, vars)] });
   } catch (err) {
@@ -151,7 +154,7 @@ async function acceptAnswer(user, session, value) {
 
 async function cancel(user, session, silent = false) {
   appModel.deleteSession(session.id);
-  if (!silent) await user.send({ embeds: [embeds.warning('Bewerbung abgebrochen', 'Du kannst jederzeit neu starten.')] }).catch(() => null);
+  if (!silent) await user.send({ embeds: [embeds.warning(L('Bewerbung abgebrochen', 'Application cancelled'), 'Du kannst jederzeit neu starten.')] }).catch(() => null);
 }
 
 /**
@@ -190,10 +193,14 @@ async function handleDm(message) {
 /** Abgelaufene Sitzungen aufräumen (Scheduler, jede Minute). */
 async function sweep() {
   for (const session of appModel.listExpiredSessions()) {
-    appModel.deleteSession(session.id);
-    const user = await client.users.fetch(session.user_id).catch(() => null);
-    await user?.send({ embeds: [embeds.warning('⌛ Zeit abgelaufen', 'Die Zeit für deine Bewerbung ist um. Starte sie bitte neu.')] }).catch(() => null);
+    await i18n.runFor(session.guild_id, () => expireSession(session));
   }
+}
+
+async function expireSession(session) {
+  appModel.deleteSession(session.id);
+  const user = await client.users.fetch(session.user_id).catch(() => null);
+  await user?.send({ embeds: [embeds.warning('⌛ Zeit abgelaufen', 'Die Zeit für deine Bewerbung ist um. Starte sie bitte neu.')] }).catch(() => null);
 }
 
 module.exports = { start, validate, handleDm, acceptAnswer, cancel, sweep };

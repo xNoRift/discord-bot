@@ -4,6 +4,7 @@ const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const music = require('../../services/musicService');
 const embeds = require('../../utils/embeds');
 const { requireVoice, canControl } = require('../../utils/music');
+const { L } = require('../../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -23,7 +24,7 @@ module.exports = {
   },
   async execute(interaction) {
     if (!canControl(interaction.member, interaction.settings)) {
-      return interaction.reply({ embeds: [embeds.error(undefined, 'Dir fehlt die DJ-Rolle.')], flags: MessageFlags.Ephemeral });
+      return interaction.reply({ embeds: [embeds.error(undefined, L('Dir fehlt die DJ-Rolle.', 'You don\'t have the DJ role.'))], flags: MessageFlags.Ephemeral });
     }
     let vc;
     try {
@@ -41,7 +42,7 @@ module.exports = {
         { id: interaction.user.id, tag: interaction.user.tag },
       );
       await interaction.editReply({
-        embeds: [embeds.success('📻 Radio', r.startedNow ? `Läuft jetzt: **${r.first.title}**` : `Zur Warteschlange: **${r.first.title}**`)],
+        embeds: [embeds.success('📻 Radio', r.startedNow ? L('Läuft jetzt: **{title}**', 'Now playing: **{title}**', { title: r.first.title }) : L('Zur Warteschlange: **{title}**', 'Added to queue: **{title}**', { title: r.first.title }))],
       });
     } catch (e) {
       await interaction.editReply({ embeds: [embeds.error(undefined, e.message)] });

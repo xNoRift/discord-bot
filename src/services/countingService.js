@@ -4,6 +4,7 @@ const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const counting = require('../database/models/countingGame');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
+const { L } = require('../utils/i18n');
 
 /**
  * Zähl-Spiel: In einem festgelegten Kanal zählen die Mitglieder abwechselnd
@@ -18,7 +19,7 @@ function buildPanelEmbed(state) {
   const next = (state.current || 0) + 1;
   return new EmbedBuilder()
     .setColor(config.branding.color)
-    .setTitle('🔢 Zähl-Spiel')
+    .setTitle(L('🔢 Zähl-Spiel', '🔢 Counting game'))
     .setDescription(
       [
         'Zählt hier gemeinsam hoch! Schreibt einfach die **nächste Zahl** in den Chat.',
@@ -30,8 +31,8 @@ function buildPanelEmbed(state) {
         `• Immer nur **+1** – richtige Zahlen bekommen ${state.react_emoji || '✅'}`,
         '• **Nicht** zweimal hintereinander zählen (auch nicht dieselbe Zahl doppelt)',
         state.reset_on_fail
-          ? '• Ein Fehler setzt die Kette zurück auf **1**'
-          : '• Bei einem Fehler geht es einfach weiter',
+          ? L('• Ein Fehler setzt die Kette zurück auf **1**', '• A mistake resets the chain back to **1**')
+          : L('• Bei einem Fehler geht es einfach weiter', '• After a mistake it simply continues'),
       ].join('\n'),
     )
     .setFooter({ text: `Insgesamt gezählt: ${state.total_counts || 0}` });

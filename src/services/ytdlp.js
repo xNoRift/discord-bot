@@ -4,6 +4,7 @@ const { spawn, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const logger = require('../utils/logger');
+const { L } = require('../utils/i18n');
 
 /**
  * Dünner Wrapper um das yt-dlp-Binary (für YouTube).
@@ -49,7 +50,7 @@ function available() {
 function run(args, { timeout = 20000 } = {}) {
   return new Promise((resolve, reject) => {
     const bin = resolveBin();
-    if (!bin) return reject(new Error('YouTube ist nicht verfügbar – auf dem Server fehlt yt-dlp.'));
+    if (!bin) return reject(new Error(L('YouTube ist nicht verfügbar – auf dem Server fehlt yt-dlp.', 'YouTube is not available – yt-dlp is missing on the server.')));
     const p = spawn(bin, args, { timeout });
     let out = '';
     let err = '';
@@ -126,7 +127,7 @@ async function playlist(url, limit = 100) {
 /** Bestes Audio als Node-Readable-Stream (yt-dlp -> stdout). */
 function stream(url) {
   const bin = resolveBin();
-  if (!bin) throw new Error('YouTube ist nicht verfügbar – auf dem Server fehlt yt-dlp.');
+  if (!bin) throw new Error(L('YouTube ist nicht verfügbar – auf dem Server fehlt yt-dlp.', 'YouTube is not available – yt-dlp is missing on the server.'));
   const p = spawn(
     bin,
     [
