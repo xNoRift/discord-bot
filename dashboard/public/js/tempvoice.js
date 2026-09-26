@@ -105,3 +105,6 @@ Dash.initModuleStatus('tempvoice_enabled', {
 load()
   .then(() => Dash.trackForm(form, saveTv, { reset: load }))
   .catch((e) => toast(e.message, 'error'));
+
+// Emojis der Steuer-Buttons im Interface und in jedem privaten Kanal
+document.getElementById('tvForm').after(Dash.buttonEmojiCard('tempvoice'));

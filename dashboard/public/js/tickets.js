@@ -604,7 +604,7 @@ function renderCategoriesTab(body, editCatId, sub = 'allgemein') {
     const tiles =
       cats.map((k) => `
         <div class="tile" data-cat="${k.id}">
-          <span class="tile__name">${k.emoji ? esc(k.emoji) + ' ' : ''}${esc(k.label)}</span>
+          <span class="tile__name">${k.emoji ? Dash.emojiHtml(k.emoji) + ' ' : ''}${esc(k.label)}</span>
           <span class="tile__ico">${icon('edit', 'icon--sm')}</span>
         </div>`).join('') +
       `<div class="tile tile--add" data-cat-add><span class="tile__name">Kategorie erstellen</span><span class="tile__ico">${icon('plus', 'icon--sm')}</span></div>`;
@@ -633,7 +633,7 @@ function renderCategoriesTab(body, editCatId, sub = 'allgemein') {
 
   body.innerHTML = `
     <div class="editor-head editor-head--inner">
-      <h1>Kategorie <span class="pill-badge">${c.emoji ? esc(c.emoji) + ' ' : ''}${esc(c.label)}</span></h1>
+      <h1>Kategorie <span class="pill-badge">${c.emoji ? Dash.emojiHtml(c.emoji) + ' ' : ''}${esc(c.label)}</span></h1>
       <div class="editor-head__actions">
         <button class="btn btn--outline btn--icon" data-cat-back title="Zurück">${icon('chevron', 'icon--sm')}</button>
       </div>
@@ -692,7 +692,7 @@ function renderCategorySub(cb, body, c, sub) {
           <div class="field"><label>Prefix <span class="req">*</span></label><div class="field-hint">Prefix, der vor dem Kanal des Tickets steht</div>${counted('prefix', c.prefix, 10, { attr: 'data-cf' })}</div>
           <div class="field">
             <label>Emote</label><div class="field-hint">Emote, der bei der Kategorie angezeigt wird</div>
-            <button type="button" class="emote-btn" id="catEmoteBtn">${c.emoji ? esc(c.emoji) : '<span class="emote-btn__empty">Wählen…</span>'}</button>
+            <button type="button" class="emote-btn" id="catEmoteBtn">${c.emoji ? Dash.emojiHtml(c.emoji) : '<span class="emote-btn__empty">Wählen…</span>'}</button>
             <input type="hidden" data-cf="emoji" id="catEmoteVal" value="${esc(c.emoji || '')}">
           </div>
         </div>
@@ -732,7 +732,7 @@ function renderCategorySub(cb, body, c, sub) {
         const hidden = cb.querySelector('#catEmoteVal');
         hidden.value = val;
         hidden.dispatchEvent(new Event('input', { bubbles: true }));
-        emoteBtn.innerHTML = val ? val : '<span class="emote-btn__empty">Wählen…</span>';
+        emoteBtn.innerHTML = val ? Dash.emojiHtml(val) : '<span class="emote-btn__empty">Wählen…</span>';
       });
     };
     Dash.trackForm(form, async () => {
@@ -1090,3 +1090,8 @@ async function initDefaults() {
     if (m) openEditor(Number(m[1]));
   } catch (e) { toast(e.message, 'error'); }
 })();
+
+// Emojis der Ticket-Buttons (Panel, Verwaltungs-Leiste, Schließ-Anfrage)
+document.getElementById('ticketDefaults').closest('.card').after(Dash.buttonEmojiCard('tickets', {
+  hint: 'Emojis der Ticket-Buttons. Kategorien mit eigenem Emoji behalten ihr Emoji. Leer = Standard.',
+}));

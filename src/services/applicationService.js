@@ -16,6 +16,7 @@ const ticketsModel = require('../database/models/tickets');
 const settingsModel = require('../database/models/settings');
 const logService = require('./logService');
 const embeds = require('../utils/embeds');
+const buttonEmojis = require('../utils/buttonEmojis');
 const config = require('../../config/config');
 const { botCanManageRole } = require('../utils/permissions');
 const logger = require('../utils/logger');
@@ -218,7 +219,7 @@ async function beginApplication(interaction, typeId) {
     styleEmbed(embeds.info(`📋 Bewerbung: ${type.name}`, fillTemplate(text, vars)), cfg.embeds.confirmation, vars),
     [
       new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`app:begin:${type.id}`).setLabel('Starten').setEmoji('▶️').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(`app:begin:${type.id}`).setLabel('Starten').setEmoji(buttonEmojis.forGuild(interaction.guild.id, 'applications')('start')).setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('app:cancel').setLabel('Abbrechen').setStyle(ButtonStyle.Secondary),
       ),
     ],
@@ -275,10 +276,11 @@ function buildReviewMessage(application, answers, type) {
     );
   }
 
+  const emoji = buttonEmojis.forGuild(application.guild_id, 'applications');
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`app:accept:${application.id}`).setLabel('Annehmen').setEmoji('✅').setStyle(ButtonStyle.Success).setDisabled(application.status !== 'pending'),
-    new ButtonBuilder().setCustomId(`app:reject:${application.id}`).setLabel('Ablehnen').setEmoji('❌').setStyle(ButtonStyle.Danger).setDisabled(application.status !== 'pending'),
-    new ButtonBuilder().setCustomId(`app:chat:${application.id}`).setLabel('Chat').setEmoji('💬').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`app:accept:${application.id}`).setLabel('Annehmen').setEmoji(emoji('accept')).setStyle(ButtonStyle.Success).setDisabled(application.status !== 'pending'),
+    new ButtonBuilder().setCustomId(`app:reject:${application.id}`).setLabel('Ablehnen').setEmoji(emoji('reject')).setStyle(ButtonStyle.Danger).setDisabled(application.status !== 'pending'),
+    new ButtonBuilder().setCustomId(`app:chat:${application.id}`).setLabel('Chat').setEmoji(emoji('chat')).setStyle(ButtonStyle.Primary),
   );
   return { embeds: [embed], components: [row] };
 }

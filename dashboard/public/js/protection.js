@@ -29,3 +29,6 @@ Dash.moduleForm('verification', document.getElementById('verifyForm'), {
     } catch (err) { Dash.toast(err.message, 'error'); st.textContent = err.message; }
   });
 }).catch((e) => Dash.toast(e.message, 'error'));
+
+// Emoji des Verifizieren-Buttons
+document.getElementById('verifyForm').after(Dash.buttonEmojiCard('verification'));

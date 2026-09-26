@@ -25,7 +25,7 @@ function renderPreview() {
       : '') +
     (img ? `<img class="embed-img-preview" alt="" src="${escapeHtml(img)}" style="max-height:120px;" />` : '') +
     (f('footer') ? `<div class="embed-preview__foot">${escapeHtml(f('footer'))}</div>` : '');
-  previewBtns.innerHTML = SECTIONS.map((s) => `<span class="rules-btn">${s.emoji ? escapeHtml(s.emoji) + ' ' : ''}${escapeHtml(s.label)}</span>`).join('');
+  previewBtns.innerHTML = SECTIONS.map((s) => `<span class="rules-btn">${s.emoji ? Dash.emojiHtml(s.emoji) + ' ' : ''}${escapeHtml(s.label)}</span>`).join('');
 }
 
 /* ---------------- Abschnitte ---------------- */
@@ -34,7 +34,7 @@ function renderList() {
   listEl.innerHTML = SECTIONS.length
     ? SECTIONS.map((s, i) => `<div class="list-row">
         <div class="list-row__head">
-          <span class="list-row__title">${escapeHtml(s.emoji || '📌')} ${escapeHtml(s.label)}</span>
+          <span class="list-row__title">${Dash.emojiHtml(s.emoji || '📌')} ${escapeHtml(s.label)}</span>
           <span class="spacer"></span>
           <button type="button" class="btn btn--ghost btn--sm" data-move="${s.id}:up" title="Nach oben"${i === 0 ? ' disabled' : ''}>↑</button>
           <button type="button" class="btn btn--ghost btn--sm" data-move="${s.id}:down" title="Nach unten"${i === SECTIONS.length - 1 ? ' disabled' : ''}>↓</button>

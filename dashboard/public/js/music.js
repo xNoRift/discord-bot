@@ -301,3 +301,6 @@ loadStations().catch((e) => toast(e.message, 'error'));
 loadPlaylists().catch((e) => toast(e.message, 'error'));
 pollTimer = setInterval(refresh, 5000);
 window.addEventListener('beforeunload', () => clearInterval(pollTimer));
+
+// Emojis der Buttons am Musik-Player in Discord
+document.getElementById('stForm').closest('.card').after(Dash.buttonEmojiCard('music'));

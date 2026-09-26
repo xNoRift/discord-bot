@@ -1,6 +1,7 @@
 'use strict';
 
 const db = require('../db');
+const buttonEmojis = require('../../utils/buttonEmojis');
 
 /**
  * Einstellungen der neuen Module (Guild Protection, Belohnungen, Clubs, …).
@@ -117,6 +118,8 @@ const SCHEMAS = {
     categoryId: ['', 'text:32'],
     maxClubsPerUser: [1, 'int:1:10'],
   },
+  // Eigene Emojis für die fest eingebauten Bot-Buttons (siehe utils/buttonEmojis.js)
+  buttonEmojis: buttonEmojis.schema(),
 };
 
 function defaults(module) {

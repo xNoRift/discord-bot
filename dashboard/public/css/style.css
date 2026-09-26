@@ -628,6 +628,20 @@ input, select, textarea { font-size: .95rem; }
   font-size: 1.2rem; padding: 5px 4px; border-radius: 7px; line-height: 1;
 }
 .emoji-pop__b:hover { background: var(--accent-soft); }
+.emoji-img { width: 1.25em; height: 1.25em; object-fit: contain; vertical-align: -0.25em; }
+
+/* Karte „Button-Emojis“ */
+.btn-emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 10px; }
+.btn-emoji {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) 150px; align-items: center; gap: 10px;
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2);
+}
+.btn-emoji__preview { font-size: 1.3rem; text-align: center; line-height: 1; }
+.btn-emoji__preview.is-default { opacity: .45; }
+.btn-emoji__label { font-size: .88rem; line-height: 1.3; overflow-wrap: anywhere; }
+.btn-emoji .emoji-input { min-width: 0; }
+.btn-emoji input { min-width: 0; width: 100%; }
+@media (max-width: 520px) { .btn-emoji { grid-template-columns: 30px minmax(0, 1fr); } .btn-emoji .emoji-input, .btn-emoji > input { grid-column: 1 / -1; } }
 .emoji-pop__none { color: var(--text-2); font-size: .85rem; padding: 12px 2px; }
 .emoji-pop__foot { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
 .emoji-pop__clear { width: 100%; background: var(--surface-3); border: 1px solid var(--line-2); color: var(--text-2); border-radius: 8px; padding: 6px; cursor: pointer; font: inherit; font-size: .82rem; }

@@ -94,6 +94,17 @@ router.get(
   }),
 );
 
+/**
+ * Emoji für einen Button prüfen: leer -> null, gültig -> String (auch Server-Emoji <:name:id>),
+ * ungültig -> undefined (Aufrufer antwortet mit 400).
+ */
+function buttonEmojiInput(v) {
+  const s = String(v ?? '').trim();
+  if (!s) return null;
+  return s.length <= 80 && validEmoji(s) ? s : undefined;
+}
+const BAD_EMOJI = 'Bitte ein einzelnes Emoji oder ein Emoji dieses Servers wählen.';
+
 function discordErr(err) {
   if (err?.code === 50013) return 'Dem Bot fehlt die nötige Berechtigung auf diesem Server.';
   if (err?.code === 50035) return 'Ungültige Eingabe.';
@@ -1272,11 +1283,12 @@ router.post(
       return res.status(400).json({ error: 'Maximal 25 Kategorien pro Panel.' });
     }
     if (!req.body.label) return res.status(400).json({ error: 'Bezeichnung erforderlich.' });
+    if (buttonEmojiInput(req.body.emoji) === undefined) return res.status(400).json({ error: BAD_EMOJI });
     const c = ticketPanels.createCategory({
       panelId: num(req.params.panelId),
       guildId: req.params.guildId,
       label: String(req.body.label).slice(0, 80),
-      emoji: req.body.emoji ? String(req.body.emoji).slice(0, 16) : null,
+      emoji: buttonEmojiInput(req.body.emoji),
       description: req.body.description ? String(req.body.description).slice(0, 100) : null,
     });
     res.json(c);
@@ -1307,6 +1319,10 @@ router.patch(
     }
     if (patch.label === null || (typeof patch.label === 'string' && !patch.label.trim())) {
       delete patch.label; // Name darf nicht leer sein
+    }
+    if ('emoji' in patch) {
+      patch.emoji = buttonEmojiInput(patch.emoji);
+      if (patch.emoji === undefined) return res.status(400).json({ error: BAD_EMOJI });
     }
     if (req.body.enabled !== undefined) patch.enabled = req.body.enabled ? 1 : 0;
     if (req.body.maxOpen !== undefined) patch.max_open = Math.max(0, num(req.body.maxOpen, 0));
@@ -1578,9 +1594,10 @@ router.post(
       return res.status(400).json({ error: 'Maximal 5 Ticket-Buttons.' });
     }
     const b = req.body;
+    if (buttonEmojiInput(b.emoji) === undefined) return res.status(400).json({ error: BAD_EMOJI });
     const created = giveawayTicketButtons.create(req.params.guildId, {
       label: b.label ? String(b.label).slice(0, 80) : 'Ticket erstellen',
-      emoji: b.emoji ? String(b.emoji).slice(0, 16) : null,
+      emoji: buttonEmojiInput(b.emoji),
       discordCategoryId: b.discordCategoryId || null,
       supportRoleId: b.supportRoleId || null,
       nameFormat: b.nameFormat ? String(b.nameFormat).slice(0, 90) : null,
@@ -1603,7 +1620,10 @@ router.patch(
       const label = String(b.label).trim().slice(0, 80);
       if (label) patch.label = label;
     }
-    if (b.emoji !== undefined) patch.emoji = b.emoji ? String(b.emoji).slice(0, 16) : null;
+    if (b.emoji !== undefined) {
+      patch.emoji = buttonEmojiInput(b.emoji);
+      if (patch.emoji === undefined) return res.status(400).json({ error: BAD_EMOJI });
+    }
     if (b.discordCategoryId !== undefined) patch.discord_category_id = b.discordCategoryId || null;
     if (b.supportRoleId !== undefined) patch.support_role_id = b.supportRoleId || null;
     if (b.nameFormat !== undefined) patch.name_format = b.nameFormat ? String(b.nameFormat).slice(0, 90) : null;
@@ -1691,6 +1711,46 @@ router.get('/guilds/:guildId/modules/:module', (req, res) => {
 router.patch('/guilds/:guildId/modules/:module', actionLimiter, (req, res) => {
   if (!moduleSettings.SCHEMAS[req.params.module]) return res.status(404).json({ error: 'Unbekanntes Modul.' });
   res.json(moduleSettings.update(req.params.guildId, req.params.module, req.body || {}));
+});
+
+/* ---------------- Button-Emojis (fest eingebaute Bot-Buttons) ---------------- */
+
+const buttonEmojis = require('../../src/utils/buttonEmojis');
+
+/** Buttons einer Gruppe (Beschriftung + Standard-Emoji) und die eigenen Emojis des Servers. */
+router.get('/guilds/:guildId/button-emojis/:group', (req, res) => {
+  const list = buttonEmojis.BUTTONS[req.params.group];
+  if (!list) return res.status(404).json({ error: 'Unbekannte Button-Gruppe.' });
+  const cfg = moduleSettings.get(req.params.guildId, 'buttonEmojis');
+  res.json(list.map(([key, label, def]) => ({ key, label, default: def, value: cfg[`${req.params.group}_${key}`] || '' })));
+});
+
+router.patch('/guilds/:guildId/button-emojis/:group', actionLimiter, (req, res) => {
+  const { group } = req.params;
+  const list = buttonEmojis.BUTTONS[group];
+  if (!list) return res.status(404).json({ error: 'Unbekannte Button-Gruppe.' });
+  const patch = {};
+  for (const [key, label] of list) {
+    if (!(key in (req.body || {}))) continue;
+    const v = String(req.body[key] ?? '').trim();
+    // Server-Emojis müssen von diesem Server stammen, sonst kann Discord sie nicht anzeigen
+    const custom = v.match(/^<a?:\w+:(\d+)>$/);
+    if (v && (!validEmoji(v) || (custom && !req.guild.emojis.cache.has(custom[1])))) {
+      return res.status(400).json({ error: `„${label}“: Bitte ein einzelnes Emoji oder ein Emoji dieses Servers wählen.` });
+    }
+    patch[`${group}_${key}`] = v;
+  }
+  moduleSettings.update(req.params.guildId, 'buttonEmojis', patch);
+  res.json({ ok: true });
+});
+
+/** Server-Emojis für den Emoji-Picker im Dashboard. */
+router.get('/guilds/:guildId/emojis', (req, res) => {
+  res.json(
+    req.guild.emojis.cache
+      .filter((e) => e.available !== false)
+      .map((e) => ({ id: e.id, name: e.name, animated: Boolean(e.animated), value: `<${e.animated ? 'a' : ''}:${e.name}:${e.id}>` })),
+  );
 });
 
 /* ---------------- Beteiligungs-Belohnungen (Level) ---------------- */
@@ -2180,10 +2240,11 @@ router.post(
   '/guilds/:guildId/application-types',
   asyncHandler(async (req, res) => {
     if (!String(req.body.name || '').trim()) return res.status(400).json({ error: 'Name erforderlich.' });
+    if (buttonEmojiInput(req.body.emoji) === undefined) return res.status(400).json({ error: BAD_EMOJI });
     const type = appModel.createType({
       guildId: req.params.guildId,
       name: String(req.body.name).trim().slice(0, 80),
-      emoji: req.body.emoji ? String(req.body.emoji).slice(0, 16) : null,
+      emoji: buttonEmojiInput(req.body.emoji),
       description: req.body.description ? String(req.body.description).slice(0, 200) : null,
     });
     res.json(serializeAppType(type));
@@ -2201,7 +2262,10 @@ router.patch(
       if (!name) return res.status(400).json({ error: 'Der Name darf nicht leer sein.' });
       patch.name = name;
     }
-    if (req.body.emoji !== undefined) patch.emoji = String(req.body.emoji).slice(0, 16);
+    if (req.body.emoji !== undefined) {
+      patch.emoji = buttonEmojiInput(req.body.emoji);
+      if (patch.emoji === undefined) return res.status(400).json({ error: BAD_EMOJI });
+    }
     if (req.body.description !== undefined) patch.description = String(req.body.description).slice(0, 200);
     if (req.body.position !== undefined) patch.position = num(req.body.position, 0);
     if (req.body.enabled !== undefined) patch.enabled = req.body.enabled ? 1 : 0;

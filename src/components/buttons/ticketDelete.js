@@ -52,7 +52,7 @@ module.exports = {
       new ButtonBuilder()
         .setCustomId('ticket:delete:confirm')
         .setLabel(tg('tickets.delete_confirm.confirm_label'))
-        .setEmoji('🗑️')
+        .setEmoji(require('../../utils/buttonEmojis').forGuild(interaction.guildId, 'tickets')('delete'))
         .setStyle(ButtonStyle.Danger),
       new ButtonBuilder()
         .setCustomId('ticket:delete:cancel')

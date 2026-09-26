@@ -80,7 +80,7 @@ function iconBtn(cls, action, id, ico, title) {
 function typeRow(t) {
   return `<div class="list-row" data-t="${t.id}">
     <div class="list-row__head">
-      <span class="list-row__title">${escapeHtml(t.emoji || '📋')} ${escapeHtml(t.name)}</span>
+      <span class="list-row__title">${Dash.emojiHtml(t.emoji || '📋')} ${escapeHtml(t.name)}</span>
       <span class="badge badge--${t.enabled ? 'green' : 'red'}">${t.enabled ? 'Offen' : 'Geschlossen'}</span>
       <span class="muted">${t.questions.length} ${t.questions.length === 1 ? 'Frage' : 'Fragen'}</span>
       <div class="spacer"></div>
@@ -197,7 +197,7 @@ function editorHtml(t) {
   const cd = c.cooldownMin;
   return `
     <div class="editor-head">
-      <h1>Bewerbung <span class="pill-badge">${escapeHtml(t.emoji || '📋')} ${escapeHtml(t.name)}</span></h1>
+      <h1>Bewerbung <span class="pill-badge">${Dash.emojiHtml(t.emoji || '📋')} ${escapeHtml(t.name)}</span></h1>
       <div class="editor-head__actions">
         <button class="btn btn--outline btn--icon" id="eBack" title="Zurück">${icon('chevron', 'icon--sm')}</button>
       </div>
@@ -217,7 +217,7 @@ function editorHtml(t) {
           ${settingRow('Bewerbung geöffnet', 'Geschlossene Bewerbungen können keine Einreichungen mehr erhalten.', toggle('enabled', t.enabled))}
           <div class="col-2">
             <div class="field"><label>Name</label><input name="name" required maxlength="80" value="${escapeHtml(t.name)}" /></div>
-            <div class="field"><label>Emoji</label><input name="emoji" maxlength="8" data-emoji="one" value="${escapeHtml(t.emoji || '')}" /></div>
+            <div class="field"><label>Emoji</label><input name="emoji" maxlength="80" data-emoji="one" value="${escapeHtml(t.emoji || '')}" /></div>
           </div>
           <div class="field"><label>Beschreibung</label><input name="description" maxlength="100" value="${escapeHtml(t.description || '')}" /><small>Wird im Auswahlmenü des Panels angezeigt.</small></div>
           <div class="field"><label>Zeit zum Ausfüllen (Minuten)</label><input name="timeLimitMin" type="number" min="1" value="${c.timeLimitMin}" /><small>Der Bot stellt die Fragen nacheinander per Direktnachricht – beliebig viele.</small></div>
@@ -554,7 +554,7 @@ async function openPanelEditor(panelId) {
           <div class="field"><label>Name</label><input name="name" required maxlength="80" value="${escapeHtml(p.name)}" /></div>
           <div class="field"><label>Kanal</label><select name="channelId" data-type="text"></select><small>In diesen Kanal wird das Panel gesendet.</small></div>
           <div class="field"><label>Verknüpfte Bewerbungen</label>
-            ${TYPES.length ? TYPES.map((t) => `<label class="setting-row" style="cursor:pointer;"><div class="setting-row__text"><b>${escapeHtml(t.emoji || '📋')} ${escapeHtml(t.name)}</b><span>${t.enabled ? 'Offen' : 'Geschlossen – wird im Panel nicht angezeigt'}</span></div><span class="toggle"><input type="checkbox" name="t_${t.id}"${p.typeIds.includes(t.id) ? ' checked' : ''} /><span class="toggle__track"></span></span></label>`).join('') : '<div class="muted">Noch keine Bewerbungen.</div>'}
+            ${TYPES.length ? TYPES.map((t) => `<label class="setting-row" style="cursor:pointer;"><div class="setting-row__text"><b>${Dash.emojiHtml(t.emoji || '📋')} ${escapeHtml(t.name)}</b><span>${t.enabled ? 'Offen' : 'Geschlossen – wird im Panel nicht angezeigt'}</span></div><span class="toggle"><input type="checkbox" name="t_${t.id}"${p.typeIds.includes(t.id) ? ' checked' : ''} /><span class="toggle__track"></span></span></label>`).join('') : '<div class="muted">Noch keine Bewerbungen.</div>'}
           </div>
           <div class="field"><label>Panel-Art</label><select name="panelType"><option value="buttons">Buttons (ein Button pro Bewerbung)</option><option value="select">Auswahlmenü</option></select></div>
         </div>
@@ -720,3 +720,8 @@ $('subList').addEventListener('click', async (e) => {
     await loadTypes();
   } catch (e) { toast(errMsg(e), 'error'); }
 })();
+
+// Emojis der Bewerbungs-Buttons (Start-Nachricht und Team-Buttons). Die Buttons im Panel nutzen das Emoji der jeweiligen Bewerbung.
+$('appSettings').closest('.card').after(Dash.buttonEmojiCard('applications', {
+  hint: 'Emojis der Buttons beim Starten und der Team-Buttons unter jeder Einreichung. Die Panel-Buttons nutzen das Emoji der jeweiligen Bewerbung. Leer = Standard.',
+}));

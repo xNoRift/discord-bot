@@ -14,6 +14,7 @@ const settingsModel = require('../database/models/settings');
 const tempVoice = require('../database/models/tempVoice');
 const { isManager } = require('../utils/permissions');
 const config = require('../../config/config');
+const buttonEmojis = require('../utils/buttonEmojis');
 const logger = require('../utils/logger');
 
 /**
@@ -61,34 +62,35 @@ function renderName(format, member, guild) {
  *  Panel (Embed + Buttons)
  * ---------------------------------------------------------------- */
 
-function panelComponents(row = {}) {
+function panelComponents(row = {}, guildId = row.guild_id) {
   const locked = Boolean(row.locked);
   const hidden = Boolean(row.hidden);
+  const e = buttonEmojis.forGuild(guildId, 'tempvoice');
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('tempvoice:btn:rename').setLabel('Umbenennen').setEmoji('✏️').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('tempvoice:btn:limit').setLabel('Benutzerlimit').setEmoji('👥').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('tempvoice:btn:rename').setLabel('Umbenennen').setEmoji(e('rename')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('tempvoice:btn:limit').setLabel('Benutzerlimit').setEmoji(e('limit')).setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('tempvoice:btn:lock')
         .setLabel(locked ? 'Entsperren' : 'Sperren')
-        .setEmoji(locked ? '🔓' : '🔒')
+        .setEmoji(locked ? e('unlock') : e('lock'))
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('tempvoice:btn:hide')
         .setLabel(hidden ? 'Zeigen' : 'Verstecken')
-        .setEmoji(hidden ? '👁️' : '🙈')
+        .setEmoji(hidden ? e('show') : e('hide'))
         .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('tempvoice:btn:region').setLabel('Region').setEmoji('🌍').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('tempvoice:btn:region').setLabel('Region').setEmoji(e('region')).setStyle(ButtonStyle.Secondary),
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('tempvoice:btn:permit').setLabel('Hinzufügen').setEmoji('➕').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('tempvoice:btn:reject').setLabel('Entfernen').setEmoji('➖').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('tempvoice:btn:block').setLabel('Blockieren').setEmoji('🚫').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('tempvoice:btn:unblock').setLabel('Entblockieren').setEmoji('♻️').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('tempvoice:btn:disconnect').setLabel('Trennen').setEmoji('🔌').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('tempvoice:btn:permit').setLabel('Hinzufügen').setEmoji(e('permit')).setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('tempvoice:btn:reject').setLabel('Entfernen').setEmoji(e('reject')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('tempvoice:btn:block').setLabel('Blockieren').setEmoji(e('block')).setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('tempvoice:btn:unblock').setLabel('Entblockieren').setEmoji(e('unblock')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('tempvoice:btn:disconnect').setLabel('Trennen').setEmoji(e('disconnect')).setStyle(ButtonStyle.Secondary),
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('tempvoice:btn:delete').setLabel('Löschen').setEmoji('🗑️').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('tempvoice:btn:delete').setLabel('Löschen').setEmoji(e('delete')).setStyle(ButtonStyle.Danger),
     ),
   ];
 }
@@ -145,7 +147,7 @@ async function postOrUpdateInterface(guild) {
     (await guild.channels.fetch(s.tempvoice_interface_channel_id).catch(() => null));
   if (!channel || !channel.isTextBased()) return null;
 
-  const payload = { embeds: [interfaceEmbed(guild)], components: panelComponents({}) };
+  const payload = { embeds: [interfaceEmbed(guild)], components: panelComponents({}, guild.id) };
 
   if (s.tempvoice_interface_message_id) {
     const existing = await channel.messages.fetch(s.tempvoice_interface_message_id).catch(() => null);

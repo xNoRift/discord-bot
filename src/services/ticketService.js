@@ -27,6 +27,7 @@ const logService = require('./logService');
 const embeds = require('../utils/embeds');
 const optionEmbeds = require('../utils/optionEmbeds');
 const priceUtil = require('../utils/price');
+const buttonEmojis = require('../utils/buttonEmojis');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
 const i18n = require('../utils/i18n');
@@ -103,6 +104,7 @@ function loadLines(categories) {
  */
 function buildPanelMessage(panel, categories) {
   const tg = i18n.forGuild(panel.guild_id);
+  const emoji = buttonEmojis.forGuild(panel.guild_id, 'tickets');
   const embed = new EmbedBuilder()
     .setColor(parseColor(panel.color) ?? parseColor(settingsModel.get(panel.guild_id).embed_color) ?? config.branding.color)
     .setTitle(panel.title || tg('tickets.panel.default_title'))
@@ -126,7 +128,7 @@ function buildPanelMessage(panel, categories) {
         new ButtonBuilder()
           .setCustomId('ticket:create')
           .setLabel(panel.button_label || tg('tickets.panel.default_button'))
-          .setEmoji('🎫')
+          .setEmoji(emoji('panel'))
           .setStyle(ButtonStyle.Primary),
       ),
     );
@@ -169,7 +171,7 @@ function buildPanelMessage(panel, categories) {
         new ButtonBuilder()
           .setCustomId(`ticket:open:${c.id}`)
           .setLabel((categories.length === 1 ? panel.button_label || c.label : c.label).slice(0, 80))
-          .setEmoji(c.emoji || '🎫')
+          .setEmoji(c.emoji || emoji('panel'))
           .setStyle(ButtonStyle.Primary),
       );
     });
@@ -241,36 +243,37 @@ function scheduleLoadRefresh(guild, panelId) {
 
 function buildManagementRow(ticket) {
   const tg = i18n.forGuild(ticket.guild_id);
+  const emoji = buttonEmojis.forGuild(ticket.guild_id, 'tickets');
   const closed = ticket.status === 'closed';
   const claimed = Boolean(ticket.claimed_by);
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(claimed ? 'ticket:unclaim' : 'ticket:claim')
       .setLabel(claimed ? tg('tickets.buttons.unclaim') : tg('tickets.buttons.claim'))
-      .setEmoji('📌')
+      .setEmoji(emoji('claim'))
       .setStyle(claimed ? ButtonStyle.Primary : ButtonStyle.Secondary)
       .setDisabled(closed),
     new ButtonBuilder()
       .setCustomId('ticket:close')
       .setLabel(tg('tickets.buttons.close'))
-      .setEmoji('🔒')
+      .setEmoji(emoji('close'))
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(closed),
     new ButtonBuilder()
       .setCustomId('ticket:reopen')
       .setLabel(tg('tickets.buttons.reopen'))
-      .setEmoji('🔓')
+      .setEmoji(emoji('reopen'))
       .setStyle(ButtonStyle.Success)
       .setDisabled(!closed),
     new ButtonBuilder()
       .setCustomId('ticket:delete')
       .setLabel(tg('tickets.buttons.delete'))
-      .setEmoji('🗑️')
+      .setEmoji(emoji('delete'))
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId('ticket:closereq')
       .setLabel('Anfrage')
-      .setEmoji('📨')
+      .setEmoji(emoji('request'))
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(closed),
   );
@@ -1232,9 +1235,10 @@ async function requestClose(channel, member) {
   if (ticket.status !== 'open') throw new Error('Das Ticket ist nicht offen.');
 
   ticketsModel.setCloseRequest(ticket.id, member.id);
+  const emoji = buttonEmojis.forGuild(ticket.guild_id, 'tickets');
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`ticket:closereq:accept:${ticket.id}`).setLabel('Ja, schließen').setEmoji('✅').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`ticket:closereq:decline:${ticket.id}`).setLabel('Nein, offen lassen').setEmoji('❌').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`ticket:closereq:accept:${ticket.id}`).setLabel('Ja, schließen').setEmoji(emoji('closeAccept')).setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`ticket:closereq:decline:${ticket.id}`).setLabel('Nein, offen lassen').setEmoji(emoji('closeDecline')).setStyle(ButtonStyle.Secondary),
   );
   await channel.send({
     content: `<@${ticket.opener_id}>`,

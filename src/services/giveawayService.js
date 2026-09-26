@@ -14,6 +14,7 @@ const temporaryRoleService = require('./temporaryRoleService');
 const logService = require('./logService');
 const embeds = require('../utils/embeds');
 const config = require('../../config/config');
+const buttonEmojis = require('../utils/buttonEmojis');
 const logger = require('../utils/logger');
 const { formatDuration, discordTimestamp } = require('../utils/time');
 
@@ -81,12 +82,12 @@ function buildActiveMessage(giveaway, entryCount) {
     new ButtonBuilder()
       .setCustomId(`giveaway:enter:${giveaway.id}`)
       .setLabel('Teilnehmen')
-      .setEmoji('🎉')
+      .setEmoji(buttonEmojis.forGuild(giveaway.guild_id, 'giveaways')('join'))
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId(`giveaway:list:${giveaway.id}`)
       .setLabel('Teilnehmer')
-      .setEmoji('👥')
+      .setEmoji(buttonEmojis.forGuild(giveaway.guild_id, 'giveaways')('entrants'))
       .setStyle(ButtonStyle.Secondary),
   );
 
@@ -118,7 +119,7 @@ function buildEndedMessage(giveaway, winnerIds, entryCount) {
     new ButtonBuilder()
       .setCustomId(`giveaway:enter:${giveaway.id}`)
       .setLabel('Teilnehmen')
-      .setEmoji('🎉')
+      .setEmoji(buttonEmojis.forGuild(giveaway.guild_id, 'giveaways')('join'))
       .setStyle(ButtonStyle.Success)
       .setDisabled(true),
   );

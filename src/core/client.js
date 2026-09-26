@@ -17,6 +17,7 @@ const intents = [
   GatewayIntentBits.GuildMessages, // Ticket-Aktivität (Auto-Close) – nicht privilegiert
   GatewayIntentBits.GuildVoiceStates, // Temp-Voice ("Join to Create") – nicht privilegiert
   GatewayIntentBits.DirectMessages, // ModMail: DM an den Bot – nicht privilegiert
+  GatewayIntentBits.GuildExpressions, // Server-Emojis aktuell halten (Emoji-Auswahl für Buttons) – nicht privilegiert
 ];
 if (config.discord.intentGuildMembers) {
   intents.push(GatewayIntentBits.GuildMembers); // Auto-Rolle, Willkommen, Verlassen – PRIVILEGIERT

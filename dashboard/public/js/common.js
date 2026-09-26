@@ -200,8 +200,20 @@ function openEmojiPicker(anchorEl, onPick) {
   const pick = (val) => { onPick(val); close(); };
   pop.addEventListener('click', (e) => {
     const b = e.target.closest('.emoji-pop__b');
-    if (b) pick(b.textContent);
+    if (b) pick(b.dataset.val || b.textContent);
   });
+
+  // Server-Emojis (eigene Emojis des Servers) oben einblenden
+  if (GUILD_ID) {
+    getGuildEmojis().then((list) => {
+      if (!list.length || !pop.isConnected) return;
+      const grp = h(`<div class="emoji-pop__group" data-group="Server">
+        <div class="emoji-pop__label">Server-Emojis</div>
+        <div class="emoji-pop__grid">${list.map((e) => `<button type="button" class="emoji-pop__b" data-val="${escapeHtml(e.value)}" title=":${escapeHtml(e.name)}:">${emojiHtml(e.value)}</button>`).join('')}</div>
+      </div>`);
+      pop.querySelector('.emoji-pop__body').prepend(grp);
+    }).catch(() => {});
+  }
   pop.querySelector('.emoji-pop__clear').onclick = () => pick('');
 
   // Suche (nach Namen ist ohne Lib nicht möglich -> einfache Teilstring-Suche im Emoji selbst
@@ -226,6 +238,20 @@ function openEmojiPicker(anchorEl, onPick) {
     none.hidden = hits.length !== 0;
   });
   setTimeout(() => search.focus(), 30);
+}
+
+let _emojisPromise = null;
+/** Eigene Emojis des Servers: [{ id, name, animated, value: '<:name:id>' }] */
+function getGuildEmojis() {
+  if (!_emojisPromise) _emojisPromise = apiFor('GET', '/emojis').catch(() => []);
+  return _emojisPromise;
+}
+
+/** Emoji als HTML: Server-Emojis (<:name:id>) als Bild, Unicode als Text. */
+function emojiHtml(val) {
+  const m = String(val || '').match(/^<(a?):(\w+):(\d+)>$/);
+  if (!m) return escapeHtml(val || '');
+  return `<img class="emoji-img" src="https://cdn.discordapp.com/emojis/${m[3]}.${m[1] ? 'gif' : 'png'}?size=48" alt=":${escapeHtml(m[2])}:" />`;
 }
 
 // Minimal-Stichworte für die Suche (nur häufige).
@@ -367,6 +393,58 @@ function dangerZone({ text = '', label, confirm, onConfirm, compact = false }) {
     }
   });
   return el;
+}
+
+/**
+ * Karte „Button-Emojis“: Emojis der fest eingebauten Bot-Buttons einer Gruppe wählen
+ * (tickets, giveaways, applications, verification, tempvoice, music). Speichert über die Speicher-Leiste.
+ * @param {string} group
+ * @param {{ hint?: string }} [o]
+ * @returns {HTMLElement}  die Karte – einfach in die Seite einhängen
+ */
+function buttonEmojiCard(group, o = {}) {
+  const card = document.createElement('form');
+  card.className = 'card';
+  card.innerHTML = `
+    <div class="card__head"><h2>${icon('sparkles')} Button-Emojis</h2></div>
+    <p class="card__sub">${escapeHtml(o.hint || 'Wähle für jeden Button ein eigenes Emoji – auch Emojis deines Servers. Leer = Standard.')}
+      Bereits gesendete Nachrichten zeigen die neuen Emojis, sobald sie neu gesendet oder aktualisiert werden.</p>
+    <div class="btn-emoji-grid"><div class="loading">Lädt…</div></div>`;
+  const grid = card.querySelector('.btn-emoji-grid');
+  let rows = [];
+
+  const preview = (input) => {
+    const box = input.closest('.btn-emoji').querySelector('.btn-emoji__preview');
+    const v = input.value.trim();
+    box.innerHTML = emojiHtml(v || input.placeholder);
+    box.classList.toggle('is-default', !v);
+  };
+  const fill = async () => {
+    rows = await apiFor('GET', `/button-emojis/${group}`);
+    grid.innerHTML = rows.map((r) => `
+      <div class="btn-emoji">
+        <span class="btn-emoji__preview"></span>
+        <span class="btn-emoji__label">${escapeHtml(r.label)}</span>
+        <input name="${escapeHtml(r.key)}" data-emoji="one" maxlength="80" value="${escapeHtml(r.value)}" placeholder="${escapeHtml(r.default || '')}" />
+      </div>`).join('');
+    initEmojiInputs(grid);
+    grid.querySelectorAll('input[name]').forEach((inp) => {
+      preview(inp);
+      inp.addEventListener('input', () => preview(inp));
+    });
+    card.sbMarkClean?.();
+  };
+  const save = async () => {
+    const body = Object.fromEntries([...grid.querySelectorAll('input[name]')].map((i) => [i.name, i.value.trim()]));
+    try {
+      await apiFor('PATCH', `/button-emojis/${group}`, body);
+      toast('Button-Emojis gespeichert.', 'success');
+    } catch (err) { toast(err.message, 'error'); throw err; }
+  };
+  fill()
+    .then(() => trackForm(card, save, { reset: fill, key: 'btnEmojis-' + group }))
+    .catch((err) => { grid.innerHTML = `<div class="empty">${escapeHtml(err.message)}</div>`; });
+  return card;
 }
 
 /**
@@ -1143,6 +1221,9 @@ window.Dash = {
   openModal,
   confirmModal,
   dangerZone,
+  buttonEmojiCard,
+  getGuildEmojis,
+  emojiHtml,
   openEmojiPicker,
   attachEmojiPicker,
   initEmojiInputs,

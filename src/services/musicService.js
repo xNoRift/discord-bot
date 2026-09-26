@@ -4,6 +4,7 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const ytdlp = require('./ytdlp');
 const spotify = require('./spotify');
 const logger = require('../utils/logger');
+const buttonEmojis = require('../utils/buttonEmojis');
 const embeds = require('../utils/embeds');
 const settingsModel = require('../database/models/settings');
 const stationsModel = require('../database/models/musicStations');
@@ -304,17 +305,18 @@ class Session {
   }
 
   _panelRows() {
+    const e = buttonEmojis.forGuild(this.guildId, 'music');
     const row1 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('music:panel:pause').setEmoji(this.paused ? '▶️' : '⏸️').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('music:panel:skip').setEmoji('⏭️').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('music:panel:loop').setEmoji('🔁').setStyle(this.loop ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('music:panel:shuffle').setEmoji('🔀').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('music:panel:stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('music:panel:pause').setEmoji(this.paused ? e('resume') : e('pause')).setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('music:panel:skip').setEmoji(e('skip')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music:panel:loop').setEmoji(e('loop')).setStyle(this.loop ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music:panel:shuffle').setEmoji(e('shuffle')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music:panel:stop').setEmoji(e('stop')).setStyle(ButtonStyle.Danger),
     );
     const row2 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('music:panel:voldown').setEmoji('🔉').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('music:panel:volup').setEmoji('🔊').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('music:panel:queue').setEmoji('📜').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music:panel:voldown').setEmoji(e('voldown')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music:panel:volup').setEmoji(e('volup')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music:panel:queue').setEmoji(e('queue')).setStyle(ButtonStyle.Secondary),
     );
     return [row1, row2];
   }

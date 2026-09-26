@@ -116,7 +116,7 @@ function gwtbCard(b) {
   return `
   <div class="list-row" data-id="${b.id}">
     <div class="list-row__head">
-      <span class="list-row__title">${escapeHtml(b.emoji || '🎫')} ${escapeHtml(b.label)}</span>
+      <span class="list-row__title">${Dash.emojiHtml(b.emoji || '🎫')} ${escapeHtml(b.label)}</span>
     </div>
     <div class="list-row__meta">
       <span>${icon('hash', 'icon--sm')} ${cat ? escapeHtml(cat) : 'Standard-Kategorie'}</span>
@@ -185,7 +185,7 @@ async function ticketButtonModal(existing) {
         <div class="field"><label>Beschriftung</label><input name="label" maxlength="80" required value="${escapeHtml(existing ? existing.label : 'Ticket erstellen')}" /></div>
         <div class="field">
           <label>Emoji</label>
-          <button type="button" class="emote-btn" id="gwtbEmoteBtn">${existing?.emoji ? escapeHtml(existing.emoji) : '<span class="emote-btn__empty">Wählen…</span>'}</button>
+          <button type="button" class="emote-btn" id="gwtbEmoteBtn">${existing?.emoji ? Dash.emojiHtml(existing.emoji) : '<span class="emote-btn__empty">Wählen…</span>'}</button>
           <input type="hidden" name="emoji" id="gwtbEmoteVal" value="${escapeHtml(existing?.emoji || '')}">
         </div>
       </div>
@@ -218,7 +218,7 @@ async function ticketButtonModal(existing) {
   emoteBtn.onclick = () => {
     Dash.openEmojiPicker(emoteBtn, (val) => {
       modal.querySelector('#gwtbEmoteVal').value = val;
-      emoteBtn.innerHTML = val ? escapeHtml(val) : '<span class="emote-btn__empty">Wählen…</span>';
+      emoteBtn.innerHTML = val ? Dash.emojiHtml(val) : '<span class="emote-btn__empty">Wählen…</span>';
     });
   };
 
@@ -521,3 +521,6 @@ document.getElementById('newGiveawayBtn').addEventListener('click', () => newGiv
     await loadTicketButtons();
   } catch (e) { toast(e.message, 'error'); }
 })();
+
+// Emojis der Buttons unter jedem Giveaway
+document.getElementById('gwSettings').closest('.card').after(Dash.buttonEmojiCard('giveaways'));
