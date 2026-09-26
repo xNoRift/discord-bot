@@ -28,11 +28,11 @@
       "title": "🎫 Ticket #{number}",
       "title_cat": "🎫 Ticket #{number} – {category}",
       "field_opener": "Erstellt von",
-      "field_created": "Erstellt am",
+      "field_created": "Erstellt",
       "field_category": "Kategorie"
     },
     "form": {
-      "title": "📝 Angaben aus dem Formular"
+      "title": "📋 Angaben"
     },
     "created_reply_title": "🎫 Ticket erstellt",
     "created_reply_desc": "Dein Ticket wurde erstellt: {channel}",

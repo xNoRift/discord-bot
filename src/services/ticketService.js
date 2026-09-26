@@ -28,6 +28,7 @@ const embeds = require('../utils/embeds');
 const optionEmbeds = require('../utils/optionEmbeds');
 const priceUtil = require('../utils/price');
 const buttonEmojis = require('../utils/buttonEmojis');
+const answerFmt = require('../utils/answers');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
 const i18n = require('../utils/i18n');
@@ -609,15 +610,13 @@ async function createTicket(guild, member, opts = {}) {
   const answers = Array.isArray(opts.answers) ? opts.answers : [];
   const priced = priceUtil.compute(answers); // Menge × Optionspreis (null = Formular ohne Preise)
   const ctx = { member, guild, ticketNumber: number, category: cat?.label, prize: ov.prize, price: priced?.total };
-  const answerText = (a) => (a.answer && a.answer.trim() ? a.answer : tg('common.no_answer'));
-  const inEmbed = ccfg.answersInEmbed && answers.length > 0;
-  let description = renderWelcome(oe.description || welcomeTemplate, ctx);
-  if (inEmbed) {
-    // Antworten nummeriert direkt unter die Begrüßung (Beschreibung max. 4096 Zeichen)
-    const blocks = answers.slice(0, 24).map((a, i) => `**${i + 1}. ${String(a.question || tg('common.question')).slice(0, 256)}**\n${answerText(a).slice(0, 1024)}`);
-    if (priced) blocks.push(`**${blocks.length + 1}. Preis**\n__**${priced.total}**__\n${priced.detail}`);
-    description = `${description}\n\n${blocks.join('\n\n')}`;
-  }
+  // Angaben aus dem Formular stehen immer direkt im Eröffnungs-Embed (Rest bei Überlänge in Fortsetzungs-Embeds)
+  const welcomeText = renderWelcome(oe.description || welcomeTemplate, ctx);
+  const [firstPart, ...moreParts] = answerFmt.split(
+    answerFmt.blocks(answers, { priced, noAnswer: tg('common.no_answer'), question: tg('common.question') }),
+    4096 - welcomeText.length - 40,
+  );
+  const description = firstPart ? `${welcomeText}\n\n**${tg('tickets.form.title')}**\n${firstPart}` : welcomeText;
   const defaultTitle = cat ? tg('tickets.welcome.title_cat', { number, category: cat.label }) : tg('tickets.welcome.title', { number });
   const welcomeEmbed = new EmbedBuilder()
     .setColor(parseColor(oe.color) ?? panelColor(panel, settings))
@@ -625,9 +624,9 @@ async function createTicket(guild, member, opts = {}) {
     .setDescription(description.slice(0, 4096))
     .addFields(
       { name: tg('tickets.welcome.field_opener'), value: `<@${member.id}>`, inline: true },
-      { name: tg('tickets.welcome.field_created'), value: discordTimestamp(Date.now(), 'F'), inline: true },
       ...(cat ? [{ name: tg('tickets.welcome.field_category'), value: cat.label, inline: true }] : []),
-      ...(ov.prize ? [{ name: 'Preis', value: String(ov.prize).slice(0, 1024), inline: true }] : []),
+      { name: tg('tickets.welcome.field_created'), value: discordTimestamp(Date.now(), 'R'), inline: true },
+      ...(ov.prize ? [{ name: '🎁 Gewinn', value: String(ov.prize).slice(0, 1024), inline: true }] : []),
     )
     .setTimestamp();
   if (/^https:\/\//i.test(oe.imageUrl || '')) welcomeEmbed.setImage(oe.imageUrl);
@@ -646,22 +645,12 @@ async function createTicket(guild, member, opts = {}) {
     components: [buildManagementRow(ticket)],
   });
 
-  // Formular-Antworten (falls die Kategorie ein Öffnen-Formular hat)
-  if (answers.length) {
-    if (!inEmbed) {
-      const answerEmbed = new EmbedBuilder()
-        .setColor(panelColor(panel, settings))
-        .setTitle(tg('tickets.form.title'))
-        .addFields([
-          ...answers.slice(0, 24).map((a) => ({
-            name: String(a.question || tg('common.question')).slice(0, 256),
-            value: answerText(a).slice(0, 1024),
-          })),
-          ...(priced ? [{ name: 'Preis', value: `__**${priced.total}**__\n${priced.detail}` }] : []),
-        ]);
-      await channel.send({ embeds: [answerEmbed] }).catch(() => null);
-    }
+  // Sehr lange Formulare: restliche Angaben als Fortsetzung (gleiche Farbe, ohne Kopf)
+  for (const part of moreParts) {
+    await channel.send({ embeds: [new EmbedBuilder().setColor(parseColor(oe.color) ?? panelColor(panel, settings)).setDescription(part)] }).catch(() => null);
+  }
 
+  if (answers.length) {
     // Eigene Embeds der gewählten Optionen (max. 10 Embeds pro Nachricht)
     const optionVars = { user: `<@${member.id}>`, username: member.user.username, guild: guild.name, server: guild.name, category: cat?.label ?? '', number: String(number), price: priced?.total ?? '' };
     const extra = answers

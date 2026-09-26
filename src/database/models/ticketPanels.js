@@ -33,7 +33,6 @@ const panelCfgDefaults = () => ({
 });
 const categoryCfgDefaults = () => ({
   onBehalf: false,
-  answersInEmbed: false, // Formular-Antworten direkt im Eröffnungs-Embed statt als eigenes Embed
   supportRoleIds: '',
   openEmbedOverride: false,
   openEmbed: embedDefaults(),

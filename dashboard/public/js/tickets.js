@@ -804,7 +804,7 @@ const Q_ONLY = {
   quantity: new Set(['short']),
 };
 const FORM_TEXT = {
-  open: ['Ticket-Öffnen Formular', 'Hat die Kategorie Felder, erscheint beim Öffnen ein Formular. Die Antworten landen im Ticket. Ohne Felder wird das Ticket sofort geöffnet.'],
+  open: ['Ticket-Öffnen Formular', 'Hat die Kategorie Felder, erscheint beim Öffnen ein Formular. Die Angaben stehen übersichtlich direkt in der Eröffnungs-Nachricht des Tickets (samt Preis, falls hinterlegt). Ohne Felder wird das Ticket sofort geöffnet.'],
   close: ['Ticket-Schließen Formular', 'Hat die Kategorie Felder, erscheint beim Schließen ein Formular. Die Antworten stehen im Schließen-Hinweis, im Log und werden am Ticket gespeichert.'],
   rating: ['Bewertungs-Formular', 'Hat die Kategorie Felder, erscheint nach der Sternebewertung ein Formular (z. B. Kommentar). Die Antworten landen in den Bewertungs-Kanälen.'],
 };
@@ -953,15 +953,11 @@ function renderFormsSub(cb, body, c, form) {
     <div class="card" id="catFormCard">
       <div class="card__head"><h2>${title} <span class="muted">(max. 5 Felder – Discord-Limit)</span></h2></div>
       <p class="card__sub">${hint}</p>
-      ${form === 'open' ? `<form id="catAnsForm">${switchBlock('Antworten im Eröffnungs-Embed anzeigen?', 'Die Antworten stehen nummeriert direkt im Eröffnungs-Embed (samt Preis, falls Preise hinterlegt sind) statt in einem eigenen Embed darunter.', 'name', 'answersInEmbed', (c.cfg || {}).answersInEmbed)}</form>` : ''}
       <div id="tqList">${qs.map((q, i) => tqCard(q, i)).join('')}</div>
       <button class="tile tile--add" id="tqAdd" style="width:100%;margin-top:4px;">
         <span class="tile__name">Feld hinzufügen</span><span class="tile__ico">${icon('plus', 'icon--sm')}</span>
       </button>
     </div>`;
-
-  const ansForm = cb.querySelector('#catAnsForm');
-  if (ansForm) Dash.trackForm(ansForm, () => saveCategory(c, { cfg: { answersInEmbed: ansForm.elements.answersInEmbed.checked } }), { key: 'catAns-' + c.id });
 
   cb.querySelector('#tqAdd').onclick = async () => {
     try {

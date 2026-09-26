@@ -28,11 +28,11 @@
       "title": "🎫 Ticket #{number}",
       "title_cat": "🎫 Ticket #{number} – {category}",
       "field_opener": "Opened by",
-      "field_created": "Opened at",
+      "field_created": "Opened",
       "field_category": "Category"
     },
     "form": {
-      "title": "📝 Form answers"
+      "title": "📋 Details"
     },
     "created_reply_title": "🎫 Ticket created",
     "created_reply_desc": "Your ticket has been created: {channel}",

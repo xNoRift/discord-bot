@@ -57,23 +57,22 @@ function scheduleEnd(giveaway) {
 function buildActiveMessage(giveaway, entryCount) {
   const embed = new EmbedBuilder()
     .setColor(config.branding.color)
-    .setTitle('🎉 GIVEAWAY 🎉')
-    .setDescription(
-      [
-        `### ${giveaway.prize}`,
-        giveaway.description ? `\n${giveaway.description}\n` : '',
-        `**Endet:** ${discordTimestamp(giveaway.ends_at, 'F')} (${discordTimestamp(giveaway.ends_at, 'R')})`,
-        `**Gewinner:** ${giveaway.winner_count}`,
-        giveaway.host_id ? `**Veranstalter:** <@${giveaway.host_id}>` : '',
-        giveaway.required_role_id ? `**Benötigte Rolle:** <@&${giveaway.required_role_id}>` : '',
-        giveaway.winner_role_id
-          ? `**Gewinnerrolle:** <@&${giveaway.winner_role_id}> für ${formatDuration(
+    .setTitle('🎉 Giveaway')
+    .setDescription([`### ${giveaway.prize}`, giveaway.description || ''].filter(Boolean).join('\n'))
+    .addFields(
+      { name: '⏰ Endet', value: `${discordTimestamp(giveaway.ends_at, 'R')}\n${discordTimestamp(giveaway.ends_at, 'f')}`, inline: true },
+      { name: '🏆 Gewinner', value: String(giveaway.winner_count), inline: true },
+      ...(giveaway.host_id ? [{ name: '👤 Veranstalter', value: `<@${giveaway.host_id}>`, inline: true }] : []),
+      ...(giveaway.required_role_id ? [{ name: '🔑 Teilnahme nur mit', value: `<@&${giveaway.required_role_id}>`, inline: true }] : []),
+      ...(giveaway.winner_role_id
+        ? [{
+            name: '🎖️ Gewinnerrolle',
+            value: `<@&${giveaway.winner_role_id}> für ${formatDuration(
               giveaway.winner_role_duration_ms || settingsModel.get(giveaway.guild_id).giveaway_winner_role_duration_ms,
-            )}`
-          : '',
-      ]
-        .filter(Boolean)
-        .join('\n'),
+            )}`,
+            inline: true,
+          }]
+        : []),
     )
     .setFooter({ text: `${entryCount} Teilnahme${entryCount === 1 ? '' : 'n'} • Giveaway-ID ${giveaway.id}` })
     .setTimestamp(giveaway.ends_at);
@@ -97,20 +96,15 @@ function buildActiveMessage(giveaway, entryCount) {
 function buildEndedMessage(giveaway, winnerIds, entryCount) {
   const embed = new EmbedBuilder()
     .setColor(winnerIds.length ? config.branding.success : config.branding.danger)
-    .setTitle('🎉 GIVEAWAY BEENDET 🎉')
-    .setDescription(
-      [
-        `### ${giveaway.prize}`,
-        giveaway.description ? `\n${giveaway.description}\n` : '',
-        `**Beendet:** ${discordTimestamp(Date.now(), 'F')}`,
-        giveaway.host_id ? `**Veranstalter:** <@${giveaway.host_id}>` : '',
-        '',
-        winnerIds.length
-          ? `**Gewinner:**\n${winnerIds.map((id) => `> 🏆 <@${id}>`).join('\n')}`
-          : '**Es gab keine gültigen Teilnahmen – kein Gewinner.**',
-      ]
-        .filter(Boolean)
-        .join('\n'),
+    .setTitle('🎉 Giveaway beendet')
+    .setDescription([`### ${giveaway.prize}`, giveaway.description || ''].filter(Boolean).join('\n'))
+    .addFields(
+      {
+        name: '🏆 Gewinner',
+        value: winnerIds.length ? winnerIds.map((id) => `<@${id}>`).join('\n').slice(0, 1024) : 'Keine gültigen Teilnahmen – kein Gewinner.',
+      },
+      { name: '⏰ Beendet', value: discordTimestamp(Date.now(), 'f'), inline: true },
+      ...(giveaway.host_id ? [{ name: '👤 Veranstalter', value: `<@${giveaway.host_id}>`, inline: true }] : []),
     )
     .setFooter({ text: `${entryCount} Teilnahme${entryCount === 1 ? '' : 'n'} • Giveaway-ID ${giveaway.id}` })
     .setTimestamp();

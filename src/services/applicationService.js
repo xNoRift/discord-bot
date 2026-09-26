@@ -17,6 +17,8 @@ const settingsModel = require('../database/models/settings');
 const logService = require('./logService');
 const embeds = require('../utils/embeds');
 const buttonEmojis = require('../utils/buttonEmojis');
+const answerFmt = require('../utils/answers');
+const { discordTimestamp } = require('../utils/time');
 const config = require('../../config/config');
 const { botCanManageRole } = require('../utils/permissions');
 const logger = require('../utils/logger');
@@ -228,29 +230,15 @@ async function beginApplication(interaction, typeId) {
 
 /* ---------------- Einreichung ---------------- */
 
-/** Antworten -> Embed-Felder, in Blöcke geteilt (Discord: max. 6000 Zeichen je Nachricht). */
-function chunkAnswers(answers, budget) {
-  const chunks = [[]];
-  let used = 0;
-  for (const a of answers) {
-    const name = String(a.question).slice(0, 256);
-    const value = (a.answer && String(a.answer).trim() ? String(a.answer) : '*(keine Angabe)*').slice(0, 1024);
-    if (chunks.at(-1).length >= 20 || (used + name.length + value.length > budget && chunks.at(-1).length)) {
-      chunks.push([]);
-      used = 0;
-    }
-    chunks.at(-1).push({ name, value });
-    used += name.length + value.length;
-  }
-  return chunks;
-}
+const REVIEW_TEXT_LIMIT = 3800; // Platz für die Angaben in der Team-Nachricht
 
 /** Weitere Antwort-Embeds, wenn nicht alles in die Hauptnachricht passt. */
 function overflowEmbeds(application, answers, hide) {
   if (hide) return [];
-  return chunkAnswers(answers, 3500)
+  return answerFmt
+    .split(answerFmt.blocks(answers), REVIEW_TEXT_LIMIT)
     .slice(1)
-    .map((fields, i) => new EmbedBuilder().setColor(config.branding.color).setTitle(`Antworten (Teil ${i + 2}) – Bewerbung #${application.id}`).addFields(fields));
+    .map((part, i) => new EmbedBuilder().setColor(config.branding.color).setTitle(`📋 Angaben (Teil ${i + 2}) – Bewerbung #${application.id}`).setDescription(part));
 }
 
 function buildReviewMessage(application, answers, type) {
@@ -260,15 +248,18 @@ function buildReviewMessage(application, answers, type) {
       application.status === 'accepted' ? config.branding.success : application.status === 'rejected' ? config.branding.danger : config.branding.color,
     )
     .setTitle(`📋 Bewerbung #${application.id} – ${application.type_name}`)
-    .setDescription(`**Bewerber:** <@${application.user_id}> (${application.user_tag ?? application.user_id})`)
-    .setFooter({ text: `Status: ${statusLabel(application.status)}` })
+    .setDescription(
+      cfg.hideAnswers
+        ? '**📋 Angaben**\n🔒 Ausgeblendet – nur im Dashboard einsehbar.'
+        : `**📋 Angaben**\n${answerFmt.split(answerFmt.blocks(answers), REVIEW_TEXT_LIMIT)[0] || '*(keine)*'}`,
+    )
+    .addFields(
+      { name: 'Bewerber', value: `<@${application.user_id}>\n${application.user_tag ?? application.user_id}`, inline: true },
+      { name: 'Eingereicht', value: discordTimestamp(application.created_at, 'R'), inline: true },
+      { name: 'Status', value: statusLabel(application.status), inline: true },
+    )
     .setTimestamp(application.created_at);
 
-  if (cfg.hideAnswers) {
-    embed.addFields({ name: 'Antworten', value: '🔒 Ausgeblendet – nur im Dashboard einsehbar.' });
-  } else {
-    embed.addFields(chunkAnswers(answers, 3500)[0]);
-  }
   if (cfg.showStats) {
     embed.addFields(
       { name: 'Methode', value: METHOD_LABEL[application.source] ?? '–', inline: true },
@@ -577,12 +568,13 @@ async function openChat(guild, application, staff) {
 
   const typeCfg = appModel.typeCfg(type);
   const vars = { applicationName: application.type_name ?? '', applicant: `<@${member.id}>`, user: staff ? `<@${staff.id}>` : '', server: guild.name, id: String(application.id) };
+  // Eingereichte Angaben stehen direkt in der Eröffnungs-Nachricht des Chats
+  const chatText = fillTemplate(typeCfg.chatMessage || `Hallo {applicant}, das Team möchte sich mit dir über deine Bewerbung unterhalten.\nBitte beantworte Rückfragen hier im Chat.`, vars).slice(0, 2000);
+  const [firstPart, ...moreParts] = answerFmt.split(answerFmt.blocks(JSON.parse(application.answers_json || '[]')), 4096 - chatText.length - 40);
   const welcome = new EmbedBuilder()
     .setColor(embedColor)
     .setTitle(`💬 Bewerbung #${application.id}${application.type_name ? ` – ${application.type_name}` : ''}`)
-    .setDescription(
-      fillTemplate(typeCfg.chatMessage || `Hallo {applicant}, das Team möchte sich mit dir über deine Bewerbung unterhalten.\nBitte beantworte Rückfragen hier im Chat.`, vars).slice(0, 4000),
-    )
+    .setDescription(firstPart ? `${chatText}\n\n**📋 Angaben**\n${firstPart}` : chatText)
     .addFields(
       { name: 'Bewerber', value: `<@${member.id}>`, inline: true },
       { name: 'Status', value: statusLabel(application.status), inline: true },
@@ -597,14 +589,9 @@ async function openChat(guild, application, staff) {
     components: [require('./ticketService').buildManagementRow(ticket)],
   });
 
-  // Eingereichte Antworten im Chat mitlesen können
-  const answers = JSON.parse(application.answers_json || '[]');
-  if (answers.length) {
-    for (const [i, fields] of chunkAnswers(answers, 5000).entries()) {
-      await channel
-        .send({ embeds: [new EmbedBuilder().setColor(embedColor).setTitle(i ? `📋 Eingereichte Antworten (Teil ${i + 1})` : '📋 Eingereichte Antworten').addFields(fields)] })
-        .catch(() => null);
-    }
+  // Sehr lange Bewerbungen: restliche Angaben als Fortsetzung
+  for (const part of moreParts) {
+    await channel.send({ embeds: [new EmbedBuilder().setColor(embedColor).setDescription(part)] }).catch(() => null);
   }
 
   await member
