@@ -73,12 +73,6 @@ function findActiveModmailForUser(userId) {
     .get(userId);
 }
 
-function findActiveModmail(guildId, userId) {
-  return db
-    .prepare("SELECT * FROM tickets WHERE guild_id = ? AND opener_id = ? AND is_modmail = 1 AND status IN ('open','closed') ORDER BY id DESC LIMIT 1")
-    .get(guildId, userId);
-}
-
 /** Aktivitätszeitstempel aktualisieren (für Auto-Close). */
 function touch(id) {
   db.prepare('UPDATE tickets SET last_activity_at = ?, alerted_at = NULL, team_alerted_at = NULL WHERE id = ?').run(Date.now(), id);
@@ -211,13 +205,13 @@ module.exports = {
   createApplicationChat,
   getActiveByApplication,
   findActiveModmailForUser,
-  findActiveModmail,
   get,
   getByChannel,
   touch,
   touchByChannel,
   listStaleOpen,
   countOpenByUser,
+  listOpenByUser,
   listByGuild,
   stats,
   claim,

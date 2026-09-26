@@ -4,13 +4,12 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFl
 const moduleSettings = require('../database/models/moduleSettings');
 const ruleSections = require('../database/models/ruleSections');
 const config = require('../../config/config');
+const { parseHexColor, validEmoji } = require('../utils/embeds');
 
 /**
  * Regeln: eine Nachricht mit Titel, Text und Hinweis, darunter je Abschnitt ein Button.
  * Ein Klick auf den Button zeigt die Regeln des Abschnitts nur dem Klickenden (ephemeral).
  */
-
-const validEmoji = (e) => /^(\p{Extended_Pictographic}|<a?:\w+:\d+>)/u.test(String(e || ''));
 
 /** Beispiel-Regeln zum Loslegen – der Server-Besitzer passt sie im Dashboard an. */
 const TEMPLATE = [
@@ -62,8 +61,7 @@ const TEMPLATE = [
 ];
 
 function colorOf(cfg) {
-  const m = /^#?([0-9a-f]{6})$/i.exec(String(cfg.color || '').trim());
-  return m ? Number.parseInt(m[1], 16) : config.branding.color;
+  return parseHexColor(cfg.color, config.branding.color);
 }
 
 /** Antwort auf einen Button-Klick: die Regeln eines Abschnitts. */
@@ -127,4 +125,4 @@ async function postPanel(guild) {
   return msg;
 }
 
-module.exports = { TEMPLATE, validEmoji, sectionEmbed, buildPanel, postPanel };
+module.exports = { TEMPLATE, sectionEmbed, buildPanel, postPanel };

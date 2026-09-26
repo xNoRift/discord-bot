@@ -573,10 +573,6 @@ const saveBar = {
     this.trackers.add(tracker);
     this.ensure();
   },
-  unregister(tracker) {
-    this.trackers.delete(tracker);
-    this.refresh();
-  },
   dirty() {
     return [...this.trackers].filter((t) => {
       try { return t.isDirty(); } catch { return false; }

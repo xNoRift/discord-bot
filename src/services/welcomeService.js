@@ -5,17 +5,13 @@ const settingsModel = require('../database/models/settings');
 const moduleSettings = require('../database/models/moduleSettings');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
+const { parseHexColor } = require('../utils/embeds');
 
 /**
  * Willkommens-/Abschieds-System: postet beim Beitritt/Verlassen eine Nachricht
  * in einen konfigurierten Kanal und schickt optional eine Willkommens-DM.
  * Die automatische Rollenvergabe beim Beitritt läuft über den autoRoleService.
  */
-
-function parseHexColor(input, fallback) {
-  const m = String(input || '').trim().match(/^#?([0-9a-fA-F]{6})$/);
-  return m ? parseInt(m[1], 16) : fallback;
-}
 
 /**
  * Ersetzt Platzhalter in einer Vorlage.

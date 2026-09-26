@@ -27,6 +27,7 @@ const giveawayService = require('../../src/services/giveawayService');
 const applicationService = require('../../src/services/applicationService');
 
 const { parseDuration } = require('../../src/utils/time');
+const { parseHexColor, validEmoji } = require('../../src/utils/embeds');
 
 const router = express.Router();
 
@@ -81,10 +82,6 @@ function num(value, fallback = null) {
 /* ----------------------------------------------------------------
  *  Nutzer & Server-Liste
  * ---------------------------------------------------------------- */
-
-router.get('/me', (req, res) => {
-  res.json({ user: req.session.user, ownerIds: undefined });
-});
 
 router.get(
   '/guilds',
@@ -455,11 +452,6 @@ router.patch(
 /* ----------------------------------------------------------------
  *  Über den Bot in einen Kanal schreiben (auch: bestehende Bot-Nachricht bearbeiten)
  * ---------------------------------------------------------------- */
-
-function parseHexColor(input) {
-  const m = String(input || '').trim().match(/^#?([0-9a-fA-F]{6})$/);
-  return m ? parseInt(m[1], 16) : null;
-}
 
 router.post(
   '/guilds/:guildId/message',
@@ -1862,7 +1854,7 @@ router.post(
     const channel = req.guild.channels.cache.get(String(b.channelId || ''));
     if (!channel || !channel.isTextBased()) return res.status(400).json({ error: 'Bitte einen gültigen Textkanal wählen.' });
 
-    const embed = new EmbedBuilder().setColor(/^#?[0-9a-fA-F]{6}$/.test(b.color || '') ? parseInt(String(b.color).replace('#', ''), 16) : config.branding.color).setTimestamp();
+    const embed = new EmbedBuilder().setColor(parseHexColor(b.color, config.branding.color)).setTimestamp();
     if (title) embed.setTitle(title);
     if (body) embed.setDescription(body);
     if (/^https:\/\//i.test(b.imageUrl || '')) embed.setImage(String(b.imageUrl));
@@ -1966,7 +1958,7 @@ function parseSection(b, { partial = false } = {}) {
   if (b.title !== undefined) out.title = String(b.title).trim().slice(0, 240);
   if (b.emoji !== undefined) {
     out.emoji = String(b.emoji).trim().slice(0, 64);
-    if (out.emoji && !rulesService.validEmoji(out.emoji)) return { error: 'Bitte ein gültiges Emoji wählen.' };
+    if (out.emoji && !validEmoji(out.emoji)) return { error: 'Bitte ein gültiges Emoji wählen.' };
   }
   return { value: out };
 }
@@ -2707,8 +2699,7 @@ router.post(
     if (req.guild.roles.cache.size >= 250) {
       return res.status(400).json({ error: 'Der Server hat das Rollen-Limit (250) erreicht.' });
     }
-    const colorRaw = String(req.body.color || '').trim();
-    const color = /^#?[0-9a-fA-F]{6}$/.test(colorRaw) ? parseInt(colorRaw.replace('#', ''), 16) : 0;
+    const color = parseHexColor(req.body.color, 0);
     const wantAdmin = req.body.admin === true || req.body.admin === 'true';
     if (wantAdmin && !me.permissions.has(PermissionFlagsBits.Administrator)) {
       return res.status(400).json({ error: 'Der Bot selbst hat keine Administrator-Rechte und kann daher keine Admin-Rolle erstellen.' });

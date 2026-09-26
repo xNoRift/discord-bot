@@ -34,4 +34,13 @@ function info(title, description) {
   return brand(title, description).setColor(config.branding.info);
 }
 
-module.exports = { base, brand, success, error, warning, info };
+/** "#5865F2" / "5865F2" -> Zahl für setColor(); ungültig -> fallback. */
+function parseHexColor(input, fallback = null) {
+  const m = String(input || '').trim().match(/^#?([0-9a-fA-F]{6})$/);
+  return m ? parseInt(m[1], 16) : fallback;
+}
+
+/** Unicode-Emoji oder Server-Emoji (<:name:id>) – alles andere lehnt Discord bei Buttons ab. */
+const validEmoji = (e) => /^(\p{Extended_Pictographic}|<a?:\w+:\d+>)/u.test(String(e || ''));
+
+module.exports = { base, brand, success, error, warning, info, parseHexColor, validEmoji };

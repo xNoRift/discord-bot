@@ -37,10 +37,6 @@ function get(id) {
   return db.prepare('SELECT * FROM giveaways WHERE id = ?').get(id);
 }
 
-function getByMessage(messageId) {
-  return db.prepare('SELECT * FROM giveaways WHERE message_id = ?').get(messageId);
-}
-
 function setMessageId(id, messageId) {
   db.prepare('UPDATE giveaways SET message_id = ? WHERE id = ?').run(messageId, id);
 }
@@ -178,7 +174,6 @@ function stats(guildId) {
 module.exports = {
   create,
   get,
-  getByMessage,
   setMessageId,
   update,
   listActive,

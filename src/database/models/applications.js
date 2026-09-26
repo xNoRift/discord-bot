@@ -276,10 +276,6 @@ function deleteApplication(id) {
   db.prepare('DELETE FROM applications WHERE id = ?').run(id);
 }
 
-function listApplications(guildId, { status, limit = 50 } = {}) {
-  return listSubmissions(guildId, { status, limit }).items;
-}
-
 /** Einreichungen mit Filtern und Seiten: { items, total }. */
 function listSubmissions(guildId, { status, typeId, userId, order = 'newest', limit = 20, offset = 0 } = {}) {
   const where = ['guild_id = @guildId'];
@@ -459,7 +455,6 @@ module.exports = {
   setApplicationMessage,
   setThread,
   deleteApplication,
-  listApplications,
   listSubmissions,
   reviewApplication,
   hasPending,

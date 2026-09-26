@@ -299,11 +299,6 @@ function deleteQuestion(id) {
   db.prepare('DELETE FROM ticket_category_questions WHERE id = ?').run(id);
 }
 
-function categoryWithQuestions(id) {
-  const c = getCategory(id);
-  return c ? { ...c, cfg: categoryCfg(c), questions: listAllQuestions(id) } : null;
-}
-
 const forDashboardPanel = (p) => ({ ...p, cfg: panelCfg(p) });
 const forDashboardCategory = (c) => ({ ...c, cfg: categoryCfg(c), questions: listAllQuestions(c.id) });
 
@@ -347,7 +342,6 @@ module.exports = {
   getQuestion,
   updateQuestion,
   deleteQuestion,
-  categoryWithQuestions,
   panelWithCategories,
   listPanelsWithCategories,
 };

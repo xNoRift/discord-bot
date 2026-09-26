@@ -36,12 +36,7 @@ async function fetchChannel(guild, id) {
   return guild.channels.cache.get(id) ?? (await guild.channels.fetch(id).catch(() => null));
 }
 
-function parseColor(hex) {
-  const m = String(hex || '').match(/^#?([0-9a-fA-F]{6})$/);
-  return m ? parseInt(m[1], 16) : null;
-}
-
-const validEmoji = (e) => /^(\p{Extended_Pictographic}|<a?:\w+:\d+>)/u.test(String(e || ''));
+const { parseHexColor: parseColor, validEmoji } = embeds;
 
 function fillTemplate(text, vars) {
   let out = String(text || '');

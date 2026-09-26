@@ -41,11 +41,7 @@ const { isSupport } = require('../utils/permissions');
 
 /* ---------------- Panel ---------------- */
 
-function parseColor(hex) {
-  if (!hex) return null;
-  const m = String(hex).match(/^#?([0-9a-fA-F]{6})$/);
-  return m ? parseInt(m[1], 16) : null;
-}
+const { parseHexColor: parseColor } = embeds;
 
 /** Panel-Farbe -> Server-Embed-Farbe -> Branding. */
 function panelColor(panel, settings) {

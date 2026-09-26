@@ -10,9 +10,6 @@ let current = null; // aktuell bearbeitetes Mitglied
 
 const $ = (id) => document.getElementById(id);
 
-function roleById(id) {
-  return ROLES.find((r) => String(r.id) === String(id));
-}
 function canManageRole(r) {
   return !r.managed && r.position < META.botTopRolePosition;
 }

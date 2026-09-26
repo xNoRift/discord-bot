@@ -5,6 +5,7 @@ const client = require('../core/client');
 const settingsModel = require('../database/models/settings');
 const activity = require('../database/models/activity');
 const logger = require('../utils/logger');
+const { parseHexColor } = require('../utils/embeds');
 const config = require('../../config/config');
 
 /**
@@ -30,12 +31,6 @@ const CATEGORY_FIELDS = {
 function resolveChannelId(settings, category) {
   const field = CATEGORY_FIELDS[category] ?? 'log_channel_id';
   return settings[field] || settings.log_channel_id || null;
-}
-
-function parseHexColor(hex) {
-  if (!hex) return null;
-  const m = String(hex).match(/^#?([0-9a-fA-F]{6})$/);
-  return m ? parseInt(m[1], 16) : null;
 }
 
 /**
