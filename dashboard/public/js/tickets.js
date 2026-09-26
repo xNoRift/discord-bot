@@ -3,7 +3,7 @@
 
 const {
   apiFor, escapeHtml, fmtDate, icon,
-  getChannels, getRoles, openModal, confirmModal, toast,
+  getChannels, getRoles, openModal, toast,
   fillSelectors, readForm,
 } = Dash;
 
@@ -292,7 +292,6 @@ async function openEditor(panelId) {
     <div class="editor-head">
       <h1>Ticket-Panel <span class="pill-badge" id="edName">${esc(p.name)}</span></h1>
       <div class="editor-head__actions">
-        <button class="btn btn--danger btn--icon" id="edDelete" title="Panel löschen">${icon('trash', 'icon--sm')}</button>
         <button class="btn btn--outline btn--icon" id="edBack" title="Zurück">${icon('chevron', 'icon--sm')}</button>
       </div>
     </div>
@@ -328,12 +327,6 @@ async function openEditor(panelId) {
   }, { fieldAttr: 'data-pf', key: 'panelHead' });
 
   ED.querySelector('#edBack').onclick = closeEditor;
-  ED.querySelector('#edDelete').onclick = async () => {
-    if (!(await confirmModal('Panel samt Kategorien löschen?', { danger: true, confirmLabel: 'Löschen' }))) return;
-    await apiFor('DELETE', `/ticket-panels/${p.id}`);
-    closeEditor();
-    loadPanels();
-  };
   ED.querySelector('#edPost').onclick = async () => {
     const channelId = ED.querySelector('#edChannel').value;
     try {
@@ -349,10 +342,28 @@ async function openEditor(panelId) {
     if (!b) return;
     ED.querySelectorAll('#edTabs .editor-tab').forEach((t) => t.classList.remove('is-active'));
     b.classList.add('is-active');
-    renderTab(b.dataset.tab);
+    showTab(b.dataset.tab);
   });
 
-  renderTab('allgemein');
+  showTab('allgemein');
+}
+
+/** Tab anzeigen; unter „Allgemeines“ steht die Gefahrenzone zum Löschen des Panels. */
+function showTab(tab) {
+  renderTab(tab);
+  if (tab !== 'allgemein') return;
+  const p = P();
+  document.getElementById('edBody').append(Dash.dangerZone({
+    text: 'Löscht das Panel samt allen Kategorien und Formularen. Die Panel-Nachricht in Discord wird entfernt.',
+    label: 'Panel löschen',
+    confirm: `Panel „${p.name}“ samt Kategorien löschen?`,
+    onConfirm: async () => {
+      await apiFor('DELETE', `/ticket-panels/${p.id}`);
+      toast('Panel gelöscht.', 'success');
+      closeEditor();
+      loadPanels();
+    },
+  }));
 }
 
 function closeEditor() {
@@ -624,7 +635,6 @@ function renderCategoriesTab(body, editCatId, sub = 'allgemein') {
     <div class="editor-head editor-head--inner">
       <h1>Kategorie <span class="pill-badge">${c.emoji ? esc(c.emoji) + ' ' : ''}${esc(c.label)}</span></h1>
       <div class="editor-head__actions">
-        <button class="btn btn--danger btn--icon" data-cat-del="${c.id}" title="Kategorie löschen">${icon('trash', 'icon--sm')}</button>
         <button class="btn btn--outline btn--icon" data-cat-back title="Zurück">${icon('chevron', 'icon--sm')}</button>
       </div>
     </div>
@@ -634,20 +644,25 @@ function renderCategoriesTab(body, editCatId, sub = 'allgemein') {
     <div id="catBody"></div>`;
 
   body.querySelector('[data-cat-back]').onclick = () => renderCategoriesTab(body);
-  body.querySelector('[data-cat-del]').onclick = async () => {
-    if (!(await confirmModal('Kategorie löschen?', { danger: true, confirmLabel: 'Löschen' }))) return;
-    try {
-      await apiFor('DELETE', `/ticket-panels/${p.id}/categories/${c.id}`);
-      await refreshPanel();
-      renderCategoriesTab(body);
-    } catch (err) { toast(err.message, 'error'); }
-  };
   body.querySelector('#catTabs').onclick = (e) => {
     const b = e.target.closest('[data-ctab]');
     if (b) renderCategoriesTab(body, c.id, b.dataset.ctab);
   };
 
   renderCategorySub(body.querySelector('#catBody'), body, c, sub);
+  if (sub === 'allgemein') {
+    body.append(Dash.dangerZone({
+      text: 'Löscht die Kategorie samt Formularfeldern. Offene Tickets dieser Kategorie bleiben bestehen.',
+      label: 'Kategorie löschen',
+      confirm: `Kategorie „${c.label}“ löschen?`,
+      onConfirm: async () => {
+        await apiFor('DELETE', `/ticket-panels/${p.id}/categories/${c.id}`);
+        toast('Kategorie gelöscht.', 'success');
+        await refreshPanel();
+        renderCategoriesTab(body);
+      },
+    }));
+  }
 }
 
 async function saveCategory(c, patch, msg = 'Kategorie gespeichert.') {
@@ -801,7 +816,6 @@ function tqCard(q, i) {
   return `<form class="qfield" data-q="${q.id}">
     <div class="qfield__head">
       <b>${q.label ? `${i + 1}. ${esc(q.label)}` : `${icon('alert', 'icon--sm')} N/A`}</b>
-      <button type="button" class="btn btn--danger btn--icon" data-qa="del" title="Feld löschen">${icon('trash', 'icon--sm')}</button>
     </div>
     <div class="fgrid fgrid--2">
       <div class="field">
@@ -903,12 +917,9 @@ function wireOptionPrices(row) {
       <h2>Preise pro Option</h2>
       <p class="muted" style="margin-top:-8px;">Zahl mit optionalem Kürzel: <code>2500</code>, <code>500k</code>, <code>14.2M</code>, <code>1.5B</code>. Leer = kein Preis.
         Im Ticket steht dann <b>Menge × Preis</b> – die Menge kommt aus einem Textfeld mit aktiviertem „Mengenfeld“ (sonst 1). Platzhalter für Embeds: <code>{price}</code></p>
-      ${opts.length ? `<div class="form">${opts.map((o, i) => `<div class="field"><label>${esc(o)}</label><div class="row-inline"><input data-pi="${i}" maxlength="20" value="${esc(map[o] || '')}" placeholder="z. B. 14.2M"><button type="button" class="btn btn--danger btn--icon" data-pclear="${i}" title="Preis löschen">${icon('trash', 'icon--sm')}</button></div></div>`).join('')}</div>`
+      ${opts.length ? `<div class="form">${opts.map((o, i) => `<div class="field"><label>${esc(o)}</label><input data-pi="${i}" maxlength="20" value="${esc(map[o] || '')}" placeholder="z. B. 14.2M"></div>`).join('')}</div>`
         : '<div class="empty">Trage zuerst Optionen ein (eine pro Zeile).</div>'}
-      <div class="modal__actions">${opts.length ? `<button type="button" class="btn btn--danger" data-act="clearall" style="margin-right:auto;">${icon('trash', 'icon--sm')} Alle löschen</button>` : ''}<button type="button" class="btn btn--ghost" data-act="cancel">Abbrechen</button><button type="button" class="btn btn--primary" data-act="ok"${opts.length ? '' : ' disabled'}>Übernehmen</button></div>`);
-    // Löschen = Feld leeren (wird mit „Übernehmen“ gespeichert)
-    modal.querySelectorAll('[data-pclear]').forEach((b) => { b.onclick = () => { const inp = modal.querySelector(`[data-pi="${b.dataset.pclear}"]`); inp.value = ''; inp.classList.remove('is-invalid'); }; });
-    modal.querySelector('[data-act="clearall"]')?.addEventListener('click', () => modal.querySelectorAll('[data-pi]').forEach((inp) => { inp.value = ''; inp.classList.remove('is-invalid'); }));
+      <div class="modal__actions"><button type="button" class="btn btn--ghost" data-act="cancel">Abbrechen</button><button type="button" class="btn btn--primary" data-act="ok"${opts.length ? '' : ' disabled'}>Übernehmen</button></div>`);
     modal.querySelector('[data-act="cancel"]').onclick = close;
     modal.querySelector('[data-act="ok"]').onclick = () => {
       const out = {};
@@ -984,17 +995,19 @@ function renderFormsSub(cb, body, c, form) {
     }, { fieldAttr: 'data-qf', key: 'q-' + qid });
   });
 
-  cb.querySelector('#tqList').onclick = async (e) => {
-    const btn = e.target.closest('button[data-qa="del"]');
-    if (!btn) return;
-    const qid = btn.closest('[data-q]').dataset.q;
-    try {
-      if (!(await confirmModal('Feld löschen?', { danger: true, confirmLabel: 'Löschen' }))) return;
-      await apiFor('DELETE', `/ticket-panels/${p.id}/categories/${c.id}/questions/${qid}`);
-      await refreshPanel();
-      renderCategoriesTab(body, c.id, form);
-    } catch (err) { toast(err.message, 'error'); }
-  };
+  cb.querySelectorAll('#tqList [data-q]').forEach((row) => {
+    const qid = row.dataset.q;
+    row.append(Dash.dangerZone({
+      compact: true,
+      label: 'Feld löschen',
+      confirm: 'Dieses Feld löschen?',
+      onConfirm: async () => {
+        await apiFor('DELETE', `/ticket-panels/${p.id}/categories/${c.id}/questions/${qid}`);
+        await refreshPanel();
+        renderCategoriesTab(body, c.id, form);
+      },
+    }));
+  });
 }
 
 /* ================= Ticket-Liste ================= */

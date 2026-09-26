@@ -222,6 +222,10 @@ code {
   border: 1px solid rgba(240, 97, 109, 0.45); border-radius: 12px;
   background: rgba(240, 97, 109, 0.05);
 }
+.danger-zone--compact {
+  justify-content: flex-end; margin-top: 12px; padding: 10px 0 0;
+  border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none;
+}
 .danger-zone__text { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 2px; }
 .danger-zone__text b { color: var(--red); font-size: .9rem; }
 .danger-zone__text span { color: var(--text-2); font-size: .82rem; }

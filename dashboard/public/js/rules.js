@@ -39,7 +39,6 @@ function renderList() {
           <button type="button" class="btn btn--ghost btn--sm" data-move="${s.id}:up" title="Nach oben"${i === 0 ? ' disabled' : ''}>↑</button>
           <button type="button" class="btn btn--ghost btn--sm" data-move="${s.id}:down" title="Nach unten"${i === SECTIONS.length - 1 ? ' disabled' : ''}>↓</button>
           <button type="button" class="btn btn--ghost btn--sm" data-edit="${s.id}">${icon('edit', 'icon--sm')} Bearbeiten</button>
-          <button type="button" class="btn btn--danger btn--sm" data-del="${s.id}" title="Entfernen">${icon('trash', 'icon--sm')}</button>
         </div>
         <div class="list-row__meta"><span>${escapeHtml(s.content.replace(/\s+/g, ' ').slice(0, 140))}${s.content.length > 140 ? '…' : ''}</span></div>
       </div>`).join('')
@@ -81,6 +80,19 @@ function sectionModal(section) {
       await loadSections();
     } catch (err) { toast(err.message, 'error'); }
   };
+  if (section) {
+    modal.querySelector('#rlSecForm .modal__actions').before(Dash.dangerZone({
+      text: 'Entfernt den Abschnitt samt Button. Sende die Regeln danach neu, damit der Button auch in Discord verschwindet.',
+      label: 'Abschnitt löschen',
+      confirm: `Abschnitt „${section.label}“ löschen?`,
+      onConfirm: async () => {
+        await apiFor('DELETE', `/rules/sections/${section.id}`);
+        toast('Abschnitt gelöscht.', 'success');
+        close();
+        await loadSections();
+      },
+    }));
+  }
 }
 
 document.getElementById('rlAdd').addEventListener('click', () => sectionModal(null));
@@ -96,20 +108,12 @@ document.getElementById('rlTemplate').addEventListener('click', async () => {
 
 listEl.addEventListener('click', async (e) => {
   const edit = e.target.closest('[data-edit]');
-  const del = e.target.closest('[data-del]');
   const move = e.target.closest('[data-move]');
   try {
     if (edit) return sectionModal(SECTIONS.find((s) => s.id === Number(edit.dataset.edit)));
     if (move) {
       const [id, dir] = move.dataset.move.split(':');
       await apiFor('POST', `/rules/sections/${id}/move`, { dir });
-      return await loadSections();
-    }
-    if (del) {
-      const s = SECTIONS.find((x) => x.id === Number(del.dataset.del));
-      if (!(await confirmModal(`Abschnitt „${s?.label}“ entfernen?`, { danger: true, confirmLabel: 'Entfernen' }))) return;
-      await apiFor('DELETE', `/rules/sections/${del.dataset.del}`);
-      toast('Entfernt.', 'success');
       await loadSections();
     }
   } catch (err) { toast(err.message, 'error'); }

@@ -1,7 +1,7 @@
 /* global document, Dash */
 'use strict';
 
-const { apiFor, escapeHtml, fmtDate, icon, getRoles, getChannels, confirmModal, toast } = Dash;
+const { apiFor, escapeHtml, fmtDate, icon, getRoles, getChannels, toast } = Dash;
 
 const PLAT = {
   youtube: { name: 'YouTube', color: '#ff0000' },
@@ -145,15 +145,16 @@ function row(s) {
     </div>
     <div class="row-inline" data-view>
       <button class="btn btn--outline btn--sm" data-a="test">${icon('send', 'icon--sm')} Testen</button>
-      <button class="btn btn--outline btn--sm" data-a="edit">${icon('edit', 'icon--sm')} Kanal/Erwähnung</button>
       <button class="btn btn--outline btn--sm" data-a="toggle">${s.enabled ? 'Pausieren' : 'Aktivieren'}</button>
-      <button class="btn btn--danger btn--sm" data-a="del">${icon('trash', 'icon--sm')} Entfernen</button>
+      <button class="btn btn--outline btn--sm" data-a="edit">${icon('edit', 'icon--sm')} Bearbeiten</button>
     </div>
-    <form class="col-2" data-edit hidden style="margin-top:8px;">
-      <div class="field"><label>Kanal</label><select name="channelId">${channelOptionsHtml(s.channelId)}</select></div>
-      <div class="field"><label>Erwähnung</label><select name="mention">${mentionOptionsHtml(s.mention || 'none')}</select></div>
-      <div style="grid-column:1/-1;"><button type="button" class="btn btn--ghost btn--sm" data-a="cancel">Abbrechen</button></div>
-    </form>
+    <div data-editwrap hidden style="margin-top:8px;">
+      <form class="col-2" data-edit>
+        <div class="field"><label>Kanal</label><select name="channelId">${channelOptionsHtml(s.channelId)}</select></div>
+        <div class="field"><label>Erwähnung</label><select name="mention">${mentionOptionsHtml(s.mention || 'none')}</select></div>
+        <div style="grid-column:1/-1;"><button type="button" class="btn btn--ghost btn--sm" data-a="cancel">Schließen</button></div>
+      </form>
+    </div>
   </div>`;
 }
 
@@ -178,6 +179,16 @@ async function load() {
         toast('Gespeichert.', 'success');
       } catch (err) { toast(err.message, 'error'); throw err; }
     }, { key: 'sub-' + id });
+    box.querySelector('[data-editwrap]').append(Dash.dangerZone({
+      text: 'Der Bot meldet für diesen Account nichts mehr. Bereits gepostete Meldungen bleiben.',
+      label: 'Benachrichtigung löschen',
+      confirm: 'Diese Benachrichtigung löschen?',
+      onConfirm: async () => {
+        await apiFor('DELETE', `/social/${id}`);
+        toast('Benachrichtigung gelöscht.', 'success');
+        await load();
+      },
+    }));
   });
 }
 
@@ -194,19 +205,14 @@ listEl.addEventListener('click', async (e) => {
       await apiFor('PATCH', `/social/${id}`, { enabled: btn.textContent.trim() === 'Aktivieren' });
       await load();
     } else if (btn.dataset.a === 'edit') {
-      box.querySelector('[data-edit]').hidden = false;
+      box.querySelector('[data-editwrap]').hidden = false;
       box.querySelector('[data-view]').hidden = true;
     } else if (btn.dataset.a === 'cancel') {
       const editForm = box.querySelector('[data-edit]');
       editForm.reset();
       editForm.sbMarkClean?.();
-      editForm.hidden = true;
+      box.querySelector('[data-editwrap]').hidden = true;
       box.querySelector('[data-view]').hidden = false;
-    } else if (btn.dataset.a === 'del') {
-      if (!(await confirmModal('Diese Benachrichtigung entfernen?', { danger: true, confirmLabel: 'Entfernen' }))) return;
-      await apiFor('DELETE', `/social/${id}`);
-      toast('Entfernt.', 'success');
-      await load();
     }
   } catch (err) {
     toast(err.message, 'error');

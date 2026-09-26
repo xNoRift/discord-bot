@@ -174,7 +174,7 @@ async function loadStations() {
     ? d.custom
         .map(
           (s) => `<li><span><b>${escapeHtml(s.name)}</b> <span class="muted">${escapeHtml(s.url)}</span></span>
-      <button class="btn btn--ghost btn--icon" data-delst="${s.id}" title="Löschen" style="margin-left:auto;">${Dash.icon('trash', 'icon--sm')}</button></li>`,
+      <button class="btn btn--ghost btn--sm" data-stopen="${s.id}" style="margin-left:auto;">${Dash.icon('edit', 'icon--sm')} Bearbeiten</button></li>`,
         )
         .join('')
     : '<li class="muted">Noch keine eigenen Sender.</li>';
@@ -191,13 +191,30 @@ document.getElementById('stForm').addEventListener('submit', async (e) => {
   } catch (err) { toast(err.message, 'error'); }
 });
 
-document.getElementById('stList').addEventListener('click', async (e) => {
-  const btn = e.target.closest('[data-delst]');
-  if (!btn) return;
-  try {
-    await apiFor('DELETE', '/music/stations/' + btn.dataset.delst);
-    await loadStations();
-  } catch (err) { toast(err.message, 'error'); }
+/** Eigenen Sender öffnen: Name und Stream-Link, unten die Gefahrenzone. */
+document.getElementById('stList').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-stopen]');
+  const li = btn?.closest('li');
+  if (!btn || !li) return;
+  const name = li.querySelector('b').textContent;
+  const url = li.querySelector('.muted').textContent;
+  const { modal, close } = Dash.openModal(`
+    <h2>${Dash.icon('music')} Eigener Sender</h2>
+    <div class="setting-row"><div class="setting-row__text"><b>Name</b></div><span class="text-2">${escapeHtml(name)}</span></div>
+    <div class="setting-row"><div class="setting-row__text"><b>Stream-Link</b></div><span class="text-2" style="word-break:break-all;">${escapeHtml(url)}</span></div>
+    <div class="modal__actions"><button type="button" class="btn btn--ghost" data-x>Schließen</button></div>`);
+  modal.querySelector('[data-x]').onclick = close;
+  modal.querySelector('.modal__actions').before(Dash.dangerZone({
+    text: 'Entfernt den Sender aus der Senderliste dieses Servers.',
+    label: 'Sender löschen',
+    confirm: `Sender „${name}“ löschen?`,
+    onConfirm: async () => {
+      await apiFor('DELETE', '/music/stations/' + btn.dataset.stopen);
+      toast('Sender gelöscht.', 'success');
+      close();
+      await loadStations();
+    },
+  }));
 });
 
 /* ---- Playlists ---- */
@@ -207,10 +224,10 @@ async function loadPlaylists() {
     ? list
         .map(
           (p) => `<li>
-        <span><b class="pl-name" data-plview="${p.id}" style="cursor:pointer;text-decoration:underline dotted;">${escapeHtml(p.name)}</b> <span class="muted">${p.trackCount} Titel</span></span>
-        <button class="btn btn--ghost btn--sm" data-plplay="${p.id}">▶️ Abspielen</button>
-        <button class="btn btn--ghost btn--icon" data-pldel="${p.id}" title="Löschen" style="margin-left:8px;">${Dash.icon('trash', 'icon--sm')}</button>
-      </li><li class="muted" id="plTracks${p.id}" hidden></li>`,
+        <span><b>${escapeHtml(p.name)}</b> <span class="muted">${p.trackCount} Titel</span></span>
+        <button class="btn btn--ghost btn--sm" data-plplay="${p.id}" style="margin-left:auto;">▶️ Abspielen</button>
+        <button class="btn btn--ghost btn--sm" data-plview="${p.id}" data-plname="${escapeHtml(p.name)}" style="margin-left:8px;">${Dash.icon('edit', 'icon--sm')} Öffnen</button>
+      </li>`,
         )
         .join('')
     : '<li class="muted">Noch keine Playlists auf diesem Server.</li>';
@@ -238,14 +255,29 @@ document.getElementById('plForm').addEventListener('submit', async (e) => {
 document.getElementById('plList').addEventListener('click', async (e) => {
   const viewBtn = e.target.closest('[data-plview]');
   const playBtn = e.target.closest('[data-plplay]');
-  const delBtn = e.target.closest('[data-pldel]');
   if (viewBtn) {
-    const box = document.getElementById('plTracks' + viewBtn.dataset.plview);
-    if (!box.hidden) { box.hidden = true; return; }
-    box.hidden = false;
-    box.textContent = 'Lade …';
+    // Playlist öffnen: Titelliste, unten die Gefahrenzone
+    const id = viewBtn.dataset.plview;
+    const name = viewBtn.dataset.plname;
+    const { modal, close } = Dash.openModal(`
+      <h2>${Dash.icon('music')} ${escapeHtml(name)}</h2>
+      <div id="plTracks" class="muted" style="max-height:320px;overflow:auto;">Lade …</div>
+      <div class="modal__actions"><button type="button" class="btn btn--ghost" data-x>Schließen</button></div>`);
+    modal.querySelector('[data-x]').onclick = close;
+    modal.querySelector('.modal__actions').before(Dash.dangerZone({
+      text: 'Löscht die gespeicherte Playlist. Titel, die gerade laufen, spielen weiter.',
+      label: 'Playlist löschen',
+      confirm: `Playlist „${name}“ löschen?`,
+      onConfirm: async () => {
+        await apiFor('DELETE', '/music/playlists/' + id);
+        toast('Playlist gelöscht.', 'success');
+        close();
+        await loadPlaylists();
+      },
+    }));
+    const box = modal.querySelector('#plTracks');
     try {
-      const d = await apiFor('GET', `/music/playlists/${viewBtn.dataset.plview}`);
+      const d = await apiFor('GET', `/music/playlists/${id}`);
       box.innerHTML = d.tracks.length
         ? d.tracks.map((t, i) => `${i + 1}. ${escapeHtml(t.title)} <span class="muted">${fmtDur(t.duration, false)}</span>`).join('<br>')
         : 'Leer.';
@@ -257,13 +289,6 @@ document.getElementById('plList').addEventListener('click', async (e) => {
       const r = await apiFor('POST', `/music/playlists/${playBtn.dataset.plplay}/play`, {});
       toast(`${r.added} Titel aus „${r.label}" hinzugefügt.`, 'success');
       render(r.state);
-    } catch (err) {
-      toast(err.message, 'error');
-    }
-  } else if (delBtn) {
-    try {
-      await apiFor('DELETE', '/music/playlists/' + delBtn.dataset.pldel);
-      await loadPlaylists();
     } catch (err) {
       toast(err.message, 'error');
     }

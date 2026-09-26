@@ -23,7 +23,6 @@ function clubCard(c) {
       <h2>${escapeHtml(c.emoji || '🛡️')} ${escapeHtml(c.name)} <span class="muted">(${c.members.length})</span></h2>
       <div class="spacer"></div>
       <button type="button" class="btn btn--ghost btn--sm" data-edit="${c.id}">${icon('edit', 'icon--sm')} Bearbeiten</button>
-      <button type="button" class="btn btn--danger btn--sm" data-delclub="${c.id}">${icon('trash', 'icon--sm')}</button>
     </div>
     ${c.description ? `<p class="card__sub">${escapeHtml(c.description)}</p>` : ''}
     <div class="muted" style="font-size:.85rem;margin-bottom:8px;">
@@ -71,24 +70,28 @@ function clubModal(club) {
       toast('Gespeichert.', 'success'); close(); await load();
     } catch (err) { toast(err.message, 'error'); }
   };
+  if (club) {
+    modal.querySelector('#clubForm .modal__actions').before(Dash.dangerZone({
+      text: 'Löst den Club auf. Club-Rolle und Club-Kanal auf dem Server werden ebenfalls gelöscht.',
+      label: 'Club auflösen',
+      confirm: `Club „${club.name}“ wirklich auflösen?`,
+      onConfirm: async () => {
+        await apiFor('DELETE', `/clubs/${club.id}?discord=1`);
+        toast('Club aufgelöst.', 'success');
+        close();
+        await load();
+      },
+    }));
+  }
 }
 
 document.getElementById('newClubBtn').addEventListener('click', () => clubModal(null));
 
 document.getElementById('clubList').addEventListener('click', async (e) => {
   const edit = e.target.closest('[data-edit]');
-  const delc = e.target.closest('[data-delclub]');
   const kick = e.target.closest('[data-kick]');
   try {
     if (edit) return clubModal(CLUBS.find((c) => String(c.id) === edit.dataset.edit));
-    if (delc) {
-      const id = delc.dataset.delclub;
-      const club = CLUBS.find((c) => String(c.id) === id);
-      if (!(await confirmModal(`Club „${club?.name}" wirklich auflösen? Rolle und Kanal auf dem Server werden ebenfalls gelöscht.`, { danger: true, confirmLabel: 'Auflösen' }))) return;
-      await apiFor('DELETE', `/clubs/${id}?discord=1`);
-      toast('Club aufgelöst.', 'success');
-      return load();
-    }
     if (kick) {
       const [cid, uid] = kick.dataset.kick.split(':');
       if (!(await confirmModal('Mitglied aus dem Club entfernen?', { danger: true, confirmLabel: 'Entfernen' }))) return;

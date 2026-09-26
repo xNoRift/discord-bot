@@ -126,7 +126,6 @@ function gwtbCard(b) {
     </div>
     <div class="list-row__actions">
       <button class="btn btn--outline btn--sm" data-a="edit" data-id="${b.id}">${icon('edit', 'icon--sm')} Bearbeiten</button>
-      <button class="btn btn--danger btn--sm" data-a="del" data-id="${b.id}">${icon('trash', 'icon--sm')} Entfernen</button>
     </div>
   </div>`;
 }
@@ -149,7 +148,6 @@ function gwtbQCard(q, i) {
   return `<div class="qfield" data-q="${q.id}">
     <div class="qfield__head">
       <b>${i + 1}. ${escapeHtml(q.label || 'Neues Feld')}</b>
-      <button type="button" class="btn btn--danger btn--icon" data-qa="del" title="Feld löschen">${icon('trash', 'icon--sm')}</button>
     </div>
     <div class="col-2">
       <div class="field"><label>Anzeigename <span class="req">*</span></label><input data-qf="label" value="${escapeHtml(q.label)}" maxlength="45"></div>
@@ -259,13 +257,29 @@ async function ticketButtonModal(existing) {
           await apiFor('PATCH', `/giveaway-ticket-buttons/${existing.id}/questions/${qid}`, patch);
           toast('Feld gespeichert.', 'success');
           await reopen();
-        } else if (qbtn.dataset.qa === 'del') {
-          if (!(await confirmModal('Feld löschen?', { danger: true, confirmLabel: 'Löschen' }))) return;
-          await apiFor('DELETE', `/giveaway-ticket-buttons/${existing.id}/questions/${qid}`);
-          await reopen();
         }
       } catch (err) { toast(err.message, 'error'); }
     });
+    modal.querySelectorAll('#gwtbQList [data-q]').forEach((row) => row.append(Dash.dangerZone({
+      compact: true,
+      label: 'Feld löschen',
+      confirm: 'Dieses Feld löschen?',
+      onConfirm: async () => {
+        await apiFor('DELETE', `/giveaway-ticket-buttons/${existing.id}/questions/${row.dataset.q}`);
+        await reopen();
+      },
+    })));
+    modal.querySelector('#gwtbForm .modal__actions').before(Dash.dangerZone({
+      text: 'Entfernt den Button aus künftigen Gewinner-Nachrichten. Bereits erstellte Tickets bleiben bestehen.',
+      label: 'Button löschen',
+      confirm: `Ticket-Button „${existing.label}“ löschen?`,
+      onConfirm: async () => {
+        await apiFor('DELETE', `/giveaway-ticket-buttons/${existing.id}`);
+        toast('Button gelöscht.', 'success');
+        close();
+        loadTicketButtons();
+      },
+    }));
   }
 }
 
@@ -280,10 +294,6 @@ document.getElementById('gwtbList').addEventListener('click', async (e) => {
   try {
     if (btn.dataset.a === 'edit') {
       await ticketButtonModal(ticketButtons.find((x) => String(x.id) === String(id)));
-    } else if (btn.dataset.a === 'del') {
-      if (!(await confirmModal('Diesen Ticket-Button entfernen?', { danger: true, confirmLabel: 'Entfernen' }))) return;
-      await apiFor('DELETE', `/giveaway-ticket-buttons/${id}`);
-      toast('Entfernt.', 'success'); loadTicketButtons();
     }
   } catch (err) { toast(err.message, 'error'); }
 });

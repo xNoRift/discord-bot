@@ -1,7 +1,7 @@
 /* global document, Dash */
 'use strict';
 
-const { apiFor, escapeHtml, getRoles, icon, confirmModal, toast } = Dash;
+const { apiFor, escapeHtml, getRoles, icon, toast } = Dash;
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Number(n).toLocaleString('de-DE');
@@ -21,7 +21,7 @@ async function loadRewards() {
           <div class="list-row__head">
             <span class="list-row__title">${icon('star', 'icon--sm')} Level ${r.level} → @${escapeHtml(roleName(r.role_id))}</span>
             <span class="spacer"></span>
-            <button type="button" class="btn btn--danger btn--sm" data-del="${r.id}">${icon('trash', 'icon--sm')}</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-open="${r.id}">${icon('edit', 'icon--sm')} Bearbeiten</button>
           </div></div>`).join('')
       : `<div class="empty">${icon('gift')}<b>Keine Belohnungen</b>Lege oben eine an.</div>`;
     if (curve.ready) renderCurve(true); // Rollen-Hinweise in der Stufen-Tabelle aktualisieren
@@ -41,15 +41,29 @@ $('rewardForm').addEventListener('submit', async (e) => {
   } catch (err) { toast(err.message, 'error'); }
 });
 
-$('rewardList').addEventListener('click', async (e) => {
-  const btn = e.target.closest('[data-del]');
-  if (!btn) return;
-  const id = btn.dataset.del;
-  try {
-    if (!(await confirmModal('Diese Belohnung entfernen?', { danger: true, confirmLabel: 'Entfernen' }))) return;
-    await apiFor('DELETE', `/levels/rewards/${id}`);
-    await loadRewards();
-  } catch (err) { toast(err.message, 'error'); }
+/** Belohnung öffnen: zeigt Level und Rolle, unten die Gefahrenzone zum Löschen. */
+$('rewardList').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-open]');
+  const r = btn && REWARDS.find((x) => String(x.id) === btn.dataset.open);
+  if (!r) return;
+  const { modal, close } = Dash.openModal(`
+    <h2>${icon('star')} Level-Belohnung</h2>
+    <div class="setting-row"><div class="setting-row__text"><b>Level</b></div><span class="text-2">${r.level}</span></div>
+    <div class="setting-row"><div class="setting-row__text"><b>Rolle</b></div><span class="text-2">@${escapeHtml(roleName(r.role_id))}</span></div>
+    <p class="muted">Um Level oder Rolle zu ändern, lege eine neue Belohnung an und lösche diese.</p>
+    <div class="modal__actions"><button type="button" class="btn btn--ghost" data-x>Schließen</button></div>`);
+  modal.querySelector('[data-x]').onclick = close;
+  modal.querySelector('.modal__actions').before(Dash.dangerZone({
+    text: 'Die Rolle wird ab jetzt nicht mehr für dieses Level vergeben. Bereits vergebene Rollen bleiben.',
+    label: 'Belohnung löschen',
+    confirm: `Belohnung „Level ${r.level} → @${roleName(r.role_id)}“ löschen?`,
+    onConfirm: async () => {
+      await apiFor('DELETE', `/levels/rewards/${r.id}`);
+      toast('Belohnung gelöscht.', 'success');
+      close();
+      await loadRewards();
+    },
+  }));
 });
 
 /* ---------------- Rangliste ---------------- */
@@ -67,8 +81,7 @@ async function loadBoard() {
             <span class="list-row__title">#${r.rank} ${escapeHtml(r.name || 'Mitglied ' + r.userId)}</span>
             <span class="badge badge--active">Level ${r.level}</span>
             <span class="spacer"></span>
-            <button type="button" class="btn btn--ghost btn--sm" data-xp="${r.userId}" title="XP verwalten">${icon('edit', 'icon--sm')}</button>
-            <button type="button" class="btn btn--ghost btn--sm" data-reset="${r.userId}" title="XP zurücksetzen">${icon('refresh', 'icon--sm')}</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-xp="${r.userId}" title="XP verwalten">${icon('edit', 'icon--sm')} Bearbeiten</button>
           </div>
           <div class="list-row__meta"><span>${fmt(r.xp)} XP</span><span>${r.messages} Nachrichten</span><span>${r.voiceMinutes} Min. Sprache</span><span>${r.maxLevel ? 'Höchstlevel erreicht' : r.progress + '% zum nächsten Level'}</span></div>
         </div>`).join('')
@@ -76,33 +89,25 @@ async function loadBoard() {
   } catch (e) { w.innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`; }
 }
 
-$('board').addEventListener('click', async (e) => {
+$('board').addEventListener('click', (e) => {
   const xpBtn = e.target.closest('[data-xp]');
   if (xpBtn) {
     const r = boardRows.find((x) => x.userId === xpBtn.dataset.xp);
     if (r) pickTarget({ id: r.userId, name: r.name || 'Mitglied ' + r.userId, avatarUrl: r.avatarUrl, xp: r.xp, level: r.level }, true);
-    return;
   }
-  const btn = e.target.closest('[data-reset]');
-  if (!btn) return;
-  const uid = btn.dataset.reset;
-  try {
-    if (!(await confirmModal('XP dieses Mitglieds zurücksetzen?', { danger: true, confirmLabel: 'Zurücksetzen' }))) return;
-    await apiFor('DELETE', `/levels/users/${uid}`);
-    if (xpTarget?.id === uid) pickTarget({ ...xpTarget, xp: 0, level: 0 });
-    await loadBoard();
-  } catch (err) { toast(err.message, 'error'); }
 });
 
-$('lvlResetAll').addEventListener('click', async () => {
-  try {
-    if (!(await confirmModal('ALLE XP und Level auf diesem Server zurücksetzen? Das kann nicht rückgängig gemacht werden.', { danger: true, confirmLabel: 'Alles zurücksetzen' }))) return;
+$('boardCard').append(Dash.dangerZone({
+  text: 'Setzt XP und Level aller Mitglieder auf diesem Server auf 0. Das kann nicht rückgängig gemacht werden.',
+  label: 'Alle zurücksetzen',
+  confirm: 'ALLE XP und Level auf diesem Server zurücksetzen?',
+  onConfirm: async () => {
     await apiFor('POST', '/levels/reset');
     toast('Zurückgesetzt.', 'success');
     if (xpTarget) pickTarget({ ...xpTarget, xp: 0, level: 0 });
     await loadBoard();
-  } catch (err) { toast(err.message, 'error'); }
-});
+  },
+}));
 
 /* ---------------- XP vergeben ---------------- */
 
@@ -113,7 +118,20 @@ let xpTimer = null;
 function renderTarget() {
   const t = $('xpTarget');
   $('xpApply').disabled = !xpTarget;
+  $('xpDanger').replaceChildren();
   if (!xpTarget) { t.hidden = true; t.innerHTML = ''; return; }
+  const target = xpTarget;
+  $('xpDanger').append(Dash.dangerZone({
+    compact: true,
+    label: 'XP dieses Mitglieds zurücksetzen',
+    confirm: `XP von ${target.name} auf 0 zurücksetzen?`,
+    onConfirm: async () => {
+      await apiFor('DELETE', `/levels/users/${target.id}`);
+      toast('XP zurückgesetzt.', 'success');
+      pickTarget({ ...target, xp: 0, level: 0 });
+      await loadBoard();
+    },
+  }));
   t.hidden = false;
   t.innerHTML = `
     ${xpTarget.avatarUrl ? `<img src="${escapeHtml(xpTarget.avatarUrl)}" alt="" />` : ''}

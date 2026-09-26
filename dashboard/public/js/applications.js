@@ -3,7 +3,7 @@
 
 const {
   apiFor, fillSelectors, readForm, escapeHtml, fmtDate, icon,
-  getRoles, getChannels, openModal, confirmModal, toast, initEmojiInputs,
+  getRoles, getChannels, openModal, toast, initEmojiInputs,
 } = Dash;
 
 const $ = (id) => document.getElementById(id);
@@ -87,7 +87,6 @@ function typeRow(t) {
       <div class="list-row__actions">
         ${iconBtn('btn--outline', 'edit', t.id, 'edit', 'Bearbeiten')}
         ${iconBtn('btn--outline', 'dup', t.id, 'layers', 'Duplizieren')}
-        ${iconBtn('btn--danger', 'del', t.id, 'trash', 'Löschen')}
       </div>
     </div></div>`;
 }
@@ -109,11 +108,7 @@ $('appList').addEventListener('click', async (e) => {
   const id = Number(row.dataset.t);
   if (!btn) return openEditor(id);
   if (btn.dataset.a === 'edit') return openEditor(id);
-  if (btn.dataset.a === 'dup') { if (await run(() => apiFor('POST', `/application-types/${id}/duplicate`), 'Bewerbung dupliziert.')) loadTypes(); return; }
-  if (btn.dataset.a === 'del') {
-    if (!(await confirmModal('Bewerbung samt Fragen löschen? Bereits eingereichte Bewerbungen bleiben erhalten.', { danger: true, confirmLabel: 'Löschen' }))) return;
-    if (await run(() => apiFor('DELETE', `/application-types/${id}`), 'Bewerbung gelöscht.')) loadTypes();
-  }
+  if (btn.dataset.a === 'dup') { if (await run(() => apiFor('POST', `/application-types/${id}/duplicate`), 'Bewerbung dupliziert.')) loadTypes(); }
 });
 $('newAppBtn').addEventListener('click', () => {
   const { modal, close } = openModal(`
@@ -167,7 +162,6 @@ function embedMsgBlock([key, field, title, hint, max, ph, defTitle], c) {
               <div class="field"><label>Bild (groß)</label><input name="${p}_image" value="${escapeHtml(e.imageUrl || '')}" placeholder="https://…" /></div>
               <div class="field"><label>Vorschaubild (klein)</label><input name="${p}_thumb" value="${escapeHtml(e.thumbnailUrl || '')}" placeholder="https://…" /></div>
             </div>
-            <button type="button" class="btn btn--danger btn--sm" data-emreset="${p}">${icon('trash', 'icon--sm')} Gestaltung löschen (Titel, Farbe, Bilder, Fußzeile)</button>
           </details>
         </div>
       </div>
@@ -316,16 +310,6 @@ async function openEditor(typeId) {
   initEmojiInputs(ED);
   const form = ED.querySelector('#typeForm');
   wireEmbedColors(form);
-  form.querySelectorAll('[data-emreset]').forEach((b) => b.addEventListener('click', () => {
-    const p = b.dataset.emreset;
-    for (const k of ['title', 'color', 'footer', 'image', 'thumb']) {
-      const el = form.elements[`${p}_${k}`];
-      el.value = '';
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-    const bar = form.querySelector(`[data-bar="${p}"]`);
-    if (bar) bar.style.background = colorHex('');
-  }));
   form.restrictedMode.value = t.cfg.restrictedMode; form.requiredMode.value = t.cfg.requiredMode; form.onLeave.value = t.cfg.onLeave;
   await fillSelectors({
     pendingChannelId: t.cfg.pendingChannelId, acceptedChannelId: t.cfg.acceptedChannelId, deniedChannelId: t.cfg.deniedChannelId,
@@ -350,6 +334,18 @@ async function openEditor(typeId) {
   };
   showSection('all');
   renderQuestions();
+
+  ED.append(Dash.dangerZone({
+    text: 'Löscht diese Bewerbung samt allen Fragen. Bereits eingereichte Bewerbungen bleiben erhalten.',
+    label: 'Bewerbung löschen',
+    confirm: `Bewerbung „${t.name}“ samt Fragen löschen?`,
+    onConfirm: async () => {
+      await apiFor('DELETE', `/application-types/${t.id}`);
+      toast('Bewerbung gelöscht.', 'success');
+      ED.hidden = true; IX.hidden = false; showView('apps');
+      loadTypes();
+    },
+  }));
 }
 
 /* ---------- Fragen ---------- */
@@ -368,7 +364,6 @@ function questionCard(q, i, total) {
       <button type="button" class="btn btn--ghost btn--sm" data-a="up" ${i === 0 ? 'disabled' : ''}>↑</button>
       <button type="button" class="btn btn--ghost btn--sm" data-a="down" ${i === total - 1 ? 'disabled' : ''}>↓</button>
       <button type="button" class="btn btn--outline btn--icon" data-a="dup" title="Duplizieren">${icon('layers', 'icon--sm')}</button>
-      <button type="button" class="btn btn--danger btn--icon" data-a="del" title="Löschen">${icon('trash', 'icon--sm')}</button>
     </div>
     <div class="form">
       <div class="field"><input data-f="label" maxlength="200" value="${escapeHtml(q.label)}" placeholder="Fragetext" /></div>
@@ -451,6 +446,15 @@ async function renderQuestions() {
         toast('Frage gespeichert.', 'success');
       } catch (err) { toast(errMsg(err), 'error'); throw err; }
     }, { fieldAttr: 'data-f', key: 'q-' + qid });
+    row.append(Dash.dangerZone({
+      compact: true,
+      label: 'Frage löschen',
+      confirm: 'Diese Frage löschen?',
+      onConfirm: async () => {
+        await apiFor('DELETE', `/application-types/${t.id}/questions/${qid}`);
+        renderQuestions();
+      },
+    }));
   });
 
   wrap.onclick = async (e) => {
@@ -461,10 +465,7 @@ async function renderQuestions() {
     const idx = qs.findIndex((x) => String(x.id) === qid);
     const q = qs[idx];
     try {
-      if (btn.dataset.a === 'del') {
-        if (!(await confirmModal('Frage löschen?', { danger: true, confirmLabel: 'Löschen' }))) return;
-        await apiFor('DELETE', `/application-types/${t.id}/questions/${qid}`);
-      } else if (btn.dataset.a === 'dup') {
+      if (btn.dataset.a === 'dup') {
         const g = (f) => row.querySelector(`[data-f=${f}]`); // aktuelle Eingaben der Karte kopieren (auch ungespeicherte)
         await apiFor('POST', `/application-types/${t.id}/questions`, { label: g('label').value || q.label, style: g('style').value, required: g('required').checked, minLength: Number(g('minLength').value) || 0, maxLength: Number(g('maxLength').value) || 0, options: g('options').value, description: g('description').value });
       } else {
@@ -496,7 +497,6 @@ async function loadPanels() {
           <div class="list-row__actions">
             ${iconBtn('btn--outline', 'edit', p.id, 'edit', 'Bearbeiten')}
             ${iconBtn('btn--outline', 'dup', p.id, 'layers', 'Duplizieren')}
-            ${iconBtn('btn--danger', 'del', p.id, 'trash', 'Löschen')}
           </div>
         </div></div>`).join('')
       : `<div class="empty">${icon('layers')}<b>Keine Panels</b>${TYPES.length ? 'Erstelle ein Panel, um deine Bewerbungen im Server anzubieten.' : 'Erstelle zuerst mindestens eine Bewerbung.'}</div>`;
@@ -508,11 +508,7 @@ $('panelList').addEventListener('click', async (e) => {
   if (!row) return;
   const id = Number(row.dataset.p);
   if (!btn || btn.dataset.a === 'edit') return openPanelEditor(id);
-  if (btn.dataset.a === 'dup') { if (await run(() => apiFor('POST', `/application-panels/${id}/duplicate`), 'Panel dupliziert.')) loadPanels(); return; }
-  if (btn.dataset.a === 'del') {
-    if (!(await confirmModal('Panel löschen? Die Nachricht im Server wird ebenfalls entfernt.', { danger: true, confirmLabel: 'Löschen' }))) return;
-    if (await run(() => apiFor('DELETE', `/application-panels/${id}`), 'Panel gelöscht.')) loadPanels();
-  }
+  if (btn.dataset.a === 'dup') { if (await run(() => apiFor('POST', `/application-panels/${id}/duplicate`), 'Panel dupliziert.')) loadPanels(); }
 });
 $('newPanelBtn').addEventListener('click', async () => {
   if (!TYPES.length) return toast('Erstelle zuerst mindestens eine Bewerbung.', 'warn');
@@ -608,6 +604,17 @@ async function openPanelEditor(panelId) {
       if (r.url) window.open(r.url, '_blank', 'noopener');
     } catch (e) { toast(errMsg(e), 'error'); }
   };
+  PE.append(Dash.dangerZone({
+    text: 'Löscht das Panel. Die Panel-Nachricht in Discord wird entfernt, die Bewerbungen selbst bleiben erhalten.',
+    label: 'Panel löschen',
+    confirm: `Panel „${p.name}“ löschen?`,
+    onConfirm: async () => {
+      await apiFor('DELETE', `/application-panels/${p.id}`);
+      toast('Panel gelöscht.', 'success');
+      PE.hidden = true; IX.hidden = false; showView('panels');
+      loadPanels();
+    },
+  }));
 }
 
 /* ================= Einreichungen ================= */
@@ -636,8 +643,7 @@ function subRow(a) {
       <span class="muted">${escapeHtml(fmtDate(a.created_at))}${a.source ? ' · ' + (SOURCE_LABEL[a.source] || a.source) : ''}${dur}</span>
     </div>
     ${answers}
-    <div class="list-row__actions">${actions}${chat}
-      <button class="btn btn--ghost btn--sm" data-a="del" data-id="${a.id}" title="Einreichung löschen">${icon('trash', 'icon--sm')}</button></div></div>`;
+    <div class="list-row__actions">${actions}${chat}</div></div>`;
 }
 
 async function loadSubs() {
@@ -662,6 +668,16 @@ async function loadSubs() {
     $('subPage').textContent = `Seite ${r.page} / ${pages}`;
     $('subPrev').disabled = r.page <= 1; $('subNext').disabled = r.page >= pages;
     w.innerHTML = r.items.length ? r.items.map(subRow).join('') : `<div class="empty">${icon('clipboard')}<b>Keine Einreichungen</b></div>`;
+    w.querySelectorAll('.list-row[data-id]').forEach((row) => row.append(Dash.dangerZone({
+      compact: true,
+      label: 'Einreichung löschen',
+      confirm: `Einreichung #${row.dataset.id} endgültig löschen?`,
+      onConfirm: async () => {
+        await apiFor('DELETE', `/applications/${row.dataset.id}`);
+        toast('Einreichung gelöscht.', 'success');
+        loadSubs();
+      },
+    })));
   } catch (e) { w.innerHTML = `<div class="empty">${escapeHtml(errMsg(e))}</div>`; }
 }
 ['subType', 'subOrder', 'subStatus', 'subLimit'].forEach((id) => $(id).addEventListener('change', () => { subPage = 1; loadSubs(); }));
@@ -678,11 +694,6 @@ $('subList').addEventListener('click', async (e) => {
     const r = await run(() => apiFor('POST', `/applications/${id}/chat`));
     if (r) toast(r.created ? 'Chat geöffnet.' : 'Chat ist bereits vorhanden.', 'success');
     return loadSubs();
-  }
-  if (action === 'del') {
-    if (!(await confirmModal('Einreichung endgültig löschen?', { danger: true, confirmLabel: 'Löschen' }))) return;
-    if (await run(() => apiFor('DELETE', `/applications/${id}`), 'Einreichung gelöscht.')) loadSubs();
-    return;
   }
   const note = await Dash.promptModal('Nachricht an den Bewerber (optional)', {
     title: action === 'accept' ? 'Bewerbung annehmen' : 'Bewerbung ablehnen',

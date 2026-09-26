@@ -344,14 +344,15 @@ function confirmModal(message, { danger = false, confirmLabel = 'Bestätigen' } 
 
 /**
  * Einheitliche „Gefahrenzone“ unten in einem Bearbeiten-Fenster – der einzige Ort, an dem gelöscht wird.
- * @param {{ text: string, label: string, confirm: string, onConfirm: () => Promise<void>|void }} o
+ * compact: nur ein Button unten rechts (für kleine Karten wie Formularfelder, die untereinander stehen).
+ * @param {{ text?: string, label: string, confirm: string, onConfirm: () => Promise<void>|void, compact?: boolean }} o
  * @returns {HTMLElement}
  */
-function dangerZone({ text, label, confirm, onConfirm }) {
+function dangerZone({ text = '', label, confirm, onConfirm, compact = false }) {
   const el = document.createElement('div');
-  el.className = 'danger-zone';
+  el.className = compact ? 'danger-zone danger-zone--compact' : 'danger-zone';
   el.innerHTML = `
-    <div class="danger-zone__text"><b>Gefahrenzone</b><span>${escapeHtml(text)}</span></div>
+    ${compact ? '' : `<div class="danger-zone__text"><b>Gefahrenzone</b><span>${escapeHtml(text)}</span></div>`}
     <button type="button" class="btn btn--danger-outline btn--sm">${icon('trash', 'icon--sm')} ${escapeHtml(label)}</button>`;
   const btn = el.querySelector('button');
   btn.addEventListener('click', async () => {
@@ -402,11 +403,10 @@ function optionEmbedsModal(options, current, o = {}) {
             <div class="field"><label>Bild (groß)</label><input data-k="imageUrl" data-image value="${escapeHtml(e.imageUrl || '')}" placeholder="https://…" /></div>
             <div class="field"><label>Vorschaubild (klein)</label><input data-k="thumbnailUrl" data-image value="${escapeHtml(e.thumbnailUrl || '')}" placeholder="https://…" /></div>
             <div class="field"><label>Fußzeile</label><input data-k="footer" maxlength="2048" value="${escapeHtml(e.footer || '')}" /></div>
-            <div><button type="button" class="btn btn--danger btn--sm" data-act="clear">${icon('trash', 'icon--sm')} Embed dieser Option löschen</button></div>
           </div>
         </details>`;
       }).join('') : '<div class="empty">Trage zuerst Optionen ein (eine pro Zeile).</div>'}
-      <div class="modal__actions">${list.length ? `<button type="button" class="btn btn--danger" data-act="clearall" style="margin-right:auto;">${icon('trash', 'icon--sm')} Alle löschen</button>` : ''}<button type="button" class="btn btn--ghost" data-act="cancel">Abbrechen</button><button type="button" class="btn btn--primary" data-act="ok"${list.length ? '' : ' disabled'}>Übernehmen</button></div>`,
+      <div class="modal__actions"><button type="button" class="btn btn--ghost" data-act="cancel">Abbrechen</button><button type="button" class="btn btn--primary" data-act="ok"${list.length ? '' : ' disabled'}>Übernehmen</button></div>`,
     { onClose: () => finish(null) });
     modal.style.maxWidth = '760px';
     enhanceWidgets(modal);
@@ -415,11 +415,6 @@ function optionEmbedsModal(options, current, o = {}) {
       const box = e.target.closest('[data-opt]');
       if (box) box.querySelector('[data-state]').outerHTML = badge(has(read(box)));
     });
-    // Löschen = alle Felder der Option leeren (wird mit „Übernehmen“ gespeichert)
-    const clearBox = (box) => box.querySelectorAll('[data-k]').forEach((el) => { el.value = ''; fireInput(el); });
-    modal.querySelectorAll('[data-act="clear"]').forEach((b) => { b.onclick = () => clearBox(b.closest('[data-opt]')); });
-    const clearAll = modal.querySelector('[data-act="clearall"]');
-    if (clearAll) clearAll.onclick = () => modal.querySelectorAll('[data-opt]').forEach(clearBox);
     modal.querySelector('[data-act="cancel"]').onclick = () => close();
     modal.querySelector('[data-act="ok"]').onclick = () => {
       const out = {};

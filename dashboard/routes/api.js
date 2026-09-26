@@ -1239,8 +1239,13 @@ router.patch(
 router.delete(
   '/guilds/:guildId/ticket-panels/:panelId',
   asyncHandler(async (req, res) => {
-    if (!ownedPanel(req)) return res.status(404).json({ error: 'Panel nicht gefunden.' });
-    ticketPanels.deletePanel(num(req.params.panelId));
+    const panel = ownedPanel(req);
+    if (!panel) return res.status(404).json({ error: 'Panel nicht gefunden.' });
+    if (panel.channel_id && panel.message_id) {
+      const ch = req.guild.channels.cache.get(panel.channel_id);
+      await ch?.messages?.delete(panel.message_id).catch(() => null);
+    }
+    ticketPanels.deletePanel(panel.id);
     res.json({ ok: true });
   }),
 );
