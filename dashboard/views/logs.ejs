@@ -24,14 +24,10 @@
 </div>
 
 <div class="card">
-  <div class="card__head"><h2><%- icon('settings') %> Log-Kanäle</h2></div>
+  <div class="card__head"><h2><%- icon('settings') %> Allgemeiner Log-Kanal</h2></div>
+  <p class="card__sub">Fallback für alles, was keinen eigenen Log-Kanal hat. Eigene Log-Kanäle stellst du direkt beim Modul ein (Tickets, Giveaways, Bewerbungen, Moderation, Guild Protection).</p>
   <form id="logChannels" class="form">
-    <div class="col-2">
-      <div class="field"><label>Allgemeiner Log-Kanal</label><select name="log_channel_id" data-type="text"></select></div>
-      <div class="field"><label>Ticket-Log</label><select name="ticket_log_channel_id" data-type="text"></select></div>
-      <div class="field"><label>Giveaway-Log</label><select name="giveaway_log_channel_id" data-type="text"></select></div>
-      <div class="field"><label>Bewerbungs-Log</label><select name="application_log_channel_id" data-type="text"></select></div>
-    </div>
+    <div class="field" style="max-width:420px;"><label>Allgemeiner Log-Kanal</label><select name="log_channel_id" data-type="text"></select></div>
   </form>
 </div>
 

@@ -1,36 +1,34 @@
 /* global document, Dash */
 'use strict';
 
-const { apiFor, fillSelectors, getRoles, toast, escapeHtml, fmtRelative } = Dash;
+const { apiFor, fillSelectors, getChannels, getRoles, toast, escapeHtml, fmtRelative, icon, dangerZone } = Dash;
 
 const form = document.getElementById('msgForm');
+const channelSel = document.getElementById('msgChannel');
 const asEmbed = document.getElementById('msgAsEmbed');
 const embedOpts = document.getElementById('msgEmbedOpts');
+const titleIn = document.getElementById('msgEmbedTitle');
 const content = document.getElementById('msgContent');
+const imageIn = document.getElementById('msgImage');
+const pingSel = document.getElementById('msgPing');
+const editIdIn = document.getElementById('msgEditId');
 const countEl = document.getElementById('msgCount');
 const maxEl = document.getElementById('msgMax');
 const colorPick = document.getElementById('msgColor');
 const colorText = document.getElementById('msgColorText');
 const statusEl = document.getElementById('msgStatus');
 const sendBtn = document.getElementById('msgSend');
+const dangerBox = document.getElementById('msgDanger');
 
-(async function init() {
-  try {
-    const [, roles] = await Promise.all([fillSelectors({}), getRoles()]);
-    const sel = document.getElementById('msgPing');
-    if (sel && Array.isArray(roles)) {
-      sel.insertAdjacentHTML(
-        'beforeend',
-        roles
-          .filter((r) => !r.managed)
-          .map((r) => `<option value="${r.id}">@${escapeHtml(r.name)}</option>`)
-          .join(''),
-      );
-    }
-  } catch (e) {
-    toast(e.message, 'error');
-  }
-})();
+let CHAN = { text: [] };
+let SENT = [];
+/** Eintrag aus „Gesendete Nachrichten“, der gerade bearbeitet wird (oder null = neue Nachricht). */
+let editing = null;
+
+const chName = (id) => {
+  const c = (CHAN.text || []).find((x) => x.id === id);
+  return c ? '#' + c.name : '#gelöschter-kanal';
+};
 
 function syncEmbedUi() {
   const on = asEmbed.checked;
@@ -42,6 +40,10 @@ function updateCount() {
   const max = asEmbed.checked ? 4096 : 2000;
   countEl.textContent = String(content.value.length);
   countEl.style.color = content.value.length > max ? 'var(--red)' : '';
+}
+function setColor(hex) {
+  colorText.value = hex;
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) colorPick.value = hex;
 }
 
 asEmbed.addEventListener('change', syncEmbedUi);
@@ -55,32 +57,92 @@ colorText.addEventListener('input', () => {
 colorText.value = colorPick.value;
 syncEmbedUi();
 
+function clearForm() {
+  content.value = '';
+  titleIn.value = '';
+  imageIn.value = '';
+  pingSel.value = 'none';
+  editIdIn.value = '';
+  updateCount();
+}
+
+/* ---------------- Bearbeiten-Modus ---------------- */
+
+function startEdit(post) {
+  editing = post;
+  channelSel.value = post.channel_id;
+  channelSel.disabled = true;
+  asEmbed.checked = post.as_embed !== 0;
+  titleIn.value = post.title || '';
+  content.value = post.body || '';
+  imageIn.value = post.image_url || '';
+  setColor(post.color || '#7c5cff');
+  pingSel.value = 'none';
+  editIdIn.value = post.message_id;
+  syncEmbedUi();
+
+  document.getElementById('msgEditBanner').hidden = false;
+  document.getElementById('msgManualEdit').hidden = true;
+  document.getElementById('msgHeading').lastChild.textContent = ' Nachricht bearbeiten';
+  sendBtn.lastChild.textContent = ' Änderungen speichern';
+  statusEl.textContent = '';
+
+  dangerBox.replaceChildren(dangerZone({
+    text: 'Löscht die Nachricht in Discord und entfernt sie aus dieser Liste.',
+    label: 'Nachricht löschen',
+    confirm: 'Nachricht löschen? Sie wird auch im Discord-Kanal entfernt.',
+    onConfirm: async () => {
+      await apiFor('DELETE', `/news/${post.id}?discord=1`);
+      toast('Nachricht gelöscht.', 'success');
+      stopEdit();
+      await loadSent();
+    },
+  }));
+  document.getElementById('msgCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function stopEdit() {
+  editing = null;
+  channelSel.disabled = false;
+  document.getElementById('msgEditBanner').hidden = true;
+  document.getElementById('msgManualEdit').hidden = false;
+  document.getElementById('msgHeading').lastChild.textContent = ' Nachricht senden';
+  sendBtn.lastChild.textContent = ' Senden';
+  dangerBox.replaceChildren();
+  clearForm();
+  asEmbed.checked = false;
+  setColor('#7c5cff');
+  syncEmbedUi();
+}
+
+document.getElementById('msgEditCancel').addEventListener('click', stopEdit);
+
+/* ---------------- Senden / Speichern ---------------- */
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const body = {
-    channelId: document.getElementById('msgChannel').value,
+    channelId: channelSel.value,
     content: content.value,
     asEmbed: asEmbed.checked,
-    embedTitle: document.getElementById('msgEmbedTitle').value,
+    embedTitle: titleIn.value,
     embedColor: colorText.value,
-    pingMention: document.getElementById('msgPing').value,
-    messageId: document.getElementById('msgEditId').value.trim(),
+    imageUrl: imageIn.value.trim(),
+    pingMention: pingSel.value,
+    messageId: editIdIn.value.trim(),
   };
   if (!body.channelId) return toast('Bitte einen Kanal wählen.', 'error');
 
   sendBtn.disabled = true;
-  statusEl.textContent = 'Wird gesendet…';
+  statusEl.textContent = editing ? 'Wird gespeichert…' : 'Wird gesendet…';
   try {
     const r = await apiFor('POST', '/message', body);
     toast(r.edited ? 'Nachricht bearbeitet.' : 'Nachricht gesendet.', 'success');
     statusEl.innerHTML = (r.edited ? 'Bearbeitet ✓ ' : 'Gesendet ✓ ') +
       (r.url ? `<a href="${r.url}" target="_blank" rel="noopener">In Discord ansehen</a>` : '');
-    if (!r.edited) {
-      content.value = '';
-      document.getElementById('msgEmbedTitle').value = '';
-      document.getElementById('msgPing').value = 'none';
-      updateCount();
-    }
+    if (editing) stopEdit();
+    else if (!r.edited) clearForm();
+    await loadSent();
   } catch (err) {
     toast(err.message, 'error');
     statusEl.textContent = err.message;
@@ -88,6 +150,56 @@ form.addEventListener('submit', async (e) => {
     sendBtn.disabled = false;
   }
 });
+
+/* ---------------- Gesendete Nachrichten ---------------- */
+
+async function loadSent() {
+  const w = document.getElementById('sentList');
+  try {
+    SENT = await apiFor('GET', '/news');
+    w.innerHTML = SENT.length
+      ? SENT.map((n) => {
+          const label = n.title || (n.body || '').split('\n')[0].slice(0, 80) || '(ohne Text)';
+          return `<div class="list-row">
+            <div class="list-row__head">
+              <span class="list-row__title">${icon(n.as_embed === 0 ? 'chat' : 'bell', 'icon--sm')} ${escapeHtml(label)}</span>
+              <span class="spacer"></span>
+              <button type="button" class="btn btn--ghost btn--sm" data-edit="${n.id}">${icon('edit', 'icon--sm')} Bearbeiten</button>
+            </div>
+            <div class="list-row__meta"><span>${escapeHtml(chName(n.channel_id))}</span><span>${escapeHtml(fmtRelative(n.created_at))}</span></div>
+          </div>`;
+        }).join('')
+      : `<div class="empty">${icon('send')}<b>Noch nichts gesendet</b>Schreibe oben deine erste Nachricht.</div>`;
+  } catch (err) {
+    w.innerHTML = `<div class="empty">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+document.getElementById('sentList').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-edit]');
+  if (!btn) return;
+  const post = SENT.find((n) => String(n.id) === btn.dataset.edit);
+  if (post) startEdit(post);
+});
+
+(async function init() {
+  try {
+    const [, roles, chans] = await Promise.all([fillSelectors({}), getRoles(), getChannels()]);
+    CHAN = chans;
+    if (Array.isArray(roles)) {
+      pingSel.insertAdjacentHTML(
+        'beforeend',
+        roles
+          .filter((r) => !r.managed)
+          .map((r) => `<option value="${r.id}">@${escapeHtml(r.name)}</option>`)
+          .join(''),
+      );
+    }
+    await loadSent();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+})();
 
 /* ---------------- Nachrichten-Verlauf ---------------- */
 

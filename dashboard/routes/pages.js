@@ -11,32 +11,51 @@ const router = express.Router();
 
 const NAV = [
   {
+    label: 'Allgemein',
     items: [
       { key: 'overview', label: 'Übersicht', icon: 'home', path: '' },
+      { key: 'settings', label: 'Einstellungen', icon: 'settings', path: '/settings' },
+      { key: 'commands', label: 'Befehle', icon: 'terminal', path: '/commands' },
+      { key: 'logs', label: 'Logs', icon: 'file', path: '/logs' },
+    ],
+  },
+  {
+    label: 'Support',
+    items: [
+      { key: 'tickets', label: 'Tickets', icon: 'ticket', path: '/tickets' },
+      { key: 'applications', label: 'Bewerbungen', icon: 'clipboard', path: '/applications' },
+      { key: 'voicesupport', label: 'Voice Support', icon: 'chat', path: '/voicesupport' },
+      { key: 'tempvoice', label: 'Private Kanäle', icon: 'hash', path: '/tempvoice' },
+    ],
+  },
+  {
+    label: 'Community',
+    items: [
       { key: 'welcome', label: 'Willkommen', icon: 'bell', path: '/welcome' },
       { key: 'rules', label: 'Regeln', icon: 'scale', path: '/rules' },
-      { key: 'voicesupport', label: 'Voice Support', icon: 'chat', path: '/voicesupport' },
-      { key: 'tickets', label: 'Ticket', icon: 'ticket', path: '/tickets' },
-      { key: 'moderation', label: 'Moderation', icon: 'shield', path: '/moderation' },
-      { key: 'tempvoice', label: 'Private Kanäle', icon: 'hash', path: '/tempvoice' },
-      { key: 'statistics', label: 'Server Statistiken', icon: 'chart', path: '/statistics' },
-      { key: 'levels', label: 'Beteiligungs-Belohnungen', icon: 'star', path: '/levels' },
-      { key: 'team', label: 'Teamverwaltung', icon: 'users', path: '/team' },
-      { key: 'clubs', label: 'Club-Management', icon: 'users', path: '/clubs' },
-      { key: 'news', label: 'Neuigkeiten', icon: 'bell', path: '/news' },
-      { key: 'social', label: 'Social-Media', icon: 'send', path: '/social' },
-      { key: 'protection', label: 'Guild Protection', icon: 'shield', path: '/protection' },
       { key: 'suggestions', label: 'Vorschläge', icon: 'bulb', path: '/suggestions' },
-      { key: 'giveaways', label: 'Giveaways', icon: 'gift', path: '/giveaways' },
-      { key: 'applications', label: 'Bewerbungen', icon: 'clipboard', path: '/applications' },
-      { key: 'music', label: 'Musik', icon: 'sparkles', path: '/music' },
+      { key: 'levels', label: 'Level', icon: 'star', path: '/levels' },
+      { key: 'clubs', label: 'Clubs', icon: 'users', path: '/clubs' },
+      { key: 'music', label: 'Musik', icon: 'music', path: '/music' },
       { key: 'games', label: 'Spiele', icon: 'sparkles', path: '/games' },
-      { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
-      { key: 'logs', label: 'Logs', icon: 'file', path: '/logs' },
+    ],
+  },
+  {
+    label: 'Moderation',
+    items: [
+      { key: 'moderation', label: 'Moderation', icon: 'shield', path: '/moderation' },
+      { key: 'protection', label: 'Guild Protection', icon: 'lock', path: '/protection' },
       { key: 'members', label: 'Mitglieder', icon: 'users', path: '/members', ownerOnly: true },
       { key: 'structure', label: 'Server-Struktur', icon: 'layers', path: '/structure', ownerOnly: true },
-      { key: 'commands', label: 'Befehle', icon: 'terminal', path: '/commands' },
-      { key: 'settings', label: 'Einstellungen', icon: 'settings', path: '/settings' },
+    ],
+  },
+  {
+    label: 'Inhalte',
+    items: [
+      { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
+      { key: 'social', label: 'Social-Media', icon: 'bell', path: '/social' },
+      { key: 'giveaways', label: 'Giveaways', icon: 'gift', path: '/giveaways' },
+      { key: 'statistics', label: 'Statistik-Kanäle', icon: 'chart', path: '/statistics' },
     ],
   },
 ];
@@ -62,21 +81,19 @@ const CRUMB = {
   music: { crumb: 'Musik', crumbIcon: 'music' },
   tempvoice: { crumb: 'Private Kanäle', crumbIcon: 'hash' },
   games: { crumb: 'Spiele', crumbIcon: 'sparkles' },
-  tickets: { crumb: 'Ticket', crumbIcon: 'ticket' },
+  tickets: { crumb: 'Tickets', crumbIcon: 'ticket' },
   giveaways: { crumb: 'Giveaways', crumbIcon: 'gift' },
   applications: { crumb: 'Bewerbungen', crumbIcon: 'clipboard' },
   moderation: { crumb: 'Moderation', crumbIcon: 'shield' },
-  statistics: { crumb: 'Server Statistiken', crumbIcon: 'chart' },
-  team: { crumb: 'Teamverwaltung', crumbIcon: 'users' },
+  statistics: { crumb: 'Statistik-Kanäle', crumbIcon: 'chart' },
   commands: { crumb: 'Befehle', crumbIcon: 'terminal' },
   settings: { crumb: 'Einstellungen', crumbIcon: 'settings' },
   logs: { crumb: 'Logs', crumbIcon: 'file' },
   suggestions: { crumb: 'Vorschläge', crumbIcon: 'bulb' },
-  social: { crumb: 'Social-Media', crumbIcon: 'send' },
-  protection: { crumb: 'Guild Protection', crumbIcon: 'shield' },
-  levels: { crumb: 'Beteiligungs-Belohnungen', crumbIcon: 'star' },
-  news: { crumb: 'Neuigkeiten', crumbIcon: 'bell' },
-  clubs: { crumb: 'Club-Management', crumbIcon: 'users' },
+  social: { crumb: 'Social-Media', crumbIcon: 'bell' },
+  protection: { crumb: 'Guild Protection', crumbIcon: 'lock' },
+  levels: { crumb: 'Level', crumbIcon: 'star' },
+  clubs: { crumb: 'Clubs', crumbIcon: 'users' },
   impressum: { crumb: 'Impressum', crumbIcon: 'scale' },
   datenschutz: { crumb: 'Datenschutzerklärung', crumbIcon: 'lock' },
   support: { crumb: 'Support', crumbIcon: 'chat' },
@@ -157,7 +174,6 @@ const PAGES = [
   ['/applications', 'applications'],
   ['/moderation', 'moderation'],
   ['/statistics', 'statistics'],
-  ['/team', 'team'],
   ['/commands', 'commands'],
   ['/settings', 'settings'],
   ['/logs', 'logs'],
@@ -165,13 +181,16 @@ const PAGES = [
   ['/social', 'social'],
   ['/protection', 'protection'],
   ['/levels', 'levels'],
-  ['/news', 'news'],
   ['/clubs', 'clubs'],
   ['/impressum', 'impressum'],
   ['/datenschutz', 'datenschutz'],
   ['/support', 'support'],
   ['/voicesupport', 'voicesupport'],
 ];
+
+// Zusammengelegte Seiten: alte Links leiten weiter
+g.get('/news', (req, res) => res.redirect(301, `/dashboard/${req.params.guildId}/messages`));
+g.get('/team', (req, res) => res.redirect(301, `/dashboard/${req.params.guildId}`));
 
 for (const [path, view] of PAGES) {
   g.get(path, (req, res) => res.render(view, pageLocals(req, view)));

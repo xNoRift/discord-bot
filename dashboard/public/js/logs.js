@@ -35,10 +35,7 @@ document.getElementById('reload').addEventListener('click', loadLogs);
 async function loadLogChannels() {
   const s = await apiFor('GET', '/settings');
   await fillSelectors(s);
-  ['log_channel_id', 'ticket_log_channel_id', 'giveaway_log_channel_id', 'application_log_channel_id'].forEach((k) => {
-    const el = document.querySelector(`#logChannels [name=${k}]`);
-    if (el) el.value = s[k] || '';
-  });
+  document.querySelector('#logChannels [name=log_channel_id]').value = s.log_channel_id || '';
 }
 
 async function saveLogChannels() {

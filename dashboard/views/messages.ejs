@@ -3,11 +3,16 @@
 
 <div class="page-head">
   <div class="page-head__row"><h1><%- icon('send') %> Nachrichten</h1></div>
-  <p>Schreibe über den Bot direkt in einen Kanal auf <strong><%= guild.name %></strong>.</p>
+  <p>Schreibe über den Bot in einen Kanal auf <strong><%= guild.name %></strong> – normale Nachrichten und Ankündigungen.</p>
 </div>
 
-<div class="card">
-  <div class="card__head"><h2><%- icon('chat') %> Nachricht senden</h2></div>
+<div class="card" id="msgCard">
+  <div class="card__head"><h2 id="msgHeading"><%- icon('chat') %> Nachricht senden</h2></div>
+  <div class="module-status" id="msgEditBanner" hidden>
+    <span class="module-status__dot"></span>
+    <span class="module-status__text"><b>Du bearbeitest eine gesendete Nachricht</b><span>Änderungen werden direkt in Discord übernommen.</span></span>
+    <button class="btn btn--ghost btn--sm" type="button" id="msgEditCancel">Abbrechen</button>
+  </div>
   <form id="msgForm" class="form">
     <div class="field">
       <label>Kanal</label>
@@ -28,7 +33,7 @@
     <div class="col-2" id="msgEmbedOpts" hidden>
       <div class="field">
         <label>Embed-Titel (optional)</label>
-        <input id="msgEmbedTitle" type="text" maxlength="256" placeholder="z. B. Ankündigung" />
+        <input id="msgEmbedTitle" type="text" maxlength="256" placeholder="z. B. Server-Update" data-emoji />
       </div>
       <div class="field">
         <label>Embed-Farbe</label>
@@ -36,6 +41,10 @@
           <input type="color" id="msgColor" value="#7c5cff" style="max-width:70px;" />
           <input id="msgColorText" type="text" placeholder="#7c5cff" maxlength="7" />
         </div>
+      </div>
+      <div class="field" style="grid-column:1/-1;">
+        <label>Bild (optional)</label>
+        <input id="msgImage" data-image />
       </div>
     </div>
 
@@ -45,8 +54,8 @@
       <div class="field-hint"><span id="msgCount">0</span> / <span id="msgMax">2000</span> Zeichen · Discord-Markdown wird unterstützt</div>
     </div>
 
-    <details style="margin-top:4px;">
-      <summary class="text-2" style="cursor:pointer;">Stattdessen eine bestehende Bot-Nachricht bearbeiten</summary>
+    <details style="margin-top:4px;" id="msgManualEdit">
+      <summary class="text-2" style="cursor:pointer;">Eine ältere Bot-Nachricht per ID bearbeiten</summary>
       <div class="field" style="margin-top:10px;">
         <label>Nachrichten-ID</label>
         <input id="msgEditId" type="text" inputmode="numeric" placeholder="z. B. 1234567890123456789" />
@@ -59,11 +68,18 @@
       <span class="muted" id="msgStatus"></span>
     </div>
   </form>
+  <div id="msgDanger"></div>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('bell') %> Gesendete Nachrichten</h2></div>
+  <p class="card__sub">Alles, was du hier über den Bot gesendet hast. Über „Bearbeiten“ änderst du eine Nachricht nachträglich.</p>
+  <div id="sentList"><div class="loading">Lädt…</div></div>
 </div>
 
 <div class="card">
   <div class="card__head">
-    <h2><%- icon('clock') %> Nachrichten-Verlauf</h2>
+    <h2><%- icon('clock') %> Kanal-Verlauf</h2>
     <div class="spacer"></div>
     <button class="btn btn--ghost btn--sm" type="button" id="histReload" title="Neu laden"><%- icon('refresh', 'icon--sm') %></button>
   </div>

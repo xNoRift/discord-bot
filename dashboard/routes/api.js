@@ -28,6 +28,7 @@ const applicationService = require('../../src/services/applicationService');
 
 const { parseDuration } = require('../../src/utils/time');
 const { parseHexColor, validEmoji } = require('../../src/utils/embeds');
+const newsModel = require('../../src/database/models/news');
 
 const router = express.Router();
 
@@ -294,6 +295,8 @@ router.get(
         icon: g.icon,
         memberCount: g.memberCount,
         ownerId: g.ownerId,
+        channels: g.channels.cache.size,
+        roles: g.roles.cache.size,
       },
       bot: {
         online: client.isReady?.() ?? false,
@@ -303,8 +306,7 @@ router.get(
       tickets: tStats,
       giveaways: gStats,
       applications: aStats,
-      tempRoles: tempRolesModel.listActiveByGuild(g.id).length,
-      activity: activity.recent(g.id, 15),
+      activity: activity.recent(g.id, 5),
     });
   }),
 );
@@ -470,6 +472,7 @@ router.post(
     const asEmbed = Boolean(b.asEmbed);
     const embedTitle = String(b.embedTitle ?? '').slice(0, 256);
     const color = parseHexColor(b.embedColor);
+    const imageUrl = asEmbed && /^https:\/\//i.test(b.imageUrl || '') ? String(b.imageUrl).slice(0, 500) : '';
     const mention = normalizeMention(b.pingMention ?? b.pingRoleId, req.guild); // '@everyone' | '@here' | '<@&id>' | null
 
     if (asEmbed) {
@@ -514,6 +517,7 @@ router.post(
           if (embedTitle.trim()) e.setTitle(embedTitle);
           if (content.trim()) e.setDescription(content);
           e.setColor(color ?? config.branding.color);
+          if (imageUrl) e.setImage(imageUrl);
           return e;
         })()
       : null;
@@ -525,6 +529,15 @@ router.post(
           allowedMentions,
         };
 
+    // Für „Gesendete Nachrichten“ merken, damit man sie später wieder bearbeiten kann
+    const record = {
+      title: asEmbed ? embedTitle.trim() : '',
+      body: content,
+      asEmbed,
+      color: asEmbed && color !== null ? '#' + color.toString(16).padStart(6, '0') : null,
+      imageUrl,
+    };
+
     try {
       const messageId = b.messageId ? String(b.messageId) : '';
       if (/^\d{5,25}$/.test(messageId)) {
@@ -534,9 +547,12 @@ router.post(
           return res.status(400).json({ error: 'Es können nur Nachrichten des Bots bearbeitet werden.' });
         }
         const edited = await existing.edit(payload);
+        const known = newsModel.getByMessage(req.guild.id, edited.id);
+        if (known) newsModel.update(known.id, record);
         return res.json({ ok: true, edited: true, id: edited.id, url: edited.url });
       }
       const sent = await channel.send(payload);
+      newsModel.add({ guildId: req.guild.id, channelId: channel.id, messageId: sent.id, authorId: req.session.user.id, ...record });
       res.json({ ok: true, edited: false, id: sent.id, url: sent.url });
     } catch (err) {
       res.status(400).json({ error: discordErr(err) });
@@ -1077,19 +1093,6 @@ router.get('/guilds/:guildId/temp-roles', (req, res) => {
       expires_at: r.expires_at,
     })),
   );
-});
-
-/* Kombinierte Statistiken für die Statistik-Seite. */
-router.get('/guilds/:guildId/stats', (req, res) => {
-  const gid = req.params.guildId;
-  res.json({
-    guild: { memberCount: req.guild.memberCount, channels: req.guild.channels.cache.size, roles: req.guild.roles.cache.size },
-    tickets: ticketsModel.stats(gid),
-    giveaways: giveawaysModel.stats(gid),
-    applications: appModel.stats(gid),
-    tempRoles: tempRolesModel.listActiveByGuild(gid).length,
-    activity: activity.recent(gid, 60),
-  });
 });
 
 /* ---------------- Settings ---------------- */
@@ -1832,62 +1835,13 @@ router.post('/guilds/:guildId/levels/reset', actionLimiter, (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------------- Neuigkeiten ---------------- */
-
-const newsModel = require('../../src/database/models/news');
+/* ---------------- Gesendete Nachrichten (Seite „Nachrichten“) ---------------- */
 
 router.get('/guilds/:guildId/news', (req, res) => {
   res.json(newsModel.list(req.params.guildId));
 });
 
-router.post(
-  '/guilds/:guildId/news',
-  actionLimiter,
-  asyncHandler(async (req, res) => {
-    const b = req.body || {};
-    const newsCfg = moduleSettings.get(req.guild.id, 'news');
-    if (!newsCfg.enabled) return res.status(400).json({ error: 'Das Neuigkeiten-Modul ist deaktiviert. Bitte oben aktivieren.' });
-    const title = String(b.title || '').trim().slice(0, 256);
-    const body = String(b.body || '').trim().slice(0, 4000);
-    if (!title && !body) return res.status(400).json({ error: 'Bitte einen Titel oder Text angeben.' });
-
-    const channel = req.guild.channels.cache.get(String(b.channelId || ''));
-    if (!channel || !channel.isTextBased()) return res.status(400).json({ error: 'Bitte einen gültigen Textkanal wählen.' });
-
-    const embed = new EmbedBuilder().setColor(parseHexColor(b.color, config.branding.color)).setTimestamp();
-    if (title) embed.setTitle(title);
-    if (body) embed.setDescription(body);
-    if (/^https:\/\//i.test(b.imageUrl || '')) embed.setImage(String(b.imageUrl));
-    embed.setFooter({ text: `Von ${req.session.user.globalName || req.session.user.username}` });
-
-    let content;
-    const allowedMentions = { parse: [] };
-    const ping = String(b.ping || 'none');
-    if (ping === '@everyone' || ping === '@here') {
-      content = ping;
-      allowedMentions.parse = ['everyone'];
-    } else if (ping === 'default') {
-      const ids = String(newsCfg.pingRoleIds || '').split(',').map((x) => x.trim()).filter((id) => req.guild.roles.cache.has(id));
-      if (ids.length) {
-        content = ids.map((id) => `<@&${id}>`).join(' ');
-        allowedMentions.roles = ids;
-      }
-    } else if (/^\d{5,25}$/.test(ping) && req.guild.roles.cache.has(ping)) {
-      content = `<@&${ping}>`;
-      allowedMentions.roles = [ping];
-    }
-
-    let msg;
-    try {
-      msg = await channel.send({ content, embeds: [embed], allowedMentions });
-    } catch (err) {
-      return res.status(400).json({ error: 'Senden fehlgeschlagen: ' + discordErr(err) });
-    }
-    const row = newsModel.add({ guildId: req.params.guildId, channelId: channel.id, messageId: msg.id, title, body, authorId: req.session.user.id });
-    res.json({ ...row, url: msg.url });
-  }),
-);
-
+/** Gesendete Nachricht aus der Liste entfernen – optional auch in Discord löschen (?discord=1). */
 router.delete(
   '/guilds/:guildId/news/:id',
   asyncHandler(async (req, res) => {

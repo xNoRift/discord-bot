@@ -534,7 +534,7 @@ CREATE TABLE IF NOT EXISTS level_thresholds (
   PRIMARY KEY (guild_id, level)
 );
 
--- ---------- Neuigkeiten ----------
+-- ---------- Gesendete Nachrichten (früher „Neuigkeiten“) ----------
 CREATE TABLE IF NOT EXISTS news_posts (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   guild_id   TEXT NOT NULL,

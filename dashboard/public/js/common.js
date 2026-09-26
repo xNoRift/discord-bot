@@ -343,6 +343,32 @@ function confirmModal(message, { danger = false, confirmLabel = 'Bestätigen' } 
 }
 
 /**
+ * Einheitliche „Gefahrenzone“ unten in einem Bearbeiten-Fenster – der einzige Ort, an dem gelöscht wird.
+ * @param {{ text: string, label: string, confirm: string, onConfirm: () => Promise<void>|void }} o
+ * @returns {HTMLElement}
+ */
+function dangerZone({ text, label, confirm, onConfirm }) {
+  const el = document.createElement('div');
+  el.className = 'danger-zone';
+  el.innerHTML = `
+    <div class="danger-zone__text"><b>Gefahrenzone</b><span>${escapeHtml(text)}</span></div>
+    <button type="button" class="btn btn--danger-outline btn--sm">${icon('trash', 'icon--sm')} ${escapeHtml(label)}</button>`;
+  const btn = el.querySelector('button');
+  btn.addEventListener('click', async () => {
+    if (!(await confirmModal(confirm, { danger: true, confirmLabel: label }))) return;
+    btn.disabled = true;
+    try {
+      await onConfirm();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  return el;
+}
+
+/**
  * Eingabe-Fenster im Dashboard-Design (Ersatz für window.prompt).
  * Liefert den eingegebenen Text oder null bei Abbruch (Abbrechen, Esc, Klick daneben).
  */
@@ -1121,6 +1147,7 @@ window.Dash = {
   fmtDuration,
   openModal,
   confirmModal,
+  dangerZone,
   openEmojiPicker,
   attachEmojiPicker,
   initEmojiInputs,

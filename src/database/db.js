@@ -180,6 +180,11 @@ ensureColumn('guild_settings', 'tempvoice_interface_channel_id', 'TEXT');
 ensureColumn('guild_settings', 'tempvoice_interface_message_id', 'TEXT');
 ensureColumn('temp_voice_channels', 'panel_message_id', 'TEXT');
 
+// Gesendete Nachrichten (Seite „Nachrichten“): Inhalt merken, damit man sie später bearbeiten kann
+ensureColumn('news_posts', 'as_embed', 'INTEGER DEFAULT 1');
+ensureColumn('news_posts', 'color', 'TEXT');
+ensureColumn('news_posts', 'image_url', 'TEXT');
+
 // Zähl-Spiel: Info-Panel
 ensureColumn('game_counting', 'panel_channel_id', 'TEXT');
 ensureColumn('game_counting', 'panel_message_id', 'TEXT');

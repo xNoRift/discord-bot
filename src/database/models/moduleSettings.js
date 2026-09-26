@@ -3,7 +3,7 @@
 const db = require('../db');
 
 /**
- * Einstellungen der neuen Module (Guild Protection, Belohnungen, Neuigkeiten, Clubs).
+ * Einstellungen der neuen Module (Guild Protection, Belohnungen, Clubs, …).
  * Pro Server und Modul ein JSON-Objekt. Nur Felder aus dem SCHEMA werden gespeichert
  * und typgeprüft; fehlende Felder fallen auf den Standardwert zurück.
  *
@@ -68,11 +68,6 @@ const SCHEMAS = {
     leaveColor: ['', 'text:7'],
     leaveThumbnail: [true, 'bool'],
     leaveTimestamp: [true, 'bool'],
-  },
-  news: {
-    enabled: [true, 'bool'],
-    defaultChannelId: ['', 'text:32'],
-    pingRoleIds: ['', 'text:600'],
   },
   stats: {
     enabled: [false, 'bool'],
