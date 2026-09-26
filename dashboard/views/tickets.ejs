@@ -24,12 +24,11 @@
 
   <div class="card">
     <div class="card__head"><h2><%- icon('settings') %> Standard-Einstellungen</h2></div>
-    <p class="card__sub">Gelten für Panels und Kategorien, die keine eigene Kategorie, Support-Rolle oder keinen eigenen Log-Kanal gesetzt haben.</p>
+    <p class="card__sub">Gelten für Panels und Kategorien, die keine eigene Kategorie oder Support-Rolle gesetzt haben. Log-Kanäle stellst du zentral unter <a href="/dashboard/<%= guild.id %>/logs">Logs</a> ein.</p>
     <form id="ticketDefaults">
       <div class="col-2">
         <div class="field"><label>Standard Discord-Kategorie</label><select name="ticket_category_id" data-type="category"></select></div>
         <div class="field"><label>Standard Support-Rolle</label><select name="ticket_support_role_id" data-type="role"></select></div>
-        <div class="field"><label>Standard Log-Kanal</label><select name="ticket_log_channel_id" data-type="text"></select><small>Für Panels ohne eigenen Log-Kanal.</small></div>
       </div>
       <div class="field">
         <label>Kanalname</label>

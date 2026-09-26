@@ -1179,7 +1179,17 @@ router.patch(
 );
 
 router.get('/guilds/:guildId/activity', (req, res) => {
-  res.json(activity.recent(req.params.guildId, Math.min(100, num(req.query.limit, 40))));
+  const group = require('../../src/utils/logEvents').GROUPS.find((g) => g.key === req.query.group);
+  const rows = activity.list(req.params.guildId, {
+    types: group ? group.events.map(([t]) => t) : null,
+    limit: Math.min(100, num(req.query.limit, 40)),
+    before: num(req.query.before, null),
+  });
+  // Namen der Auslöser mitliefern (aus dem Cache, ohne Discord-Anfragen)
+  res.json(rows.map((r) => {
+    const m = r.actor_id ? req.guild.members.cache.get(r.actor_id) : null;
+    return { ...r, actorName: m ? m.displayName : r.actor_id ? (client.users.cache.get(r.actor_id)?.username ?? null) : null };
+  }));
 });
 
 /* ---------------- Tickets ---------------- */
@@ -1711,6 +1721,66 @@ router.get('/guilds/:guildId/modules/:module', (req, res) => {
 router.patch('/guilds/:guildId/modules/:module', actionLimiter, (req, res) => {
   if (!moduleSettings.SCHEMAS[req.params.module]) return res.status(404).json({ error: 'Unbekanntes Modul.' });
   res.json(moduleSettings.update(req.params.guildId, req.params.module, req.body || {}));
+});
+
+/* ---------------- Log-System: was wird wohin geloggt ---------------- */
+
+const logEvents = require('../../src/utils/logEvents');
+
+router.get('/guilds/:guildId/logs/config', (req, res) => {
+  const gid = req.params.guildId;
+  const settings = settingsModel.get(gid);
+  const cfg = moduleSettings.get(gid, 'logs');
+  const prot = moduleSettings.get(gid, 'protection');
+  res.json({
+    general: settings.log_channel_id || '',
+    groups: logEvents.GROUPS.map((g) => ({
+      key: g.key,
+      label: g.label,
+      emoji: g.emoji,
+      note: g.note || '',
+      // Gruppen-Kanal; Protection übernimmt einmalig ihren alten eigenen Log-Kanal
+      channel: (g.settingsField ? settings[g.settingsField] : cfg[`g_${g.key}`] || (g.key === 'protection' ? prot.logChannelId : '')) || '',
+      events: g.events.map(([type, label]) => ({ type, label, on: cfg[`e_${type}`] !== false, channel: cfg[`c_${type}`] || '' })),
+    })),
+  });
+});
+
+router.patch('/guilds/:guildId/logs/config', actionLimiter, (req, res) => {
+  const gid = req.params.guildId;
+  const b = req.body || {};
+  const chan = (v) => {
+    const id = String(v ?? '').trim();
+    if (!id) return '';
+    const ch = req.guild.channels.cache.get(id);
+    if (!ch || !ch.isTextBased()) throw new Error('Bitte nur Textkanäle als Log-Kanal wählen.');
+    return id;
+  };
+  try {
+    const settingsPatch = {};
+    const cfgPatch = {};
+    if (b.general !== undefined) settingsPatch.log_channel_id = chan(b.general) || null;
+    for (const g of logEvents.GROUPS) {
+      const gp = b.groups?.[g.key];
+      if (gp !== undefined) {
+        if (g.settingsField) settingsPatch[g.settingsField] = chan(gp) || null;
+        else cfgPatch[`g_${g.key}`] = chan(gp);
+      }
+      for (const [type] of g.events) {
+        const ev = b.events?.[type];
+        if (!ev) continue;
+        if (ev.on !== undefined) cfgPatch[`e_${type}`] = Boolean(ev.on);
+        if (ev.channel !== undefined) cfgPatch[`c_${type}`] = chan(ev.channel);
+      }
+    }
+    if (Object.keys(settingsPatch).length) settingsModel.update(gid, settingsPatch);
+    moduleSettings.update(gid, 'logs', cfgPatch);
+    // Alten Protection-Log-Kanal nicht mehr als Fallback benutzen, sobald hier gespeichert wurde
+    if ('g_protection' in cfgPatch) moduleSettings.update(gid, 'protection', { logChannelId: '' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 /* ---------------- Button-Emojis (fest eingebaute Bot-Buttons) ---------------- */

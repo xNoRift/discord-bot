@@ -3,28 +3,10 @@
 
 const { apiFor, fillSelectors, readForm, toast } = Dash;
 
-const modForm = document.getElementById('modForm');
-
-async function loadModForm() {
-  const s = await apiFor('GET', '/settings');
-  await fillSelectors(s);
-  const el = document.querySelector('#modForm [name=mod_log_channel_id]');
-  if (el) el.value = s.mod_log_channel_id || '';
-}
-
-async function saveModForm() {
-  try { await apiFor('PATCH', '/settings', readForm(modForm)); toast('Gespeichert.', 'success'); }
-  catch (err) { toast(err.message, 'error'); throw err; }
-}
-
-
 Dash.moduleForm('moderation', document.getElementById('modCfg'), {
   on: 'Das Moderations-Modul ist aktiv. Die Slash-Befehle /warn, /mute, /kick und /ban funktionieren.',
   off: 'Das Moderations-Modul ist deaktiviert. Die Slash-Befehle sind gesperrt, das Dashboard funktioniert weiter.',
 })
-  // Erst danach das Log-Kanal-Formular laden, damit beide die Auswahllisten nicht gegenseitig überschreiben.
-  .then(() => loadModForm())
-  .then(() => Dash.trackForm(modForm, saveModForm, { reset: loadModForm }))
   .catch((e) => toast(e.message, 'error'));
 
 /* ---------------- Aktion gegen einen Nutzer ---------------- */

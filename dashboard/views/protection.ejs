@@ -91,7 +91,7 @@
   <div class="card">
     <div class="card__head"><h2><%- icon('settings') %> Ausnahmen &amp; Protokoll</h2></div>
     <div class="col-2">
-      <div class="field"><label>Log-Kanal</label><select name="logChannelId" data-type="text"></select><small>Leer = Moderations-/Standard-Log des Servers.</small></div>
+      <div class="field"><label>Log-Kanal</label><div class="field-hint">Wird zentral unter <a href="/dashboard/<%= guild.id %>/logs">Logs</a> eingestellt (Gruppe „Guild Protection“) – dort auch, welche Ereignisse geloggt werden.</div></div>
       <div class="field"><label>Ausgenommene Rollen (IDs)</label><input name="exemptRoleIds" placeholder="Rollen-ID, Rollen-ID" /><small>Mitglieder mit „Nachrichten verwalten" sind immer ausgenommen.</small></div>
     </div>
   </div>

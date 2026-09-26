@@ -81,7 +81,7 @@
       <form id="appSettings" class="form">
         <div class="field"><label>Standard-Kanal für neue Einreichungen</label><select name="application_channel_id" data-type="text"></select><small>Wird genutzt, wenn eine Bewerbung keinen eigenen „Offen“-Kanal hat.</small></div>
         <div class="field"><label>Team-Rolle</label><select name="application_team_role_id" data-type="role"></select><small>Darf alle Bewerbungen bearbeiten, wird bei neuen Einreichungen erwähnt (wenn keine eigenen Ping-Rollen gesetzt sind) und sieht die Bewerber-Chats.</small></div>
-        <div class="field"><label>Log-Kanal</label><select name="application_log_channel_id" data-type="text"></select><small>Log-Einträge und Transkripte der Bewerber-Chats.</small></div>
+        <div class="field"><label>Log-Kanal</label><div class="field-hint">Wird zentral unter <a href="/dashboard/<%= guild.id %>/logs">Logs</a> eingestellt (Gruppe „Bewerbungen“) – dort auch, welche Ereignisse geloggt werden. Transkripte der Bewerber-Chats gehen in denselben Kanal.</div></div>
         <div class="field"><label>Kategorie für Bewerber-Chats <span class="muted">(optional)</span></label><select name="application_chat_category_id" data-type="category"></select><small>Hier entstehen die Chats mit den Bewerbern. Leer = Kanal ohne Kategorie. Pro Bewerbung überschreibbar.</small></div>
       </form>
     </div>

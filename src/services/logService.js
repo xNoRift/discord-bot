@@ -3,100 +3,104 @@
 const { EmbedBuilder } = require('discord.js');
 const client = require('../core/client');
 const settingsModel = require('../database/models/settings');
+const moduleSettings = require('../database/models/moduleSettings');
 const activity = require('../database/models/activity');
 const logger = require('../utils/logger');
-const { parseHexColor } = require('../utils/embeds');
+const logEvents = require('../utils/logEvents');
 const config = require('../../config/config');
 
 /**
  * Zentrales Logging.
- * - Schreibt einen Eintrag ins activity_log (fuer das Dashboard).
- * - Postet ein Embed in den passenden Discord-Log-Channel.
+ * 1) Jeder Eintrag landet im Aktivitäts-Verlauf des Dashboards (Seite „Logs“) – immer.
+ * 2) Zusätzlich als Embed in einen Discord-Kanal, sofern das Ereignis auf der Logs-Seite an ist.
  *
- * Kategorien -> Channel-Feld in guild_settings:
- *   ticket      -> ticket_log_channel_id     (Fallback: log_channel_id)
- *   giveaway    -> giveaway_log_channel_id    (Fallback: log_channel_id)
- *   application -> application_log_channel_id (Fallback: log_channel_id)
- *   general     -> log_channel_id
+ * Kanal: Ereignis-Kanal > overrideChannelId (z. B. Log-Kanal eines Ticket-Panels)
+ *        > Kanal der Gruppe > allgemeiner Log-Kanal. Welche Ereignisse es gibt: utils/logEvents.js
  */
 
-const CATEGORY_FIELDS = {
-  ticket: 'ticket_log_channel_id',
-  giveaway: 'giveaway_log_channel_id',
-  application: 'application_log_channel_id',
-  moderation: 'mod_log_channel_id',
-  general: 'log_channel_id',
-};
-
-function resolveChannelId(settings, category) {
-  const field = CATEGORY_FIELDS[category] ?? 'log_channel_id';
-  return settings[field] || settings.log_channel_id || null;
+/** Kanal der Gruppe (Tickets, Moderation, …) – leer = kein eigener. */
+function groupChannelId(group, settings, cfg, guildId) {
+  if (!group) return null;
+  if (group.settingsField) return settings[group.settingsField] || null;
+  if (cfg[`g_${group.key}`]) return cfg[`g_${group.key}`];
+  // Früher hatte Guild Protection einen eigenen Log-Kanal in ihren Einstellungen
+  if (group.key === 'protection') {
+    return moduleSettings.get(guildId, 'protection').logChannelId || settings.mod_log_channel_id || null;
+  }
+  return null;
 }
+
+/**
+ * Wohin würde dieses Ereignis geloggt? (auch fürs Dashboard, um „Standard: #kanal“ anzuzeigen)
+ * @returns {{ enabled: boolean, channelId: string|null }}
+ */
+function resolve(guildId, type, category, overrideChannelId) {
+  const settings = settingsModel.get(guildId);
+  const cfg = moduleSettings.get(guildId, 'logs');
+  const known = logEvents.EVENTS.has(type);
+  const group = logEvents.groupOf(type, category);
+  return {
+    enabled: known ? cfg[`e_${type}`] !== false : true,
+    channelId:
+      (known && cfg[`c_${type}`]) || overrideChannelId || groupChannelId(group, settings, cfg, guildId) || settings.log_channel_id || null,
+  };
+}
+
+/** Steht der Auslöser schon irgendwo in den Feldern? Dann nicht doppelt anzeigen. */
+const mentions = (fields, description, id) =>
+  (description || '').includes(id) || fields.some((f) => String(f.value).includes(id));
 
 /**
  * @param {object} opts
  * @param {string} opts.guildId
- * @param {'ticket'|'giveaway'|'application'|'general'} opts.category
- * @param {string} opts.type            Kurz-Typ fuer das Dashboard-Log (z.B. 'ticket_create')
+ * @param {string} opts.type              Ereignis-Typ, z. B. 'ticket_create' (siehe utils/logEvents.js)
+ * @param {'ticket'|'giveaway'|'application'|'moderation'|'general'} [opts.category]  nur Fallback für unbekannte Typen
  * @param {string} opts.title
  * @param {string} [opts.description]
- * @param {Array}  [opts.fields]        EmbedField[]
+ * @param {Array}  [opts.fields]          EmbedField[]
  * @param {number} [opts.color]
- * @param {string} [opts.actorId]
+ * @param {string} [opts.actorId]         wer es ausgelöst hat
  * @param {string} [opts.targetId]
  * @param {object} [opts.meta]
+ * @param {string} [opts.overrideChannelId]  spezieller Kanal (z. B. Ticket-Panel), wird vom Ereignis-Kanal übersteuert
+ * @param {boolean} [opts.suppressDiscord]   nur Verlauf, keine Discord-Nachricht (z. B. Panel hat Logs aus)
  */
 async function log(opts) {
-  const {
-    guildId,
-    category = 'general',
-    type,
-    title,
-    description,
-    fields = [],
-    color,
-    actorId,
-    targetId,
-    meta,
-    overrideChannelId,
-    suppressDiscord,
-  } = opts;
+  const { guildId, category = 'general', type, title, description, fields = [], color, actorId, targetId, meta, overrideChannelId, suppressDiscord } = opts;
 
-  // 1) Dashboard-Aktivitaetslog
+  // 1) Dashboard-Verlauf
   try {
-    activity.add({
-      guildId,
-      type: type ?? category,
-      actorId,
-      targetId,
-      message: title,
-      meta,
-    });
+    activity.add({ guildId, type: type ?? category, actorId, targetId, message: title, meta });
   } catch (err) {
     logger.error('[log] activity.add fehlgeschlagen:', err.message);
   }
 
-  // 2) Discord-Channel (kann pro Aufruf unterdrückt werden, z. B. wenn das Panel Logs deaktiviert hat)
+  // 2) Discord
   if (suppressDiscord) return;
   try {
-    const settings = settingsModel.get(guildId);
-    const channelId = overrideChannelId || resolveChannelId(settings, category);
-    if (!channelId) return;
+    const { enabled, channelId } = resolve(guildId, type, category, overrideChannelId);
+    if (!enabled || !channelId) return;
 
     const guild = client.guilds.cache.get(guildId);
     if (!guild) return;
     const channel = guild.channels.cache.get(channelId) ?? (await guild.channels.fetch(channelId).catch(() => null));
     if (!channel || !channel.isTextBased()) return;
 
-    const defaultColor = parseHexColor(settings.embed_color) ?? config.branding.color;
+    const group = logEvents.groupOf(type, category);
+    const eventLabel = logEvents.EVENTS.get(type)?.label;
     const embed = new EmbedBuilder()
-      .setColor(color ?? defaultColor)
-      .setTitle(title)
+      .setColor(color ?? group?.color ?? config.branding.color)
+      .setTitle(String(title).slice(0, 256))
       .setTimestamp();
-    if (description) embed.setDescription(description);
-    if (fields.length) embed.addFields(fields.slice(0, 25));
+    if (group) embed.setAuthor({ name: `${group.emoji} ${group.label}${eventLabel ? ' · ' + eventLabel : ''}`.slice(0, 256) });
+    if (description) embed.setDescription(String(description).slice(0, 4096));
+    const allFields = [...fields];
+    if (actorId && !mentions(fields, description, actorId)) {
+      allFields.push({ name: 'Ausgelöst von', value: `<@${actorId}>`, inline: true });
+    }
+    if (allFields.length) embed.addFields(allFields.slice(0, 25));
 
-    await channel.send({ embeds: [embed] }).catch((err) => {
+    await channel.send({ embeds: [embed], allowedMentions: { parse: [] } }).catch((err) => {
       logger.warn(`[log] Konnte nicht in Log-Channel ${channelId} senden: ${err.message}`);
     });
   } catch (err) {
@@ -104,4 +108,4 @@ async function log(opts) {
   }
 }
 
-module.exports = { log };
+module.exports = { log, resolve };

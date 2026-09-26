@@ -31,7 +31,6 @@ async function report(guild, cfg, title, description) {
       title: `🛡️ ${title}`,
       description,
       color: config.branding.warning,
-      overrideChannelId: cfg.logChannelId || undefined,
     })
     .catch(() => null);
 }

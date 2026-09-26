@@ -2,6 +2,7 @@
 
 const db = require('../db');
 const buttonEmojis = require('../../utils/buttonEmojis');
+const logEvents = require('../../utils/logEvents');
 
 /**
  * Einstellungen der neuen Module (Guild Protection, Belohnungen, Clubs, …).
@@ -120,6 +121,8 @@ const SCHEMAS = {
   },
   // Eigene Emojis für die fest eingebauten Bot-Buttons (siehe utils/buttonEmojis.js)
   buttonEmojis: buttonEmojis.schema(),
+  // Log-System: pro Ereignis an/aus (e_<typ>) und eigener Kanal (c_<typ>), Gruppen-Kanäle (g_<gruppe>)
+  logs: logEvents.schema(),
 };
 
 function defaults(module) {

@@ -4,32 +4,34 @@
 <div class="page-head">
   <div class="page-head__row">
     <h1><%- icon('file') %> Logs</h1>
-    <button class="btn btn--ghost btn--sm" id="reload"><%- icon('refresh') %> Aktualisieren</button>
   </div>
-  <p>Alle Aktionen des Bots auf diesem Server.</p>
+  <p>Was der Bot auf <strong><%= guild.name %></strong> getan hat – und wohin er es in Discord protokolliert.</p>
 </div>
 
 <div class="card">
   <div class="card__head">
     <h2><%- icon('bell') %> Verlauf</h2>
     <div class="spacer"></div>
-    <div class="tabs tabs--wrap" id="logTabs">
-      <button class="tab is-active" data-f="">Alle</button>
-      <button class="tab" data-f="ticket">Tickets</button>
-      <button class="tab" data-f="giveaway">Giveaways</button>
-      <button class="tab" data-f="application">Bewerbungen</button>
-    </div>
+    <button class="btn btn--ghost btn--sm" id="reload" type="button" title="Aktualisieren"><%- icon('refresh', 'icon--sm') %></button>
   </div>
-  <ul class="activity" id="logList"><li class="loading">Lädt…</li></ul>
+  <div class="tabs tabs--wrap" id="logTabs" style="margin-bottom:12px;"><button class="tab is-active" data-g="" type="button">Alle</button></div>
+  <ul class="activity log-list" id="logList"><li class="loading">Lädt…</li></ul>
+  <div style="text-align:center;margin-top:10px;"><button class="btn btn--ghost btn--sm" id="logMore" type="button" hidden>Ältere laden</button></div>
 </div>
 
-<div class="card">
-  <div class="card__head"><h2><%- icon('settings') %> Allgemeiner Log-Kanal</h2></div>
-  <p class="card__sub">Fallback für alles, was keinen eigenen Log-Kanal hat. Eigene Log-Kanäle stellst du direkt beim Modul ein (Tickets, Giveaways, Bewerbungen, Moderation, Guild Protection).</p>
-  <form id="logChannels" class="form">
-    <div class="field" style="max-width:420px;"><label>Allgemeiner Log-Kanal</label><select name="log_channel_id" data-type="text"></select></div>
-  </form>
-</div>
+<form id="logRouting">
+  <div class="card">
+    <div class="card__head"><h2><%- icon('settings') %> Allgemeiner Log-Kanal</h2></div>
+    <p class="card__sub">Hierhin geht alles, was weder einen eigenen Kanal noch einen Kanal seiner Gruppe hat. Leer = nur im Verlauf oben, nicht in Discord.</p>
+    <div class="field" style="max-width:420px;"><select name="general" data-logsel="general"></select></div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('layers') %> Was wird wohin geloggt?</h2></div>
+    <p class="card__sub">Schalte einzelne Ereignisse aus oder schicke sie in einen eigenen Kanal. Reihenfolge: Kanal des Ereignisses → Kanal der Gruppe → allgemeiner Log-Kanal. Ausgeschaltete Ereignisse stehen trotzdem im Verlauf oben.</p>
+    <div id="logGroups"><div class="loading">Lädt…</div></div>
+  </div>
+</form>
 
 <%- include('partials/app-shell-close') %>
 <script src="/static/js/logs.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>

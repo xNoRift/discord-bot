@@ -168,7 +168,7 @@ async function openThread(user, firstContent, files = []) {
   await logService.log({
     guildId: guild.id,
     category: 'ticket',
-    type: 'ticket_create',
+    type: 'modmail_create',
     title: '📨 ModMail-Ticket erstellt',
     color: config.branding.success,
     fields: [

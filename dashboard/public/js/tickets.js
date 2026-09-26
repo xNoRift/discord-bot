@@ -1049,7 +1049,6 @@ async function loadDefaults() {
   await fillSelectors({
     ticket_category_id: settings.ticket_category_id,
     ticket_support_role_id: settings.ticket_support_role_id,
-    ticket_log_channel_id: settings.ticket_log_channel_id,
   });
   if (f.ticket_name_format) f.ticket_name_format.value = settings.ticket_name_format || 'ticket-{user}';
 }

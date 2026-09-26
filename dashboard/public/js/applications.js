@@ -57,7 +57,7 @@ async function loadSettings() {
   settings = await apiFor('GET', '/settings');
   await fillSelectors(settings);
   const form = $('appSettings');
-  for (const k of ['application_channel_id', 'application_team_role_id', 'application_log_channel_id', 'application_chat_category_id']) {
+  for (const k of ['application_channel_id', 'application_team_role_id', 'application_chat_category_id']) {
     form.querySelector(`[name=${k}]`).value = settings[k] || '';
   }
 }
@@ -66,7 +66,7 @@ async function saveSettings() {
   try {
     settings = await apiFor('PATCH', '/settings', {
       application_channel_id: a.application_channel_id, application_team_role_id: a.application_team_role_id,
-      application_log_channel_id: a.application_log_channel_id, application_chat_category_id: a.application_chat_category_id,
+      application_chat_category_id: a.application_chat_category_id,
     });
     toast('Gespeichert.', 'success');
   } catch (err) { toast(err.message, 'error'); throw err; }
