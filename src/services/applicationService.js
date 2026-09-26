@@ -22,7 +22,7 @@ const { discordTimestamp } = require('../utils/time');
 const config = require('../../config/config');
 const { botCanManageRole } = require('../utils/permissions');
 const logger = require('../utils/logger');
-const { L } = require('../utils/i18n');
+const { L, D } = require('../utils/i18n');
 
 /**
  * Bewerbungssystem (Appy-Aufbau): Panels, Anforderungen, Einreichung, Entscheidung, Bewerber-Chat.
@@ -62,14 +62,16 @@ function styleEmbed(embed, style, vars) {
 
 function formatDuration(ms) {
   const s = Math.max(1, Math.round(ms / 1000));
-  if (s < 60) return `${s} Sek.`;
+  const S = L('Sek.', 's');
+  const M = L('Min.', 'min');
+  if (s < 60) return `${s} ${S}`;
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m} Min. ${s % 60} Sek.`;
-  return `${Math.floor(m / 60)} Std. ${m % 60} Min.`;
+  if (m < 60) return `${m} ${M} ${s % 60} ${S}`;
+  return `${Math.floor(m / 60)} ${L('Std.', 'h')} ${m % 60} ${M}`;
 }
 
 function statusLabel(status) {
-  return { pending: '🕓 Offen', accepted: '✅ Angenommen', rejected: '❌ Abgelehnt' }[status] ?? status;
+  return { pending: L('🕓 Offen', '🕓 Pending'), accepted: L('✅ Angenommen', '✅ Accepted'), rejected: L('❌ Abgelehnt', '❌ Rejected') }[status] ?? status;
 }
 
 /* ---------------- Panel ---------------- */
@@ -79,8 +81,8 @@ function buildPanelMessage(panel, types) {
   const cfg = appModel.panelCfg(panel);
   const embed = new EmbedBuilder()
     .setColor(parseColor(cfg.color) ?? config.branding.color)
-    .setTitle(cfg.title || config.defaults.applicationPanelTitle)
-    .setDescription(cfg.description || config.defaults.applicationPanelMessage);
+    .setTitle(cfg.title || D(config.defaults.applicationPanelTitle))
+    .setDescription(cfg.description || D(config.defaults.applicationPanelMessage));
   if (cfg.footer) embed.setFooter({ text: cfg.footer });
   if (cfg.imageUrl) embed.setImage(cfg.imageUrl);
   if (cfg.thumbnailUrl) embed.setThumbnail(cfg.thumbnailUrl);
@@ -92,7 +94,7 @@ function buildPanelMessage(panel, types) {
         new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
             .setCustomId(`app:pick:${rows.length}`)
-            .setPlaceholder(types.length > 25 ? `Wähle eine Bewerbung … (${rows.length + 1})` : L('Wähle eine Bewerbung …', 'Choose an application …'))
+            .setPlaceholder(types.length > 25 ? `${L('Wähle eine Bewerbung …', 'Choose an application …')} (${rows.length + 1})` : L('Wähle eine Bewerbung …', 'Choose an application …'))
             .addOptions(
               types.slice(i, i + 25).map((t) => ({
                 label: t.name.slice(0, 100),
@@ -164,34 +166,34 @@ async function refreshPanelMessage(message) {
 /** Liefert eine Fehlermeldung, wenn das Mitglied sich (jetzt) nicht bewerben darf – sonst null. */
 function eligibilityError(member, type, settings) {
   const cfg = appModel.typeCfg(type);
-  if (!settings?.application_enabled) return 'Das Bewerbungssystem ist auf diesem Server derzeit deaktiviert.';
-  if (!type || type.guild_id !== member.guild.id) return 'Diese Bewerbung existiert nicht (mehr).';
-  if (!type.enabled) return 'Diese Bewerbung ist derzeit geschlossen.';
+  if (!settings?.application_enabled) return L('Das Bewerbungssystem ist auf diesem Server derzeit deaktiviert.', 'The application system is currently disabled on this server.');
+  if (!type || type.guild_id !== member.guild.id) return L('Diese Bewerbung existiert nicht (mehr).', 'This application does not exist (anymore).');
+  if (!type.enabled) return L('Diese Bewerbung ist derzeit geschlossen.', 'This application is currently closed.');
   const questions = appModel.listQuestions(type.id);
-  if (!questions.length) return 'Für diese Bewerbung wurden noch keine Fragen konfiguriert.';
+  if (!questions.length) return L('Für diese Bewerbung wurden noch keine Fragen konfiguriert.', 'No questions have been set up for this application yet.');
 
   const restricted = idsOf(cfg.restrictedRoleIds);
   if (restricted.length) {
     const has = restricted.map((id) => member.roles.cache.has(id));
     if (cfg.restrictedMode === 'any' ? has.some(Boolean) : has.every(Boolean)) {
-      return 'Du darfst dich auf diese Bewerbung nicht bewerben.';
+      return L('Du darfst dich auf diese Bewerbung nicht bewerben.', 'You are not allowed to apply for this application.');
     }
   }
   const required = idsOf(cfg.requiredRoleIds);
   if (required.length) {
     const has = required.map((id) => member.roles.cache.has(id));
     if (!(cfg.requiredMode === 'any' ? has.some(Boolean) : has.every(Boolean))) {
-      return 'Dir fehlt eine Rolle, die für diese Bewerbung nötig ist.';
+      return L('Dir fehlt eine Rolle, die für diese Bewerbung nötig ist.', 'You are missing a role required for this application.');
     }
   }
 
   if (appModel.hasPending(member.guild.id, member.id, type.id)) {
-    return 'Du hast bereits eine offene Bewerbung für diese Position.';
+    return L('Du hast bereits eine offene Bewerbung für diese Position.', 'You already have an open application for this position.');
   }
   if (cfg.cooldownMin > 0) {
     const last = appModel.lastSubmissionAt(member.guild.id, member.id, type.id);
     const until = last ? last + cfg.cooldownMin * 60_000 : 0;
-    if (until > Date.now()) return `Du kannst dich erst wieder <t:${Math.ceil(until / 1000)}:R> auf diese Bewerbung bewerben.`;
+    if (until > Date.now()) return L('Du kannst dich erst wieder {when} auf diese Bewerbung bewerben.', 'You can apply for this application again {when}.', { when: `<t:${Math.ceil(until / 1000)}:R>` });
   }
   return null;
 }
@@ -209,17 +211,20 @@ async function beginApplication(interaction, typeId) {
   const problem = eligibilityError(interaction.member, type, settings);
   if (problem) return reply(embeds.warning(L('Bewerbung nicht möglich', 'Application not possible'), problem));
   if (appModel.getSessionByUser(interaction.user.id)) {
-    return reply(embeds.warning(L('Bewerbung läuft bereits', 'Application already in progress'), 'Du hast schon eine Bewerbung per Direktnachricht begonnen. Schließe sie ab oder schreibe mir `abbrechen`.'));
+    return reply(embeds.warning(L('Bewerbung läuft bereits', 'Application already in progress'), L('Du hast schon eine Bewerbung per Direktnachricht begonnen. Schließe sie ab oder schreibe mir `abbrechen`.', 'You already started an application via direct message. Finish it or send me `cancel`.')));
   }
 
   const cfg = appModel.typeCfg(type);
   const text =
     cfg.confirmationMessage ||
-    `Möchtest du dich auf **${type.name}** bewerben?\n\nNach dem Start schicke ich dir eine Reihe von Fragen per Direktnachricht. ` +
-      `Du hast **${formatDuration(cfg.timeLimitMin * 60_000)}** Zeit, sie zu beantworten. Mit dem Button unten (oder \`abbrechen\`) kannst du jederzeit stoppen.`;
+    L(
+      'Möchtest du dich auf **{name}** bewerben?\n\nNach dem Start schicke ich dir eine Reihe von Fragen per Direktnachricht. Du hast **{time}** Zeit, sie zu beantworten. Mit dem Button unten (oder `abbrechen`) kannst du jederzeit stoppen.',
+      'Would you like to apply for **{name}**?\n\nAfter you start, I\'ll send you a series of questions via direct message. You have **{time}** to answer them. You can stop at any time with the button below (or `cancel`).',
+      { name: type.name, time: formatDuration(cfg.timeLimitMin * 60_000) },
+    );
   const vars = { applicationName: type.name, applicant: `<@${interaction.user.id}>`, server: interaction.guild.name };
   return reply(
-    styleEmbed(embeds.info(`📋 Bewerbung: ${type.name}`, fillTemplate(text, vars)), cfg.embeds.confirmation, vars),
+    styleEmbed(embeds.info(`📋 ${L('Bewerbung', 'Application')}: ${type.name}`, fillTemplate(text, vars)), cfg.embeds.confirmation, vars),
     [
       new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`app:begin:${type.id}`).setLabel(L('Starten', 'Start')).setEmoji(buttonEmojis.forGuild(interaction.guild.id, 'applications')('start')).setStyle(ButtonStyle.Success),
@@ -239,7 +244,7 @@ function overflowEmbeds(application, answers, hide) {
   return answerFmt
     .split(answerFmt.blocks(answers), REVIEW_TEXT_LIMIT)
     .slice(1)
-    .map((part, i) => new EmbedBuilder().setColor(config.branding.color).setTitle(`📋 Angaben (Teil ${i + 2}) – Bewerbung #${application.id}`).setDescription(part));
+    .map((part, i) => new EmbedBuilder().setColor(config.branding.color).setTitle(L('📋 Angaben (Teil {part}) – Bewerbung #{id}', '📋 Details (part {part}) – application #{id}', { part: i + 2, id: application.id })).setDescription(part));
 }
 
 function buildReviewMessage(application, answers, type) {
@@ -248,11 +253,11 @@ function buildReviewMessage(application, answers, type) {
     .setColor(
       application.status === 'accepted' ? config.branding.success : application.status === 'rejected' ? config.branding.danger : config.branding.color,
     )
-    .setTitle(`📋 Bewerbung #${application.id} – ${application.type_name}`)
+    .setTitle(`📋 ${L('Bewerbung', 'Application')} #${application.id} – ${application.type_name}`)
     .setDescription(
       cfg.hideAnswers
         ? L('**📋 Angaben**\n🔒 Ausgeblendet – nur im Dashboard einsehbar.', '**📋 Details**\n🔒 Hidden – only visible in the dashboard.')
-        : `**📋 Angaben**\n${answerFmt.split(answerFmt.blocks(answers), REVIEW_TEXT_LIMIT)[0] || '*(keine)*'}`,
+        : `**${L('📋 Angaben', '📋 Details')}**\n${answerFmt.split(answerFmt.blocks(answers), REVIEW_TEXT_LIMIT)[0] || L('*(keine)*', '*(none)*')}`,
     )
     .addFields(
       { name: L('Bewerber', 'Applicant'), value: `<@${application.user_id}>\n${application.user_tag ?? application.user_id}`, inline: true },
@@ -263,7 +268,7 @@ function buildReviewMessage(application, answers, type) {
 
   if (cfg.showStats) {
     embed.addFields(
-      { name: L('Methode', 'Method'), value: METHOD_LABEL[application.source] ?? '–', inline: true },
+      { name: L('Methode', 'Method'), value: application.source === 'dm' ? L('Direktnachricht', 'Direct message') : METHOD_LABEL[application.source] ?? '–', inline: true },
       { name: L('Ausfüllzeit', 'Time taken'), value: application.duration_ms ? formatDuration(application.duration_ms) : '–', inline: true },
     );
   }
@@ -285,10 +290,10 @@ async function applyRoles(guild, member, addCsv, removeCsv, reason) {
       const role = guild.roles.cache.get(id) ?? (await guild.roles.fetch(id).catch(() => null));
       const can = botCanManageRole(guild, role);
       if (!role || !can.ok) {
-        notes.push(`⚠️ Rolle ${role ? `**${role.name}**` : id}: ${can.reason}`);
+        notes.push(`⚠️ ${L('Rolle', 'Role')} ${role ? `**${role.name}**` : id}: ${can.reason}`);
         continue;
       }
-      await member.roles[action](role, reason).catch((err) => notes.push(`⚠️ Rolle **${role.name}**: ${err.message}`));
+      await member.roles[action](role, reason).catch((err) => notes.push(`⚠️ ${L('Rolle', 'Role')} **${role.name}**: ${err.message}`));
     }
   };
   await run(addCsv, 'add');
@@ -329,7 +334,7 @@ async function submitApplication(guild, user, type, answers, opts = {}) {
       for (const e of overflowEmbeds(application, answers, cfg.hideAnswers)) await channel.send({ embeds: [e] }).catch(() => null);
       if (cfg.staffThreads) {
         const thread = await message
-          .startThread({ name: `Bewerbung #${application.id} – ${user.tag ?? user.id}`.slice(0, 100), autoArchiveDuration: 1440 })
+          .startThread({ name: `${L('Bewerbung', 'Application')} #${application.id} – ${user.tag ?? user.id}`.slice(0, 100), autoArchiveDuration: 1440 })
           .catch(() => null);
         if (thread) appModel.setThread(application.id, thread.id);
       }
@@ -339,7 +344,7 @@ async function submitApplication(guild, user, type, answers, opts = {}) {
   // Rollen beim Einreichen (Wartet-Rollen geben, andere entfernen)
   if (cfg.pendingRoleIds || cfg.submitRemovalRoleIds) {
     const member = await guild.members.fetch(user.id).catch(() => null);
-    if (member) await applyRoles(guild, member, cfg.pendingRoleIds, cfg.submitRemovalRoleIds, `Bewerbung #${application.id} eingereicht`);
+    if (member) await applyRoles(guild, member, cfg.pendingRoleIds, cfg.submitRemovalRoleIds, L('Bewerbung #{id} eingereicht', 'Application #{id} submitted', { id: application.id }));
   }
 
   await logService.log({
@@ -371,7 +376,7 @@ async function submitApplication(guild, user, type, answers, opts = {}) {
 async function reviewApplication(guild, applicationId, reviewer, decision, note) {
   const application = appModel.getApplication(applicationId);
   if (!application) throw new Error(L('Bewerbung nicht gefunden.', 'Application not found.'));
-  if (application.status !== 'pending') throw new Error(`Diese Bewerbung wurde bereits bearbeitet (${statusLabel(application.status)}).`);
+  if (application.status !== 'pending') throw new Error(L('Diese Bewerbung wurde bereits bearbeitet ({status}).', 'This application has already been reviewed ({status}).', { status: statusLabel(application.status) }));
 
   const type = application.type_id ? appModel.getType(application.type_id) : null;
   const cfg = appModel.typeCfg(type);
@@ -381,7 +386,7 @@ async function reviewApplication(guild, applicationId, reviewer, decision, note)
 
   // Nachricht aktualisieren – bei eigenem Annahme-/Ablehn-Kanal dorthin verschieben
   const payload = buildReviewMessage(updated, answers, type);
-  payload.content = `Bearbeitet von <@${reviewer.id}> • ${statusLabel(decision)}`;
+  payload.content = `${L('Bearbeitet von', 'Reviewed by')} <@${reviewer.id}> • ${statusLabel(decision)}`;
   const oldChannel = await fetchChannel(guild, updated.channel_id);
   const oldMessage = oldChannel && updated.message_id ? await oldChannel.messages.fetch(updated.message_id).catch(() => null) : null;
   const targetId = accepted ? cfg.acceptedChannelId : cfg.deniedChannelId;
@@ -407,16 +412,18 @@ async function reviewApplication(guild, applicationId, reviewer, decision, note)
       member,
       accepted ? cfg.acceptedRoleIds : cfg.deniedRoleIds,
       [accepted ? cfg.acceptedRemovalRoleIds : cfg.deniedRemovalRoleIds, cfg.pendingRoleIds].filter(Boolean).join(','),
-      `Bewerbung #${applicationId} ${accepted ? 'angenommen' : 'abgelehnt'}`,
+      accepted
+        ? L('Bewerbung #{id} angenommen', 'Application #{id} accepted', { id: applicationId })
+        : L('Bewerbung #{id} abgelehnt', 'Application #{id} rejected', { id: applicationId }),
     );
     const given = idsOf(accepted ? cfg.acceptedRoleIds : cfg.deniedRoleIds);
-    roleNote = notes.length ? `\n${notes.join('\n')}` : given.length ? `\n✅ Rolle(n) vergeben: ${given.map((id) => `<@&${id}>`).join(' ')}` : '';
+    roleNote = notes.length ? `\n${notes.join('\n')}` : given.length ? `\n✅ ${L('Rolle(n) vergeben', 'Role(s) given')}: ${given.map((id) => `<@&${id}>`).join(' ')}` : '';
   }
 
   // Bewerber per DM informieren
   if (member) {
     const vars = { applicationName: updated.type_name ?? '', user: `<@${reviewer.id}>`, applicant: `<@${updated.user_id}>`, server: guild.name, note: note ?? '' };
-    const body = fillTemplate(accepted ? cfg.acceptedMessage : cfg.deniedMessage, vars) + (note ? `\n\n**Nachricht vom Team:** ${note}` : '');
+    const body = fillTemplate(D(accepted ? cfg.acceptedMessage : cfg.deniedMessage), vars) + (note ? `\n\n**${L('Nachricht vom Team', 'Message from the team')}:** ${note}` : '');
     const dm = accepted ? embeds.success(L('✅ Bewerbung angenommen', '✅ Application accepted'), body) : embeds.error(L('❌ Bewerbung abgelehnt', '❌ Application rejected'), body);
     dm.setFooter({ text: guild.name });
     styleEmbed(dm, accepted ? cfg.embeds.accepted : cfg.embeds.denied, vars);
@@ -431,8 +438,8 @@ async function reviewApplication(guild, applicationId, reviewer, decision, note)
       ?.send({
         embeds: [
           (accepted
-            ? embeds.success(L('✅ Bewerbung angenommen', '✅ Application accepted'), `<@${reviewer.id}> hat die Bewerbung angenommen.`)
-            : embeds.error(L('❌ Bewerbung abgelehnt', '❌ Application rejected'), `<@${reviewer.id}> hat die Bewerbung abgelehnt.`)
+            ? embeds.success(L('✅ Bewerbung angenommen', '✅ Application accepted'), L('{user} hat die Bewerbung angenommen.', '{user} accepted the application.', { user: `<@${reviewer.id}>` }))
+            : embeds.error(L('❌ Bewerbung abgelehnt', '❌ Application rejected'), L('{user} hat die Bewerbung abgelehnt.', '{user} rejected the application.', { user: `<@${reviewer.id}>` }))
           ).addFields(note ? [{ name: L('Nachricht vom Team', 'Message from the team'), value: note.slice(0, 1024) }] : []),
         ],
       })
@@ -448,8 +455,8 @@ async function reviewApplication(guild, applicationId, reviewer, decision, note)
     fields: [
       { name: L('Bewerbung', 'Application'), value: `#${applicationId} – ${updated.type_name}`, inline: true },
       { name: L('Bewerber', 'Applicant'), value: `<@${updated.user_id}>`, inline: true },
-      { name: 'Bearbeiter', value: `<@${reviewer.id}>`, inline: true },
-      note ? { name: 'Notiz', value: note.slice(0, 1024), inline: false } : null,
+      { name: L('Bearbeiter', 'Reviewer'), value: `<@${reviewer.id}>`, inline: true },
+      note ? { name: L('Notiz', 'Note'), value: note.slice(0, 1024), inline: false } : null,
     ].filter(Boolean),
     actorId: reviewer.id,
     meta: { applicationId, decision },
@@ -474,7 +481,7 @@ async function onMemberLeave(member) {
     const type = application.type_id ? appModel.getType(application.type_id) : null;
     const action = appModel.typeCfg(type).onLeave;
     if (action === 'deny') {
-      await reviewApplication(member.guild, application.id, { id: client.user.id, tag: client.user.tag }, 'rejected', 'Der Bewerber hat den Server verlassen.').catch((err) =>
+      await reviewApplication(member.guild, application.id, { id: client.user.id, tag: client.user.tag }, 'rejected', L('Der Bewerber hat den Server verlassen.', 'The applicant left the server.')).catch((err) =>
         logger.warn(`[application] onLeave deny #${application.id}: ${err.message}`),
       );
     } else if (action === 'delete') {
@@ -561,7 +568,7 @@ async function openChat(guild, application, staff) {
     type: ChannelType.GuildText,
     ...(parent ? { parent: parent.id } : {}),
     permissionOverwrites: overwrites,
-    topic: `Bewerbung #${application.id}${application.type_name ? ' • ' + application.type_name : ''} • Bewerber: ${member.user.tag} (${member.id})`,
+    topic: `${L('Bewerbung', 'Application')} #${application.id}${application.type_name ? ' • ' + application.type_name : ''} • ${L('Bewerber', 'Applicant')}: ${member.user.tag} (${member.id})`,
   });
 
   const ticket = ticketsModel.createApplicationChat({ guildId: guild.id, channelId: channel.id, applicationId: application.id, openerId: member.id });
@@ -570,11 +577,11 @@ async function openChat(guild, application, staff) {
   const typeCfg = appModel.typeCfg(type);
   const vars = { applicationName: application.type_name ?? '', applicant: `<@${member.id}>`, user: staff ? `<@${staff.id}>` : '', server: guild.name, id: String(application.id) };
   // Eingereichte Angaben stehen direkt in der Eröffnungs-Nachricht des Chats
-  const chatText = fillTemplate(typeCfg.chatMessage || `Hallo {applicant}, das Team möchte sich mit dir über deine Bewerbung unterhalten.\nBitte beantworte Rückfragen hier im Chat.`, vars).slice(0, 2000);
+  const chatText = fillTemplate(typeCfg.chatMessage || L('Hallo {applicant}, das Team möchte sich mit dir über deine Bewerbung unterhalten.\nBitte beantworte Rückfragen hier im Chat.', 'Hi {applicant}, the team would like to talk to you about your application.\nPlease answer any questions here in the chat.', { applicant: '{applicant}' }), vars).slice(0, 2000);
   const [firstPart, ...moreParts] = answerFmt.split(answerFmt.blocks(JSON.parse(application.answers_json || '[]')), 4096 - chatText.length - 40);
   const welcome = new EmbedBuilder()
     .setColor(embedColor)
-    .setTitle(`💬 Bewerbung #${application.id}${application.type_name ? ` – ${application.type_name}` : ''}`)
+    .setTitle(`💬 ${L('Bewerbung', 'Application')} #${application.id}${application.type_name ? ` – ${application.type_name}` : ''}`)
     .setDescription(firstPart ? `${chatText}\n\n**📋 Angaben**\n${firstPart}` : chatText)
     .addFields(
       { name: L('Bewerber', 'Applicant'), value: `<@${member.id}>`, inline: true },
@@ -599,8 +606,10 @@ async function openChat(guild, application, staff) {
     .send({
       embeds: [
         embeds.info(
-          '💬 Chat zu deiner Bewerbung',
-          `Das Team von **${guild.name}** hat einen Chat zu deiner Bewerbung als **${application.type_name ?? 'Bewerbung'}** geöffnet: <#${channel.id}>`,
+          L('💬 Chat zu deiner Bewerbung', '💬 Chat about your application'),
+          L('Das Team von **{guild}** hat einen Chat zu deiner Bewerbung als **{type}** geöffnet: {channel}', 'The team of **{guild}** opened a chat about your application as **{type}**: {channel}', {
+            guild: guild.name, type: application.type_name ?? L('Bewerbung', 'Application'), channel: `<#${channel.id}>`,
+          }),
         ),
       ],
     })

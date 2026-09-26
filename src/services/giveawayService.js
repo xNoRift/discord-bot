@@ -57,6 +57,10 @@ function scheduleEnd(giveaway) {
 
 /* ---------------- Nachrichten-Aufbau ---------------- */
 
+/** Fußzeile „3 Teilnahmen • Giveaway-ID 7“ */
+const entriesFooter = (n, id) =>
+  `${n} ${n === 1 ? L('Teilnahme', 'entry') : L('Teilnahmen', 'entries')} • Giveaway-ID ${id}`;
+
 function buildActiveMessage(giveaway, entryCount) {
   const embed = new EmbedBuilder()
     .setColor(config.branding.color)
@@ -77,7 +81,7 @@ function buildActiveMessage(giveaway, entryCount) {
           }]
         : []),
     )
-    .setFooter({ text: `${entryCount} Teilnahme${entryCount === 1 ? '' : 'n'} • Giveaway-ID ${giveaway.id}` })
+    .setFooter({ text: entriesFooter(entryCount, giveaway.id) })
     .setTimestamp(giveaway.ends_at);
 
   const row = new ActionRowBuilder().addComponents(
@@ -109,7 +113,7 @@ function buildEndedMessage(giveaway, winnerIds, entryCount) {
       { name: L('⏰ Beendet', '⏰ Ended'), value: discordTimestamp(Date.now(), 'f'), inline: true },
       ...(giveaway.host_id ? [{ name: L('👤 Veranstalter', '👤 Host'), value: `<@${giveaway.host_id}>`, inline: true }] : []),
     )
-    .setFooter({ text: `${entryCount} Teilnahme${entryCount === 1 ? '' : 'n'} • Giveaway-ID ${giveaway.id}` })
+    .setFooter({ text: entriesFooter(entryCount, giveaway.id) })
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(
@@ -199,7 +203,7 @@ async function createGiveaway(guild, data) {
   const durationMs = Number(data.durationMs);
   const minDurationMs = data.bypass ? 1000 : 10_000;
   if (!Number.isFinite(durationMs) || durationMs < minDurationMs) {
-    throw new Error(`Ungültige Dauer (mindestens ${minDurationMs / 1000} Sekunde${minDurationMs === 1000 ? '' : 'n'}).`);
+    throw new Error(L('Ungültige Dauer (mindestens {s} Sekunden).', 'Invalid duration (at least {s} seconds).', { s: minDurationMs / 1000 }));
   }
   const winnerCount = Math.max(1, Number.parseInt(data.winnerCount ?? 1, 10) || 1);
 
@@ -242,8 +246,8 @@ async function createGiveaway(guild, data) {
       { name: L('Kanal', 'Channel'), value: `<#${channelId}>`, inline: true },
       { name: L('Endet', 'Ends'), value: discordTimestamp(endsAt, 'F'), inline: true },
       winnerRoleId
-        ? { name: 'Gewinnerrolle', value: `<@&${winnerRoleId}> (${formatDuration(winnerRoleDurationMs)})`, inline: true }
-        : { name: 'Gewinnerrolle', value: L('keine', 'none'), inline: true },
+        ? { name: L('Gewinnerrolle', 'Winner role'), value: `<@&${winnerRoleId}> (${formatDuration(winnerRoleDurationMs)})`, inline: true }
+        : { name: L('Gewinnerrolle', 'Winner role'), value: L('keine', 'none'), inline: true },
     ],
     actorId: data.hostId,
     meta: { giveawayId: giveaway.id },
@@ -336,14 +340,14 @@ async function announceWinners(giveaway, winnerIds) {
 
     await found.channel
       .send({
-        content: `🎉 Glückwunsch ${winnerIds.map((id) => `<@${id}>`).join(', ')}! Ihr habt **${giveaway.prize}** gewonnen!`,
+        content: L('🎉 Glückwunsch {winners}! Ihr habt **{prize}** gewonnen!', '🎉 Congratulations {winners}! You won **{prize}**!', { winners: winnerIds.map((id) => `<@${id}>`).join(', '), prize: giveaway.prize }),
         embeds: [
           embeds.success(
-            '🏆 Giveaway Gewinner',
+            L('🏆 Giveaway Gewinner', '🏆 Giveaway winners'),
             [
-              `**Preis:** ${giveaway.prize}`,
-              `**Gewinner:** ${winnerIds.map((id) => `<@${id}>`).join(', ')}`,
-              link ? `[Zum Giveaway](${link})` : '',
+              `**${L('Preis', 'Prize')}:** ${giveaway.prize}`,
+              `**${L('Gewinner', 'Winners')}:** ${winnerIds.map((id) => `<@${id}>`).join(', ')}`,
+              link ? `[${L('Zum Giveaway', 'Go to giveaway')}](${link})` : '',
               components.length ? L('\nErstellt euch über den Button unten ein Ticket, um euren Preis abzuholen.', '\nCreate a ticket with the button below to claim your prize.') : '',
             ]
               .filter(Boolean)
@@ -358,8 +362,8 @@ async function announceWinners(giveaway, winnerIds) {
       .send({
         embeds: [
           embeds.error(
-            '😕 Kein Gewinner',
-            `Für **${giveaway.prize}** gab es keine gültigen Teilnahmen.`,
+            L('😕 Kein Gewinner', '😕 No winner'),
+            L('Für **{prize}** gab es keine gültigen Teilnahmen.', 'There were no valid entries for **{prize}**.', { prize: giveaway.prize }),
           ),
         ],
       })
@@ -404,7 +408,7 @@ async function endGiveaway(giveawayId, opts = {}) {
     color: config.branding.color,
     fields: [
       { name: L('Preis', 'Prize'), value: giveaway.prize, inline: true },
-      { name: 'Teilnahmen', value: String(entryCount), inline: true },
+      { name: L('Teilnahmen', 'Entries'), value: String(entryCount), inline: true },
       {
         name: L('Gewinner', 'Winners'),
         value: winnerIds.length ? winnerIds.map((id) => `<@${id}>`).join(', ') : L('keine', 'none'),
@@ -506,7 +510,7 @@ async function cancelGiveaway(giveawayId, opts = {}) {
   if (found?.message) {
     await found.message
       .edit({
-        embeds: [embeds.error('🎉 Giveaway abgebrochen', `**${giveaway.prize}**\nDieses Giveaway wurde abgebrochen.`)],
+        embeds: [embeds.error(L('🎉 Giveaway abgebrochen', '🎉 Giveaway cancelled'), `**${giveaway.prize}**\n${L('Dieses Giveaway wurde abgebrochen.', 'This giveaway has been cancelled.')}`)],
         components: [],
       })
       .catch(() => null);

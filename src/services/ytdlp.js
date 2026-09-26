@@ -57,7 +57,7 @@ function run(args, { timeout = 20000 } = {}) {
     p.stdout.on('data', (d) => (out += d));
     p.stderr.on('data', (d) => (err += d));
     p.on('error', reject);
-    p.on('close', (code) => (code === 0 ? resolve(out) : reject(new Error(err.split('\n').find((l) => l.includes('ERROR')) || `yt-dlp Fehler (${code})`))));
+    p.on('close', (code) => (code === 0 ? resolve(out) : reject(new Error(err.split('\n').find((l) => l.includes('ERROR')) || L('yt-dlp Fehler ({code})', 'yt-dlp error ({code})', { code })))));
   });
 }
 

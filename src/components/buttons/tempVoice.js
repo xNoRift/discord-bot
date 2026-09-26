@@ -90,7 +90,7 @@ module.exports = {
         return interaction.showModal(
           new ModalBuilder()
             .setCustomId('tempvoice:modal:limit')
-            .setTitle('Benutzerlimit')
+            .setTitle(L('Benutzerlimit', 'User limit'))
             .addComponents(
               new ActionRowBuilder().addComponents(
                 new TextInputBuilder()

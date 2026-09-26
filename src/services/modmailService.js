@@ -114,7 +114,7 @@ async function openThread(user, firstContent, files = []) {
     type: ChannelType.GuildText,
     parent: category.id,
     permissionOverwrites: overwrites,
-    topic: `ModMail #${number} • DM von ${user.tag} (${user.id})`,
+    topic: `ModMail #${number} • ${L('DM von', 'DM from')} ${user.tag} (${user.id})`,
   });
 
   const dmChannel = await user.createDM().catch(() => null);

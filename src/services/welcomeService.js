@@ -6,6 +6,7 @@ const moduleSettings = require('../database/models/moduleSettings');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
 const { parseHexColor } = require('../utils/embeds');
+const { D } = require('../utils/i18n');
 
 /**
  * Willkommens-/Abschieds-System: postet beim Beitritt/Verlassen eine Nachricht
@@ -82,7 +83,7 @@ async function sendJoin(member) {
     await post(member.guild, s.welcome_channel_id, {
       asEmbed: s.welcome_embed !== 0,
       color,
-      text: render(s.welcome_message || config.defaults.welcomeMessage, member, member.guild),
+      text: render(D(s.welcome_message || config.defaults.welcomeMessage), member, member.guild),
       member,
       ping: s.welcome_ping !== 0,
       design: {
@@ -118,7 +119,7 @@ async function sendLeave(member) {
       author: false,
       timestamp: m.leaveTimestamp,
     },
-    text: render(s.leave_message || config.defaults.leaveMessage, member, member.guild).slice(0, 2000),
+    text: render(D(s.leave_message || config.defaults.leaveMessage), member, member.guild).slice(0, 2000),
     member,
     ping: false,
   });

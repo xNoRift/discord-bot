@@ -5,14 +5,15 @@ const moduleSettings = require('../database/models/moduleSettings');
 const ruleSections = require('../database/models/ruleSections');
 const config = require('../../config/config');
 const { parseHexColor, validEmoji } = require('../utils/embeds');
+const { L, D } = require('../utils/i18n');
 
 /**
  * Regeln: eine Nachricht mit Titel, Text und Hinweis, darunter je Abschnitt ein Button.
  * Ein Klick auf den Button zeigt die Regeln des Abschnitts nur dem Klickenden (ephemeral).
  */
 
-/** Beispiel-Regeln zum Loslegen – der Server-Besitzer passt sie im Dashboard an. */
-const TEMPLATE = [
+/** Beispiel-Regeln zum Loslegen (deutsch) – der Server-Besitzer passt sie im Dashboard an. */
+const TEMPLATE_DE = [
   {
     label: '§1 Allgemein',
     emoji: '📌',
@@ -60,6 +61,59 @@ const TEMPLATE = [
   },
 ];
 
+
+/** Dieselben Beispiel-Regeln auf Englisch (für Server mit Bot-Sprache Englisch). */
+const TEMPLATE_EN = [
+  {
+    label: '§1 General',
+    emoji: '📌',
+    title: '§1 – General rules',
+    content: [
+      '**1.1** Be respectful. Insults, bullying, discrimination and hate have no place here.',
+      "**1.2** No spam and no advertising – including invite links to other servers without the team's permission.",
+      '**1.3** No pornographic, violence-glorifying or illegal content.',
+      "**1.4** Do not share other people's private data (names, addresses, photos) without their consent.",
+      "**1.5** Discord's [Terms of Service](https://discord.com/terms) and [Community Guidelines](https://discord.com/guidelines) apply.",
+      '**1.6** Follow the instructions of the team.',
+    ].join('\n'),
+  },
+  {
+    label: '§2 Voice channels',
+    emoji: '🔊',
+    title: '§2 – Voice channels',
+    content: [
+      '**2.1** Let others finish speaking and stay friendly.',
+      '**2.2** No noise, soundboards or loud music that disturbs others. Use push-to-talk if there is background noise.',
+      '**2.3** Recordings are only allowed with the consent of everyone involved.',
+      "**2.4** Don't keep hopping between channels.",
+    ].join('\n'),
+  },
+  {
+    label: '§3 Text channels',
+    emoji: '💬',
+    title: '§3 – Text channels',
+    content: [
+      '**3.1** Post in the channel that fits the topic.',
+      "**3.2** Don't repeat messages, don't write only in capital letters and don't mention (@) more people than necessary.",
+      '**3.3** Only use bots in the channels meant for them.',
+      '**3.4** Keep discussions civil – if there is a dispute, contact the team instead of fighting it out in chat.',
+    ].join('\n'),
+  },
+  {
+    label: '§4 Team & penalties',
+    emoji: '🔨',
+    title: '§4 – Team & penalties',
+    content: [
+      '**4.1** Depending on severity, violations can lead to a warning, mute, kick or ban.',
+      '**4.2** The server team has the final say.',
+      '**4.3** Do you have a problem or think a penalty is unfair? Contact the team via ticket – we will look into it.',
+    ].join('\n'),
+  },
+];
+
+/** Beispiel-Regeln in der Sprache des Servers. */
+const template = () => (L('de', 'en') === 'en' ? TEMPLATE_EN : TEMPLATE_DE);
+
 function colorOf(cfg) {
   return parseHexColor(cfg.color, config.branding.color);
 }
@@ -78,9 +132,9 @@ function buildPanel(guild) {
   const cfg = moduleSettings.get(guild.id, 'rules');
   const sections = ruleSections.list(guild.id).slice(0, ruleSections.MAX_SECTIONS);
 
-  const embed = new EmbedBuilder().setColor(colorOf(cfg)).setTitle(cfg.title || '📜 Server-Regeln');
-  if (cfg.intro) embed.setDescription(cfg.intro);
-  if (cfg.noticeText) embed.addFields({ name: cfg.noticeTitle || 'Hinweis', value: cfg.noticeText });
+  const embed = new EmbedBuilder().setColor(colorOf(cfg)).setTitle(D(cfg.title || '📜 Server-Regeln'));
+  if (cfg.intro) embed.setDescription(D(cfg.intro));
+  if (cfg.noticeText) embed.addFields({ name: D(cfg.noticeTitle || 'Hinweis'), value: D(cfg.noticeText) });
   if (/^https:\/\//i.test(cfg.imageUrl)) embed.setImage(cfg.imageUrl);
   if (cfg.footer) embed.setFooter({ text: cfg.footer });
 
@@ -125,4 +179,4 @@ async function postPanel(guild) {
   return msg;
 }
 
-module.exports = { TEMPLATE, sectionEmbed, buildPanel, postPanel };
+module.exports = { template, sectionEmbed, buildPanel, postPanel };

@@ -103,6 +103,37 @@ const GROUPS = [
   },
 ];
 
+/** Englische Namen für die Kopfzeile der Discord-Log-Nachrichten (Dashboard bleibt deutsch). */
+const EN_GROUPS = {
+  tickets: 'Tickets', applications: 'Applications', giveaways: 'Giveaways', moderation: 'Moderation',
+  protection: 'Guild Protection', members: 'Members', suggestions: 'Suggestions',
+};
+const EN_EVENTS = {
+  ticket_create: 'Ticket created', modmail_create: 'ModMail ticket created', ticket_claim: 'Ticket claimed',
+  ticket_unclaim: 'Ticket unclaimed', ticket_close_request: 'Close request sent', ticket_close: 'Ticket closed',
+  ticket_reopen: 'Ticket reopened', ticket_delete: 'Ticket deleted', ticket_rename: 'Ticket renamed',
+  ticket_user_add: 'User added to ticket', ticket_user_remove: 'User removed from ticket',
+  application_create: 'Application submitted', application_accept: 'Application accepted',
+  application_reject: 'Application rejected', application_chat: 'Applicant chat opened',
+  giveaway_create: 'Giveaway created', giveaway_end: 'Giveaway ended', giveaway_winners: 'Winners drawn',
+  giveaway_reroll: 'Rerolled', giveaway_cancel: 'Giveaway cancelled', giveaway_role_granted: 'Winner role given',
+  giveaway_role_removed: 'Winner role removed', giveaway_role_failed: 'Winner role failed',
+  mod_warn: 'Warning', mod_timeout: 'Timeout', mod_untimeout: 'Timeout removed', mod_kick: 'Kick', mod_ban: 'Ban',
+  mod_unban: 'Unban', mod_purge: 'Messages deleted (purge)',
+  protection: 'Protection stepped in', autorole: 'Auto role given', suggestion: 'New suggestion',
+};
+
+/** Name einer Gruppe bzw. eines Ereignisses in der aktuellen Sprache. */
+function groupName(group) {
+  const { currentLang } = require('./i18n');
+  return currentLang() === 'en' ? EN_GROUPS[group.key] || group.label : group.label;
+}
+function eventName(type) {
+  const { currentLang } = require('./i18n');
+  const de = EVENTS.get(type)?.label;
+  return currentLang() === 'en' ? EN_EVENTS[type] || de : de;
+}
+
 /** Ereignis-Typ -> { group, label } */
 const EVENTS = new Map();
 for (const g of GROUPS) for (const [type, label] of g.events) EVENTS.set(type, { group: g, label });
@@ -127,4 +158,4 @@ function schema() {
   return out;
 }
 
-module.exports = { GROUPS, EVENTS, groupOf, schema };
+module.exports = { GROUPS, EVENTS, groupOf, schema, groupName, eventName };

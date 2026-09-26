@@ -39,22 +39,22 @@ function stamp(ts) {
 function buildText(ticket, messages) {
   const lines = [
     ticket.application_id
-      ? `Transkript – Bewerber-Chat (Bewerbung #${ticket.application_id})`
-      : `Transkript – Ticket #${ticket.number}${ticket.category_label ? ` (${ticket.category_label})` : ''}`,
-    `Ersteller-ID: ${ticket.opener_id}`,
-    `Erstellt: ${stamp(ticket.created_at)} UTC`,
+      ? L('Transkript – Bewerber-Chat (Bewerbung #{id})', 'Transcript – applicant chat (application #{id})', { id: ticket.application_id })
+      : `${L('Transkript', 'Transcript')} – Ticket #${ticket.number}${ticket.category_label ? ` (${ticket.category_label})` : ''}`,
+    `${L('Ersteller-ID', 'Creator ID')}: ${ticket.opener_id}`,
+    `${L('Erstellt', 'Created')}: ${stamp(ticket.created_at)} UTC`,
     '='.repeat(60),
     '',
   ];
   for (const m of messages) {
-    const who = `${m.author?.username ?? 'Unbekannt'}${m.author?.bot ? ' [BOT]' : ''} (${m.author?.id ?? '?'})`;
+    const who = `${m.author?.username ?? L('Unbekannt', 'Unknown')}${m.author?.bot ? ' [BOT]' : ''} (${m.author?.id ?? '?'})`;
     lines.push(`[${stamp(m.createdTimestamp)}] ${who}`);
     if (m.content) lines.push(`  ${m.content.replace(/\n/g, '\n  ')}`);
     for (const e of m.embeds ?? []) {
       const bits = [e.title, e.description, ...(e.fields ?? []).map((f) => `${f.name}: ${f.value}`)].filter(Boolean);
       if (bits.length) lines.push(`  [Embed] ${bits.join(' | ').replace(/\n/g, ' ')}`);
     }
-    for (const a of m.attachments?.values?.() ?? []) lines.push(`  [Anhang] ${a.name}: ${a.url}`);
+    for (const a of m.attachments?.values?.() ?? []) lines.push(`  [${L('Anhang', 'Attachment')}] ${a.name}: ${a.url}`);
     lines.push('');
   }
   return lines.join('\n');

@@ -10,7 +10,7 @@ const embeds = require('../utils/embeds');
 const optionEmbeds = require('../utils/optionEmbeds');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
-const { L } = require('../utils/i18n');
+const { L, D } = require('../utils/i18n');
 
 /**
  * Bewerbung per Direktnachricht: Der Bot stellt die Fragen nacheinander in der DM.
@@ -28,13 +28,15 @@ function cancelRow(sessionId) {
 function questionEmbed(session, type, questions) {
   const q = questions[session.step];
   const hints = [];
-  hints.push(q.required ? 'Pflichtfrage' : L('Optional – schreibe `-` zum Überspringen', 'Optional – type `-` to skip'));
+  hints.push(q.required ? L('Pflichtfrage', 'Required') : L('Optional – schreibe `-` zum Überspringen', 'Optional – type `-` to skip'));
   if (q.style === 'number') {
-    hints.push(`Antworte mit einer Zahl${q.min_length > 0 || q.max_length > 0 ? ` (${q.min_length > 0 ? `min. ${q.min_length}` : ''}${q.min_length > 0 && q.max_length > 0 ? ', ' : ''}${q.max_length > 0 ? `max. ${q.max_length}` : ''})` : ''}`);
+    const range = [q.min_length > 0 ? `min. ${q.min_length}` : '', q.max_length > 0 ? `max. ${q.max_length}` : ''].filter(Boolean).join(', ');
+    hints.push(L('Antworte mit einer Zahl', 'Answer with a number') + (range ? ` (${range})` : ''));
   } else if (q.style === 'choice') {
-    hints.push('Wähle eine Option im Menü (oder schreibe sie)');
+    hints.push(L('Wähle eine Option im Menü (oder schreibe sie)', 'Pick an option in the menu (or type it)'));
   } else if (q.min_length > 0 || q.max_length > 0) {
-    hints.push(`${q.min_length > 0 ? `mind. ${q.min_length}` : ''}${q.min_length > 0 && q.max_length > 0 ? ', ' : ''}${q.max_length > 0 ? `max. ${q.max_length}` : ''} Zeichen`);
+    const range = [q.min_length > 0 ? `${L('mind.', 'min.')} ${q.min_length}` : '', q.max_length > 0 ? `max. ${q.max_length}` : ''].filter(Boolean).join(', ');
+    hints.push(`${range} ${L('Zeichen', 'characters')}`);
   }
   const e = new EmbedBuilder()
     .setColor(config.branding.color)
@@ -55,7 +57,7 @@ async function sendQuestion(user, session, type, questions) {
         new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
             .setCustomId(`app:dmsel:${session.id}:${session.step}:${k}`)
-            .setPlaceholder(q.options.length > 25 ? `Wähle eine Option … (${k + 1})` : L('Wähle eine Option …', 'Choose an option …'))
+            .setPlaceholder(q.options.length > 25 ? `${L('Wähle eine Option …', 'Choose an option …')} (${k + 1})` : L('Wähle eine Option …', 'Choose an option …'))
             .addOptions(q.options.slice(start, start + 25).map((o, i) => ({ label: o.slice(0, 100), value: String(start + i) }))),
         ),
       );
@@ -79,9 +81,12 @@ async function start(user, guild, type) {
       embeds: [
         embeds
           .info(
-            `📋 Bewerbung: ${type.name}`,
-            `Los geht's! Ich stelle dir **${questions.length}** Frage${questions.length === 1 ? '' : 'n'}. Antworte einfach hier im Chat.\n` +
-              `Du hast **${applicationService.formatDuration(cfg.timeLimitMin * 60_000)}** Zeit. Schreibe \`abbrechen\`, um zu stoppen.`,
+            `📋 ${L('Bewerbung', 'Application')}: ${type.name}`,
+            L(
+              'Los geht\'s! Ich stelle dir **{n}** Frage(n). Antworte einfach hier im Chat.\nDu hast **{time}** Zeit. Schreibe `abbrechen`, um zu stoppen.',
+              'Let\'s go! I\'ll ask you **{n}** question(s). Just answer here in the chat.\nYou have **{time}**. Type `cancel` to stop.',
+              { n: questions.length, time: applicationService.formatDuration(cfg.timeLimitMin * 60_000) },
+            ),
           )
           .setFooter({ text: guild.name }),
       ],
@@ -89,7 +94,7 @@ async function start(user, guild, type) {
     await sendQuestion(user, session, type, questions);
   } catch {
     appModel.deleteSession(session.id);
-    throw new Error('Ich kann dir keine Direktnachricht schicken. Erlaube in den Privatsphäre-Einstellungen des Servers Direktnachrichten von Servermitgliedern und versuche es erneut.');
+    throw new Error(L('Ich kann dir keine Direktnachricht schicken. Erlaube in den Privatsphäre-Einstellungen des Servers Direktnachrichten von Servermitgliedern und versuche es erneut.', 'I can\'t send you a direct message. Allow direct messages from server members in the server\'s privacy settings and try again.'));
   }
 }
 
@@ -106,11 +111,11 @@ function validate(q, raw) {
     const n = Number(text.replace(',', '.'));
     if (!Number.isFinite(n)) return { error: L('Bitte antworte mit einer Zahl.', 'Please answer with a number.') };
     if (q.min_length > 0 && n < q.min_length) return { error: `Die Zahl muss mindestens ${q.min_length} sein.` };
-    if (q.max_length > 0 && n > q.max_length) return { error: `Die Zahl darf höchstens ${q.max_length} sein.` };
+    if (q.max_length > 0 && n > q.max_length) return { error: L('Die Zahl darf höchstens {n} sein.', 'The number may be at most {n}.', { n: q.max_length }) };
     return { value: String(n) };
   }
-  if (q.min_length > 0 && text.length < q.min_length) return { error: `Deine Antwort ist zu kurz (mindestens ${q.min_length} Zeichen).` };
-  if (q.max_length > 0 && text.length > q.max_length) return { error: `Deine Antwort ist zu lang (höchstens ${q.max_length} Zeichen).` };
+  if (q.min_length > 0 && text.length < q.min_length) return { error: L('Deine Antwort ist zu kurz (mindestens {n} Zeichen).', 'Your answer is too short (at least {n} characters).', { n: q.min_length }) };
+  if (q.max_length > 0 && text.length > q.max_length) return { error: L('Deine Antwort ist zu lang (höchstens {n} Zeichen).', 'Your answer is too long (at most {n} characters).', { n: q.max_length }) };
   return { value: text.slice(0, 4000) };
 }
 
@@ -125,12 +130,12 @@ async function finish(user, session, type, questions, answers) {
     const cfg = appModel.typeCfg(type);
     const vars = { applicationName: type.name, applicant: `<@${user.id}>`, server: guild.name };
     const done = embeds
-      .success(L('✅ Bewerbung eingereicht', '✅ Application submitted'), applicationService.fillTemplate(cfg.completionMessage || L('Deine Bewerbung wurde eingereicht.', 'Your application has been submitted.'), vars))
+      .success(L('✅ Bewerbung eingereicht', '✅ Application submitted'), applicationService.fillTemplate(D(cfg.completionMessage) || L('Deine Bewerbung wurde eingereicht.', 'Your application has been submitted.'), vars))
       .setFooter({ text: guild.name });
     await user.send({ embeds: [applicationService.styleEmbed(done, cfg.embeds.completion, vars)] });
   } catch (err) {
     logger.warn(`[application] DM-Bewerbung abschließen: ${err.message}`);
-    await user.send({ embeds: [embeds.error(undefined, `Deine Bewerbung konnte nicht gespeichert werden: ${err.message}`)] }).catch(() => null);
+    await user.send({ embeds: [embeds.error(undefined, L('Deine Bewerbung konnte nicht gespeichert werden: {why}', 'Your application could not be saved: {why}', { why: err.message }))] }).catch(() => null);
   }
 }
 
@@ -167,7 +172,7 @@ async function handleDm(message) {
 
   if (session.expires_at < Date.now()) {
     await cancel(message.author, session, true);
-    await message.author.send({ embeds: [embeds.warning('⌛ Zeit abgelaufen', 'Die Zeit für diese Bewerbung ist um. Starte sie bitte neu.')] }).catch(() => null);
+    await message.author.send({ embeds: [embeds.warning(L('⌛ Zeit abgelaufen', '⌛ Time is up'), L('Die Zeit für diese Bewerbung ist um. Starte sie bitte neu.', 'The time for this application is up. Please start it again.'))] }).catch(() => null);
     return true;
   }
   if (CANCEL_WORDS.includes(message.content.trim().toLowerCase())) {
@@ -200,7 +205,7 @@ async function sweep() {
 async function expireSession(session) {
   appModel.deleteSession(session.id);
   const user = await client.users.fetch(session.user_id).catch(() => null);
-  await user?.send({ embeds: [embeds.warning('⌛ Zeit abgelaufen', 'Die Zeit für deine Bewerbung ist um. Starte sie bitte neu.')] }).catch(() => null);
+  await user?.send({ embeds: [embeds.warning(L('⌛ Zeit abgelaufen', '⌛ Time is up'), L('Die Zeit für deine Bewerbung ist um. Starte sie bitte neu.', 'The time for your application is up. Please start it again.'))] }).catch(() => null);
 }
 
 module.exports = { start, validate, handleDm, acceptAnswer, cancel, sweep };

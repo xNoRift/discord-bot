@@ -53,7 +53,7 @@ try {
 const musicEnabled = () => Boolean(voice && prism);
 function assertMusic() {
   if (!musicEnabled()) {
-    throw new Error(`Musik ist auf diesem Server nicht verfügbar: ${MUSIC_ERROR || 'Voice-Pakete fehlen.'}`);
+    throw new Error(L('Musik ist auf diesem Server nicht verfügbar: {why}', 'Music is not available on this server: {why}', { why: MUSIC_ERROR || L('Voice-Pakete fehlen.', 'voice packages are missing.') }));
   }
 }
 
@@ -131,7 +131,7 @@ class Session {
     this.player.on('error', (err) => {
       if (this.destroyed) return;
       logger.warn(`[music] Player-Fehler (${this.guildId}): ${err.message}`);
-      this._announce(`⚠️ Fehler bei **${this.current?.title || 'Titel'}** – überspringe.`);
+      this._announce(L('⚠️ Fehler bei **{title}** – überspringe.', '⚠️ Error with **{title}** – skipping.', { title: this.current?.title || L('Titel', 'track') }));
       this._next();
     });
   }
@@ -170,7 +170,7 @@ class Session {
   _scheduleIdle() {
     this._clearIdle();
     this.idleTimer = setTimeout(() => {
-      this.destroy('👋 Nichts mehr in der Warteschlange – ich verlasse den Sprachkanal.');
+      this.destroy(L('👋 Nichts mehr in der Warteschlange – ich verlasse den Sprachkanal.', '👋 Nothing left in the queue – leaving the voice channel.'));
     }, IDLE_DISCONNECT_MS);
   }
 
@@ -187,7 +187,7 @@ class Session {
     if (!this.current) {
       this.resource = null;
       this._scheduleIdle();
-      this._updatePanelIdle('⏸️ Warteschlange ist leer.').catch(() => null);
+      this._updatePanelIdle(L('⏸️ Warteschlange ist leer.', '⏸️ The queue is empty.')).catch(() => null);
       return;
     }
     this._clearIdle();
@@ -200,7 +200,7 @@ class Session {
       this._sendOrUpdatePanel().catch((err) => logger.warn(`[music] Panel-Fehler: ${err.message}`));
     } catch (err) {
       logger.warn(`[music] Resource-Fehler: ${err.message}`);
-      this._announce(`⚠️ **${this.current.title}** konnte nicht abgespielt werden – überspringe.`);
+      this._announce(L('⚠️ **{title}** konnte nicht abgespielt werden – überspringe.', '⚠️ **{title}** could not be played – skipping.', { title: this.current.title }));
       return this._next();
     }
   }
@@ -287,17 +287,17 @@ class Session {
   /** Embed für das Steuer-Panel ("Läuft gerade" + Buttons), das im Textkanal gepostet/aktualisiert wird. */
   _panelEmbed() {
     const c = this.current;
-    const link = c.url && /^https?:/.test(c.url) ? ` — [öffnen](${c.url})` : '';
+    const link = c.url && /^https?:/.test(c.url) ? ` — [${L('öffnen', 'open')}](${c.url})` : '';
     const e = embeds.brand(c.live ? '🔴 Live' : L('🎵 Läuft gerade', '🎵 Now playing'), `**${c.title}**${link}`);
     if (c.thumbnail) e.setThumbnail(c.thumbnail);
     e.addFields(
       { name: L('Länge', 'Length'), value: c.live ? 'LIVE' : fmtDuration(c.duration), inline: true },
       { name: L('Lautstärke', 'Volume'), value: `${Math.round(this.volume * 100)} %`, inline: true },
-      { name: 'Loop', value: this.loop ? 'an 🔁' : 'aus', inline: true },
+      { name: 'Loop', value: this.loop ? L('an 🔁', 'on 🔁') : L('aus', 'off'), inline: true },
     );
     const footer = [
-      c.requestedBy ? `Angefragt von ${c.requestedBy.tag}` : null,
-      this.queue.length ? `${this.queue.length} weitere in der Warteschlange` : null,
+      c.requestedBy ? L('Angefragt von {user}', 'Requested by {user}', { user: c.requestedBy.tag }) : null,
+      this.queue.length ? L('{n} weitere in der Warteschlange', '{n} more in the queue', { n: this.queue.length }) : null,
     ]
       .filter(Boolean)
       .join(' · ');
@@ -497,7 +497,7 @@ function getOrCreate(guild) {
 async function resolveTracks(guildId, query, requestedBy) {
   const q = String(query || '').trim();
   if (!q) throw new Error('Bitte einen Suchbegriff oder Link angeben.');
-  const noYt = 'YouTube ist auf diesem Server nicht verfügbar (yt-dlp fehlt). Radio-Sender und direkte Stream-URLs funktionieren.';
+  const noYt = L('YouTube ist auf diesem Server nicht verfügbar (yt-dlp fehlt). Radio-Sender und direkte Stream-URLs funktionieren.', 'YouTube is not available on this server (yt-dlp is missing). Radio stations and direct stream URLs work.');
 
   // Spotify: Titelliste von Spotify holen, Ton kommt später pro Titel von YouTube
   const sp = spotify.parse(q);
@@ -545,7 +545,7 @@ async function resolveTracks(guildId, query, requestedBy) {
   }
 
   // YouTube-Suche
-  if (!ytdlp.available()) throw new Error(noYt + `\nTipp: „${q}" als Radio-Sendername? Verfügbar: ${allStations(guildId).slice(0, 6).map((s) => s.name).join(', ')} …`);
+  if (!ytdlp.available()) throw new Error(noYt + '\n' + L('Tipp: „{q}“ als Radio-Sendername? Verfügbar: {list} …', 'Tip: “{q}” as a radio station name? Available: {list} …', { q, list: allStations(guildId).slice(0, 6).map((s) => s.name).join(', ') }));
   const v = await ytdlp.info(q);
   return { tracks: [{ ...v, source: 'youtube', requestedBy }], label: null };
 }
@@ -567,7 +567,7 @@ async function play_(guild, voiceChannel, textChannelId, query, requestedBy) {
 
 async function playStation(guild, voiceChannel, textChannelId, stationQuery, requestedBy) {
   const station = findStation(guild.id, stationQuery);
-  if (!station) throw new Error(`Sender „${stationQuery}" nicht gefunden.`);
+  if (!station) throw new Error(L('Sender „{q}“ nicht gefunden.', 'Station “{q}” not found.', { q: stationQuery }));
   return play_(guild, voiceChannel, textChannelId, station.name, requestedBy);
 }
 
@@ -605,7 +605,7 @@ async function _playPlaylistRow(guild, voiceChannel, textChannelId, pl, requeste
 async function playPlaylist(guild, voiceChannel, textChannelId, name, requestedBy) {
   assertMusicAllowed(guild.id);
   const pl = playlistsModel.getByName(guild.id, name);
-  if (!pl) throw new Error(`Playlist „${name}" wurde auf diesem Server nicht gefunden.`);
+  if (!pl) throw new Error(L('Playlist „{name}“ wurde auf diesem Server nicht gefunden.', 'Playlist “{name}” was not found on this server.', { name }));
   return _playPlaylistRow(guild, voiceChannel, textChannelId, pl, requestedBy);
 }
 
@@ -627,7 +627,7 @@ async function savePlaylist(guild, name, query, createdBy) {
   const n = String(name || '').trim().slice(0, 80);
   if (!n) throw new Error(L('Bitte einen Namen für die Playlist angeben.', 'Please enter a name for the playlist.'));
   if (playlistsModel.getByName(guild.id, n)) {
-    throw new Error(`Es gibt auf diesem Server schon eine Playlist namens „${n}". Lösche sie erst oder wähle einen anderen Namen.`);
+    throw new Error(L('Es gibt auf diesem Server schon eine Playlist namens „{name}“. Lösche sie erst oder wähle einen anderen Namen.', 'A playlist named “{name}” already exists on this server. Delete it first or choose another name.', { name: n }));
   }
   if (playlistsModel.count(guild.id) >= MAX_PLAYLISTS) {
     throw new Error(`Maximal ${MAX_PLAYLISTS} Playlists pro Server.`);

@@ -5,6 +5,7 @@ const moduleSettings = require('../database/models/moduleSettings');
 const logService = require('./logService');
 const config = require('../../config/config');
 const logger = require('../utils/logger');
+const { L } = require('../utils/i18n');
 
 /**
  * Guild Protection: Mindest-Kontoalter, Raid-Erkennung, Einladungs-/Link-Filter, Spam-Schutz.
@@ -53,8 +54,8 @@ async function onMemberJoin(member) {
     if (cfg.minAccountAgeDays > 0) {
       const ageDays = (Date.now() - member.user.createdTimestamp) / 86_400_000;
       if (ageDays < cfg.minAccountAgeDays) {
-        await punish(member, cfg.accountAgeAction, `Guild Protection: Konto jünger als ${cfg.minAccountAgeDays} Tage`, 60 * 24);
-        await report(member.guild, cfg, 'Konto zu neu', `${member.user.tag} (<@${member.id}>) – Konto ${Math.floor(ageDays)} Tage alt → ${cfg.accountAgeAction === 'kick' ? 'gekickt' : 'stummgeschaltet'}.`);
+        await punish(member, cfg.accountAgeAction, L('Guild Protection: Konto jünger als {d} Tage', 'Guild Protection: account younger than {d} days', { d: cfg.minAccountAgeDays }), 60 * 24);
+        await report(member.guild, cfg, L('Konto zu neu', 'Account too new'), L('{user} – Konto {d} Tage alt → {action}.', '{user} – account {d} days old → {action}.', { user: `${member.user.tag} (<@${member.id}>)`, d: Math.floor(ageDays), action: cfg.accountAgeAction === 'kick' ? L('gekickt', 'kicked') : L('stummgeschaltet', 'muted') }));
         return;
       }
     }
@@ -66,7 +67,7 @@ async function onMemberJoin(member) {
       joinLog.set(member.guild.id, list);
       if (list.length >= cfg.raidJoins) {
         await punish(member, cfg.raidAction, 'Guild Protection: Raid-Erkennung', 30);
-        await report(member.guild, cfg, 'Raid erkannt', `${list.length} Beitritte in ${cfg.raidSeconds}s – ${member.user.tag} (<@${member.id}>) → ${cfg.raidAction === 'kick' ? 'gekickt' : 'stummgeschaltet'}.`);
+        await report(member.guild, cfg, L('Raid erkannt', 'Raid detected'), L('{n} Beitritte in {s}s – {user} → {action}.', '{n} joins in {s}s – {user} → {action}.', { n: list.length, s: cfg.raidSeconds, user: `${member.user.tag} (<@${member.id}>)`, action: cfg.raidAction === 'kick' ? L('gekickt', 'kicked') : L('stummgeschaltet', 'muted') }));
       }
     }
   } catch (err) {
@@ -95,7 +96,7 @@ async function onMessage(message) {
 
     if (cfg.blockInvites && INVITE_RE.test(text)) {
       await message.delete().catch(() => null);
-      const note = await message.channel.send(`⛔ <@${message.author.id}>, Einladungslinks sind hier nicht erlaubt.`).catch(() => null);
+      const note = await message.channel.send(L('⛔ {user}, Einladungslinks sind hier nicht erlaubt.', '⛔ {user}, invite links are not allowed here.', { user: `<@${message.author.id}>` })).catch(() => null);
       setTimeout(() => note?.delete().catch(() => null), 6000);
       await report(message.guild, cfg, 'Einladungslink entfernt', `<@${message.author.id}> in <#${message.channelId}>.`);
       return;
@@ -107,7 +108,7 @@ async function onMessage(message) {
       const bad = hosts.filter((h) => !allowed.some((a) => h === a || h.endsWith(`.${a}`)));
       if (bad.length) {
         await message.delete().catch(() => null);
-        const note = await message.channel.send(`⛔ <@${message.author.id}>, Links sind hier nicht erlaubt.`).catch(() => null);
+        const note = await message.channel.send(L('⛔ {user}, Links sind hier nicht erlaubt.', '⛔ {user}, links are not allowed here.', { user: `<@${message.author.id}>` })).catch(() => null);
         setTimeout(() => note?.delete().catch(() => null), 6000);
         await report(message.guild, cfg, 'Link entfernt', `<@${message.author.id}> in <#${message.channelId}> (${bad[0]}).`);
         return;
@@ -123,7 +124,7 @@ async function onMessage(message) {
       if (list.length >= cfg.spamMessages) {
         msgLog.delete(key);
         await message.member.timeout(cfg.spamTimeoutMinutes * 60 * 1000, 'Guild Protection: Spam').catch(() => null);
-        await report(message.guild, cfg, 'Spam erkannt', `<@${message.author.id}> → ${cfg.spamTimeoutMinutes} Min. stummgeschaltet.`);
+        await report(message.guild, cfg, L('Spam erkannt', 'Spam detected'), L('{user} → {m} Min. stummgeschaltet.', '{user} → muted for {m} min.', { user: `<@${message.author.id}>`, m: cfg.spamTimeoutMinutes }));
       }
     }
   } catch (err) {

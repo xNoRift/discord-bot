@@ -30,7 +30,7 @@ async function onVoice(oldState, newState) {
   const embed = new EmbedBuilder()
     .setColor(config.branding.color)
     .setTitle(L('🎧 Jemand wartet auf Support', '🎧 Someone is waiting for support'))
-    .setDescription(`<@${newState.id}> wartet im Sprachkanal <#${channelId}>.`)
+    .setDescription(L('{user} wartet im Sprachkanal {channel}.', '{user} is waiting in the voice channel {channel}.', { user: `<@${newState.id}>`, channel: `<#${channelId}>` }))
     .setTimestamp();
   const role = cfg.roleId && newState.guild.roles.cache.has(cfg.roleId) ? cfg.roleId : null;
   await notify.send({

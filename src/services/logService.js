@@ -88,12 +88,12 @@ async function log(opts) {
     if (!channel || !channel.isTextBased()) return;
 
     const group = logEvents.groupOf(type, category);
-    const eventLabel = logEvents.EVENTS.get(type)?.label;
+    const eventLabel = logEvents.eventName(type);
     const embed = new EmbedBuilder()
       .setColor(color ?? group?.color ?? config.branding.color)
       .setTitle(String(title).slice(0, 256))
       .setTimestamp();
-    if (group) embed.setAuthor({ name: `${group.emoji} ${group.label}${eventLabel ? ' · ' + eventLabel : ''}`.slice(0, 256) });
+    if (group) embed.setAuthor({ name: `${group.emoji} ${logEvents.groupName(group)}${eventLabel ? ' · ' + eventLabel : ''}`.slice(0, 256) });
     if (description) embed.setDescription(String(description).slice(0, 4096));
     const allFields = [...fields];
     if (actorId && !mentions(fields, description, actorId)) {

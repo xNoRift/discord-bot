@@ -11,6 +11,17 @@ function guildIdOf(arg) {
   if (arg.guildId) return arg.guildId;
   if (arg.guild?.id) return arg.guild.id;
   if (arg.constructor?.name === 'Guild') return arg.id;
+  // Direktnachricht: Sprache des Servers, um den es geht (laufende Bewerbung, sonst ModMail-Support-Server)
+  const userId = arg.author?.id ?? arg.user?.id;
+  if (userId) {
+    try {
+      const session = require('../database/models/applications').getSessionByUser(userId);
+      if (session) return session.guild_id;
+      return require('../database/models/botConfig').get()?.modmail_guild_id || null;
+    } catch {
+      return null;
+    }
+  }
   return null;
 }
 

@@ -124,9 +124,10 @@ async function grantGiveawayRole(guild, userId, options = {}) {
       embeds: [
         embeds
           .success(
-            '🏆 Giveaway Gewinnerrolle erhalten',
-            `Du hast auf **${guild.name}** die Rolle **${role.name}** erhalten.\n` +
-              `Sie wird automatisch entfernt: ${discordTimestamp(expiresAt, 'F')} (${discordTimestamp(expiresAt, 'R')}).`,
+            L('🏆 Giveaway Gewinnerrolle erhalten', '🏆 Giveaway winner role received'),
+            L('Du hast auf **{guild}** die Rolle **{role}** erhalten.\nSie wird automatisch entfernt: {at} ({rel}).', 'You received the role **{role}** on **{guild}**.\nIt will be removed automatically: {at} ({rel}).', {
+              guild: guild.name, role: role.name, at: discordTimestamp(expiresAt, 'F'), rel: discordTimestamp(expiresAt, 'R'),
+            }),
           ),
       ],
     })
@@ -204,8 +205,8 @@ async function removeExpired(id) {
       .send({
         embeds: [
           embeds.info(
-            '⏰ Giveaway Gewinnerrolle entfernt',
-            `Deine temporäre Rolle **${role ? role.name : row.role_id}** auf **${guild.name}** ist abgelaufen und wurde entfernt.`,
+            L('⏰ Giveaway Gewinnerrolle entfernt', '⏰ Giveaway winner role removed'),
+            L('Deine temporäre Rolle **{role}** auf **{guild}** ist abgelaufen und wurde entfernt.', 'Your temporary role **{role}** on **{guild}** has expired and was removed.', { role: role ? role.name : row.role_id, guild: guild.name }),
           ),
         ],
       })

@@ -53,7 +53,7 @@ async function fetchTracks({ type, id }) {
   } catch {
     throw new Error(L('Spotify ist gerade nicht erreichbar – bitte später nochmal versuchen.', 'Spotify is not reachable right now – please try again later.'));
   }
-  if (!res.ok) throw new Error(`Spotify hat die Anfrage abgelehnt (HTTP ${res.status}).`);
+  if (!res.ok) throw new Error(L('Spotify hat die Anfrage abgelehnt (HTTP {status}).', 'Spotify rejected the request (HTTP {status}).', { status: res.status }));
 
   const html = await res.text();
   const m = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);

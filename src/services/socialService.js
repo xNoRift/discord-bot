@@ -7,6 +7,7 @@ const client = require('../core/client');
 const config = require('../../config/config');
 const social = require('../database/models/social');
 const logger = require('../utils/logger');
+const { L } = require('../utils/i18n');
 
 /**
  * Social-Media-Benachrichtigungen: Twitch live, neue YouTube-Videos,
@@ -130,11 +131,12 @@ async function pollTwitch() {
           const user = await twitchUser(sub.account);
           await announce(sub, {
             kind: 'twitch',
-            title: stream.title || `${sub.account_label} ist LIVE`,
+            // Texte als Funktion: werden erst beim Senden in der Sprache des Servers erzeugt
+            title: stream.title || (() => L('{name} ist LIVE', '{name} is LIVE', { name: sub.account_label })),
             url: `https://twitch.tv/${sub.account}`,
             name: sub.account_label || sub.account,
             authorIcon: user?.profile_image_url || null,
-            extra: `${sub.account_label || sub.account} ist jetzt live auf Twitch!`,
+            extra: () => L('{name} ist jetzt live auf Twitch!', '{name} is now live on Twitch!', { name: sub.account_label || sub.account }),
             field: stream.game_name ? { name: 'Playing', value: stream.game_name } : null,
             image: stream.thumbnail_url
               ? stream.thumbnail_url.replace('{width}', '1280').replace('{height}', '720') + `?t=${now}`
@@ -404,10 +406,10 @@ async function pollFeedPlatform(platform) {
  * ------------------------------------------------------------------ */
 
 const PLATFORM_META = {
-  twitch: { color: 0x9146ff, tag: 'Twitch', verb: 'ist jetzt LIVE auf Twitch' },
-  youtube: { color: 0xff0000, tag: 'YouTube', verb: 'hat ein neues Video hochgeladen' },
-  tiktok: { color: 0x000000, tag: 'TikTok', verb: 'hat ein neues TikTok gepostet' },
-  rss: { color: 0xf26522, tag: 'Feed', verb: 'hat etwas Neues gepostet' },
+  twitch: { color: 0x9146ff, tag: 'Twitch', verb: () => L('ist jetzt LIVE auf Twitch', 'is now LIVE on Twitch') },
+  youtube: { color: 0xff0000, tag: 'YouTube', verb: () => L('hat ein neues Video hochgeladen', 'uploaded a new video') },
+  tiktok: { color: 0x000000, tag: 'TikTok', verb: () => L('hat ein neues TikTok gepostet', 'posted a new TikTok') },
+  rss: { color: 0xf26522, tag: 'Feed', verb: () => L('hat etwas Neues gepostet', 'posted something new') },
 };
 
 function renderTemplate(tpl, sub, data, mentionText) {
@@ -433,11 +435,14 @@ async function announceInner(sub, data) {
   }
 
   const meta = PLATFORM_META[sub.platform];
+  const verb = meta.verb();
+  if (typeof data.title === 'function') data = { ...data, title: data.title() };
+  if (typeof data.extra === 'function') data = { ...data, extra: data.extra() };
   let mentionText = '';
   if (sub.mention === '@everyone' || sub.mention === '@here') mentionText = sub.mention;
   else if (sub.mention) mentionText = sub.mention; // <@&ID>
 
-  const defaultMsg = `${mentionText ? mentionText + ' ' : ''}**${data.name}** ${meta.verb}!`;
+  const defaultMsg = `${mentionText ? mentionText + ' ' : ''}**${data.name}** ${verb}!`;
   const content = (sub.message ? renderTemplate(sub.message, sub, data, mentionText) : defaultMsg).slice(0, 1900)
     + (sub.embed ? '' : `\n${data.url}`);
 
@@ -453,7 +458,7 @@ async function announceInner(sub, data) {
     const embed = new EmbedBuilder()
       .setColor(meta.color)
       .setAuthor({ name: `${data.name} • ${meta.tag}`, iconURL: data.authorIcon || undefined, url: data.authorUrl || data.url })
-      .setTitle((data.title || meta.verb).slice(0, 256))
+      .setTitle((data.title || verb).slice(0, 256))
       .setURL(data.url)
       .setFooter({ text: meta.tag })
       .setTimestamp();
@@ -537,9 +542,9 @@ async function sendTest(sub) {
     name: sub.account_label || sub.account,
     authorIcon: user?.profile_image_url || null,
     extra: sub.platform === 'twitch'
-      ? `${sub.account_label || sub.account} ist jetzt live auf Twitch! (Testmeldung)`
-      : `Dies ist eine Testmeldung für ${meta.tag}.`,
-    field: sub.platform === 'twitch' ? { name: 'Playing', value: 'Testkategorie' } : null,
+      ? L('{name} ist jetzt live auf Twitch! (Testmeldung)', '{name} is now live on Twitch! (test message)', { name: sub.account_label || sub.account })
+      : L('Dies ist eine Testmeldung für {platform}.', 'This is a test message for {platform}.', { platform: meta.tag }),
+    field: sub.platform === 'twitch' ? { name: 'Playing', value: L('Testkategorie', 'Test category') } : null,
     image: null,
   });
 }

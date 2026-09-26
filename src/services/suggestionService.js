@@ -44,7 +44,7 @@ async function handleMessage(message) {
     await posted.react('👍').catch(() => null);
     await posted.react('👎').catch(() => null);
     if (perms.has(PermissionFlagsBits.CreatePublicThreads)) {
-      await posted.startThread({ name: `Vorschlag von ${message.author.username}`.slice(0, 90) }).catch(() => null);
+      await posted.startThread({ name: L('Vorschlag von {user}', 'Suggestion by {user}', { user: message.author.username }).slice(0, 90) }).catch(() => null);
     }
   } catch (err) {
     logger.warn('[suggestion] posten fehlgeschlagen:', err.message);
@@ -64,7 +64,7 @@ async function handleMessage(message) {
       color: config.branding.color,
       fields: [
         { name: L('Von', 'From'), value: `<@${message.author.id}>`, inline: true },
-        { name: 'Vorschlag', value: text.slice(0, 1000) },
+        { name: L('Vorschlag', 'Suggestion'), value: text.slice(0, 1000) },
       ],
       targetId: message.author.id,
     })

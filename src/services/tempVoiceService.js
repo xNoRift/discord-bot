@@ -72,7 +72,7 @@ function panelComponents(row = {}, guildId = row.guild_id) {
   return [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('tempvoice:btn:rename').setLabel(L('Umbenennen', 'Rename')).setEmoji(e('rename')).setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('tempvoice:btn:limit').setLabel('Benutzerlimit').setEmoji(e('limit')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('tempvoice:btn:limit').setLabel(L('Benutzerlimit', 'User limit')).setEmoji(e('limit')).setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('tempvoice:btn:lock')
         .setLabel(locked ? L('Entsperren', 'Unlock') : L('Sperren', 'Lock'))
@@ -104,15 +104,17 @@ function panelEmbed(row, channel) {
     .setColor(config.branding.color)
     .setTitle('🔊 TempVoice-Interface')
     .setDescription(
-      'Mit diesem Interface steuerst du **deinen** temporären Sprachkanal. ' +
-        'Nur der Besitzer (und das Team) kann die Buttons benutzen.',
+      L(
+        'Mit diesem Interface steuerst du **deinen** temporären Sprachkanal. Nur der Besitzer (und das Team) kann die Buttons benutzen.',
+        'Use this interface to control **your** temporary voice channel. Only the owner (and the team) can use the buttons.',
+      ),
     )
     .addFields(
-      { name: 'Besitzer', value: `<@${row.owner_id}>`, inline: true },
-      { name: 'Benutzerlimit', value: limit ? String(limit) : L('kein Limit', 'no limit'), inline: true },
+      { name: L('Besitzer', 'Owner'), value: `<@${row.owner_id}>`, inline: true },
+      { name: L('Benutzerlimit', 'User limit'), value: limit ? String(limit) : L('kein Limit', 'no limit'), inline: true },
       {
         name: 'Status',
-        value: `${row.locked ? '🔒 Gesperrt' : '🔓 Offen'} · ${row.hidden ? '🙈 Versteckt' : '👁️ Sichtbar'}`,
+        value: `${row.locked ? L('🔒 Gesperrt', '🔒 Locked') : L('🔓 Offen', '🔓 Open')} · ${row.hidden ? L('🙈 Versteckt', '🙈 Hidden') : L('👁️ Sichtbar', '👁️ Visible')}`,
         inline: true,
       },
     )
@@ -127,14 +129,14 @@ function interfaceEmbed(guild) {
     .setTitle('🔊 TempVoice Interface')
     .setDescription(
       [
-        'Mit diesem Interface bearbeitest du **deinen eigenen** temporären Sprachkanal.',
-        'Voraussetzung: Du sitzt gerade in einem Kanal, den du über den Hub-Kanal erstellt hast.',
+        L('Mit diesem Interface bearbeitest du **deinen eigenen** temporären Sprachkanal.', 'Use this interface to edit **your own** temporary voice channel.'),
+        L('Voraussetzung: Du sitzt gerade in einem Kanal, den du über den Hub-Kanal erstellt hast.', 'Requirement: you are currently in a channel you created via the hub channel.'),
         '',
-        '✏️ **Umbenennen** · 👥 **Benutzerlimit** · 🔒 **Sperren** · 🙈 **Verstecken** · 🌍 **Region**',
-        '➕ **Hinzufügen** · ➖ **Entfernen** · 🚫 **Blockieren** · ♻️ **Entblockieren** · 🔌 **Trennen**',
-        '🗑️ **Löschen**',
+        L('✏️ **Umbenennen** · 👥 **Benutzerlimit** · 🔒 **Sperren** · 🙈 **Verstecken** · 🌍 **Region**', '✏️ **Rename** · 👥 **User limit** · 🔒 **Lock** · 🙈 **Hide** · 🌍 **Region**'),
+        L('➕ **Hinzufügen** · ➖ **Entfernen** · 🚫 **Blockieren** · ♻️ **Entblockieren** · 🔌 **Trennen**', '➕ **Add** · ➖ **Remove** · 🚫 **Block** · ♻️ **Unblock** · 🔌 **Disconnect**'),
+        L('🗑️ **Löschen**', '🗑️ **Delete**'),
         '',
-        '👑 Verlässt der Besitzer den Kanal, wird automatisch die Person Besitzer, die am längsten im Kanal ist.',
+        L('👑 Verlässt der Besitzer den Kanal, wird automatisch die Person Besitzer, die am längsten im Kanal ist.', '👑 If the owner leaves the channel, whoever has been in the channel longest automatically becomes the owner.'),
       ].join('\n'),
     )
     .setFooter({ text: guild.name });
@@ -257,7 +259,7 @@ async function createFor(member, settings) {
     parent: parentId,
     userLimit: limit,
     bitrate: Math.min(guild.maximumBitrate || 96000, Math.max(8000, (Number(settings.tempvoice_bitrate) || 64) * 1000)),
-    reason: `Temp-Voice für ${member.user.tag}`,
+    reason: L('Temp-Voice für {user}', 'Temp voice for {user}', { user: member.user.tag }),
     permissionOverwrites: [
       {
         id: member.id,
@@ -281,7 +283,7 @@ async function createFor(member, settings) {
   try {
     await member.voice.setChannel(channel);
   } catch {
-    await channel.delete('Temp-Voice: Ersteller nicht mehr im Voice').catch(() => null);
+    await channel.delete(L('Temp-Voice: Ersteller nicht mehr im Voice', 'Temp voice: creator no longer in voice')).catch(() => null);
     tempVoice.remove(channel.id);
     return;
   }
@@ -294,7 +296,7 @@ async function createFor(member, settings) {
         embeds: [
           new EmbedBuilder()
             .setColor(config.branding.color)
-            .setDescription(`Dein Kanal ist bereit. Steuere ihn über das **TempVoice Interface** in <#${settings.tempvoice_interface_channel_id}>.`),
+            .setDescription(L('Dein Kanal ist bereit. Steuere ihn über das **TempVoice Interface** in {channel}.', 'Your channel is ready. Control it via the **TempVoice interface** in {channel}.', { channel: `<#${settings.tempvoice_interface_channel_id}>` })),
         ],
         allowedMentions: { users: [member.id] },
       })
@@ -377,7 +379,7 @@ async function transferOwnership(channel, row) {
       embeds: [
         new EmbedBuilder()
           .setColor(config.branding.color)
-          .setDescription(`👑 <@${next.id}> ist jetzt Besitzer dieses Kanals – der bisherige Besitzer hat den Kanal verlassen.`),
+          .setDescription(L('👑 {user} ist jetzt Besitzer dieses Kanals – der bisherige Besitzer hat den Kanal verlassen.', '👑 {user} is now the owner of this channel – the previous owner left.', { user: `<@${next.id}>` })),
       ],
       allowedMentions: { parse: [] },
     })
@@ -400,7 +402,7 @@ async function cleanup(client) {
     }
     const humans = channel.members.filter((m) => !m.user.bot);
     if (humans.size === 0) {
-      await channel.delete('Temp-Voice: Aufräumen beim Start').catch(() => null);
+      await channel.delete(L('Temp-Voice: Aufräumen beim Start', 'Temp voice: cleanup on start')).catch(() => null);
       tempVoice.remove(row.channel_id);
       continue;
     }
@@ -432,14 +434,14 @@ async function rename(channel, newName) {
   if (!name) throw new Error('Bitte einen Namen angeben.');
   await channel.setName(name, 'Temp-Voice: umbenannt');
   await refreshPanel(channel);
-  return `Kanal heißt jetzt **${name}**.`;
+  return L('Kanal heißt jetzt **{name}**.', 'Channel is now called **{name}**.', { name });
 }
 
 async function setLimit(channel, value) {
   const n = Math.max(0, Math.min(MAX_LIMIT, Number.parseInt(value, 10) || 0));
   await channel.setUserLimit(n, 'Temp-Voice: Benutzerlimit');
   await refreshPanel(channel);
-  return n === 0 ? 'Benutzerlimit entfernt.' : `Benutzerlimit auf **${n}** gesetzt.`;
+  return n === 0 ? L('Benutzerlimit entfernt.', 'User limit removed.') : L('Benutzerlimit auf **{n}** gesetzt.', 'User limit set to **{n}**.', { n });
 }
 
 async function toggleLock(channel, row) {
@@ -463,20 +465,20 @@ async function toggleHide(channel, row) {
 async function setRegion(channel, region) {
   const value = !region || region === 'auto' ? null : region;
   await channel.setRTCRegion(value, 'Temp-Voice: Region');
-  return value ? `🌍 Region auf **${value}** gesetzt.` : L('🌍 Region auf **Automatisch** gesetzt.', '🌍 Region set to **Automatic**.');
+  return value ? L('🌍 Region auf **{v}** gesetzt.', '🌍 Region set to **{v}**.', { v: value }) : L('🌍 Region auf **Automatisch** gesetzt.', '🌍 Region set to **Automatic**.');
 }
 
 async function permitUser(channel, targetId) {
   await channel.permissionOverwrites.edit(targetId, { ViewChannel: true, Connect: true });
-  return `➕ <@${targetId}> darf jetzt beitreten.`;
+  return L('➕ {user} darf jetzt beitreten.', '➕ {user} can now join.', { user: `<@${targetId}>` });
 }
 
 async function rejectUser(channel, targetId, row) {
   if (targetId === row.owner_id) throw new Error(L('Den Besitzer kannst du nicht entfernen.', 'You can\'t remove the owner.'));
-  await channel.permissionOverwrites.delete(targetId, 'Temp-Voice: Zugriff entfernt').catch(() => null);
+  await channel.permissionOverwrites.delete(targetId, L('Temp-Voice: Zugriff entfernt', 'Temp voice: access removed')).catch(() => null);
   const m = channel.members.get(targetId);
-  if (m) await m.voice.disconnect('Temp-Voice: entfernt').catch(() => null);
-  return `➖ <@${targetId}> wurde entfernt.`;
+  if (m) await m.voice.disconnect(L('Temp-Voice: entfernt', 'Temp voice: removed')).catch(() => null);
+  return L('➖ {user} wurde entfernt.', '➖ {user} was removed.', { user: `<@${targetId}>` });
 }
 
 async function blockUser(channel, targetId, row) {
@@ -484,12 +486,12 @@ async function blockUser(channel, targetId, row) {
   await channel.permissionOverwrites.edit(targetId, { ViewChannel: false, Connect: false });
   const m = channel.members.get(targetId);
   if (m) await m.voice.disconnect('Temp-Voice: blockiert').catch(() => null);
-  return `🚫 <@${targetId}> ist jetzt **blockiert**.`;
+  return L('🚫 {user} ist jetzt **blockiert**.', '🚫 {user} is now **blocked**.', { user: `<@${targetId}>` });
 }
 
 async function unblockUser(channel, targetId) {
   await channel.permissionOverwrites.delete(targetId, 'Temp-Voice: entblockiert').catch(() => null);
-  return `♻️ <@${targetId}> ist nicht mehr blockiert.`;
+  return L('♻️ {user} ist nicht mehr blockiert.', '♻️ {user} is no longer blocked.', { user: `<@${targetId}>` });
 }
 
 async function disconnectUser(channel, targetId, row) {
@@ -497,13 +499,13 @@ async function disconnectUser(channel, targetId, row) {
   const m = channel.members.get(targetId);
   if (!m) throw new Error(L('Diese Person ist nicht in deinem Kanal.', 'This person is not in your channel.'));
   await m.voice.disconnect('Temp-Voice: getrennt');
-  return `🔌 <@${targetId}> wurde aus dem Kanal getrennt.`;
+  return L('🔌 {user} wurde aus dem Kanal getrennt.', '🔌 {user} was disconnected from the channel.', { user: `<@${targetId}>` });
 }
 
 async function destroy(channel) {
   tempVoice.remove(channel.id);
   presence.delete(channel.id);
-  await channel.delete('Temp-Voice: vom Besitzer gelöscht');
+  await channel.delete(L('Temp-Voice: vom Besitzer gelöscht', 'Temp voice: deleted by owner'));
 }
 
 module.exports = {

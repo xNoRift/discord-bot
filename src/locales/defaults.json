@@ -1,0 +1,23 @@
+{
+  "_info": "Englische Fassung der deutschen Standardtexte. i18n.D(text) tauscht einen gespeicherten Text nur, wenn er noch GENAU der deutsche Standard ist und der Server auf Englisch steht – eigene Texte bleiben unverändert.",
+  "Willkommen {user}! Ein Teammitglied wird sich in Kürze um dein Anliegen kümmern.\nBitte beschreibe dein Problem so genau wie möglich.": "Welcome {user}! A team member will take care of your request shortly.\nPlease describe your problem as precisely as possible.",
+  "🎫 Support": "🎫 Support",
+  "Brauchst du Hilfe?\nErstelle hier ein Ticket und unser Team wird dir helfen.": "Need help?\nCreate a ticket here and our team will help you.",
+  "Willkommen auf **{server}**, {user}! 🎉\nViel Spaß bei uns!": "Welcome to **{server}**, {user}! 🎉\nHave fun with us!",
+  "{username} hat den Server verlassen. 👋": "{username} has left the server. 👋",
+  "📋 Bewerbung": "📋 Applications",
+  "Du möchtest unserem Team beitreten?\nWähle unten die gewünschte Position aus.": "Want to join our team?\nChoose the position you want below.",
+  "Deine Bewerbung für `{applicationName}` wurde von {user} angenommen.": "Your application for `{applicationName}` was accepted by {user}.",
+  "Deine Bewerbung für `{applicationName}` wurde von {user} abgelehnt.": "Your application for `{applicationName}` was rejected by {user}.",
+  "Deine Bewerbung wurde eingereicht.": "Your application has been submitted.",
+  "🎉 {user} ist jetzt **Level {level}**!": "🎉 {user} is now **level {level}**!",
+  "✅ Verifizierung": "✅ Verification",
+  "Klicke auf den Button, um dich zu verifizieren und Zugriff auf den Server zu erhalten.": "Click the button to verify yourself and get access to the server.",
+  "Verifizieren": "Verify",
+  "📜 Server-Regeln": "📜 Server rules",
+  "Willkommen auf dem Server! Damit alles reibungslos und angenehm bleibt, haben wir ein paar einfache Regeln. Klicke unten auf einen Bereich, um die passenden Regeln zu lesen.": "Welcome to the server! To keep things smooth and pleasant, we have a few simple rules. Click a section below to read the rules for it.",
+  "Hinweis des Teams": "Note from the team",
+  "Das Serverteam hat das letzte Wort. Maßnahmen wie Stummschaltungen oder Sperren können auch bei nicht aufgeführten Fällen verhängt werden.": "The server team has the final say. Measures such as mutes or bans can also be imposed in cases not listed here.",
+  "Hinweis": "Note",
+  "Verifizierung": "Verification"
+}

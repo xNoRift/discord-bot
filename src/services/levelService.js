@@ -1,5 +1,7 @@
 'use strict';
 
+const { D } = require('../utils/i18n');
+
 const moduleSettings = require('../database/models/moduleSettings');
 const levels = require('../database/models/levels');
 const logger = require('../utils/logger');
@@ -62,7 +64,7 @@ async function adjustXp(guild, member, mode, amount) {
 
 async function handleLevelUp(guild, member, res, cfg, fallbackChannel) {
   await applyRewards(guild, member, res.level);
-  const text = cfg.announceMessage
+  const text = D(cfg.announceMessage)
     .replaceAll('{user}', `<@${member.id}>`)
     .replaceAll('{username}', member.user.username)
     .replaceAll('{level}', String(res.level));

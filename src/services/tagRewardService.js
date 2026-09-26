@@ -6,6 +6,7 @@ const client = require('../core/client');
 const config = require('../../config/config');
 const moduleSettings = require('../database/models/moduleSettings');
 const logger = require('../utils/logger');
+const { L } = require('../utils/i18n');
 
 /**
  * Server-Tag-Belohnung: Mitglieder, die den Server-Tag dieses Servers tragen (Discord-Profil),
@@ -26,7 +27,7 @@ async function syncGuild(guild, cfg) {
     const has = m.roles.cache.has(role.id);
     try {
       if (wears && !has) { await m.roles.add(role, 'Server-Tag-Belohnung'); added++; }
-      else if (!wears && has) { await m.roles.remove(role, 'Server-Tag nicht mehr getragen'); removed++; }
+      else if (!wears && has) { await m.roles.remove(role, L('Server-Tag nicht mehr getragen', 'Server tag no longer worn')); removed++; }
     } catch (err) {
       logger.warn(`[tagReward] ${guild.id}/${m.id}: ${err.message}`);
       return { added, removed, error: err.message };

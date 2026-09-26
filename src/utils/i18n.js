@@ -87,4 +87,16 @@ function L(deText, enText, vars) {
   return fill(currentLang() === 'en' ? enText : deText, vars);
 }
 
-module.exports = { t, langOf, forGuild, pick, fill, runFor, currentLang, L };
+const DEFAULTS_EN = require('../locales/defaults.json');
+
+/**
+ * Gespeicherter Standardtext -> in der aktuellen Sprache.
+ * Nur wenn der Text noch GENAU der deutsche Standard ist (nie geändert) und der Server auf Englisch steht;
+ * eigene Texte des Servers bleiben immer so, wie sie eingegeben wurden.
+ */
+function D(text) {
+  if (currentLang() !== 'en' || typeof text !== 'string') return text;
+  return DEFAULTS_EN[text] ?? text;
+}
+
+module.exports = { t, langOf, forGuild, pick, fill, runFor, currentLang, L, D };

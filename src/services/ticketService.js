@@ -451,7 +451,7 @@ function fillPlaceholders(text, { member, guild, ticketNumber, category, prize, 
 }
 
 function renderWelcome(template, ctx) {
-  return fillPlaceholders(template || config.defaults.ticketWelcome, ctx);
+  return fillPlaceholders(i18n.D(template || config.defaults.ticketWelcome), ctx);
 }
 
 /** Kanalname aus einer Vorlage – unterstützt {…} und die Platzhalter %CASEID%, %PREFIX%, %USERNAME% … */
@@ -592,7 +592,7 @@ async function createTicket(guild, member, opts = {}) {
     type: ChannelType.GuildText,
     parent: discordCategory.id,
     permissionOverwrites: overwrites,
-    topic: `Ticket #${number}${cat ? ' • ' + cat.label : ''} • Ersteller: ${member.user.tag} (${member.id})`,
+    topic: `Ticket #${number}${cat ? ' • ' + cat.label : ''} • ${L('Ersteller', 'Creator')}: ${member.user.tag} (${member.id})`,
   });
 
   const ticket = ticketsModel.create({
@@ -856,7 +856,7 @@ async function removeMemberFromTicket(channel, actor, targetUser) {
   if (!ticket) throw new Error(tg('tickets.errors.not_a_ticket'));
   if (targetUser.id === ticket.opener_id) throw new Error(tg('tickets.errors.opener_not_removable'));
 
-  await channel.permissionOverwrites.delete(targetUser.id, `Aus Ticket entfernt von ${actor.user.tag}`).catch((err) => {
+  await channel.permissionOverwrites.delete(targetUser.id, L('Aus Ticket entfernt von {user}', 'Removed from ticket by {user}', { user: actor.user.tag })).catch((err) => {
     throw new Error(tg('tickets.errors.remove_failed', { msg: err.message }));
   });
 
@@ -1109,10 +1109,12 @@ async function submitRating(guild, ticketId, stars, member, answers = []) {
 
 function formatDuration(ms) {
   const min = Math.max(1, Math.round(ms / 60000));
-  if (min < 60) return `${min} Min.`;
+  const M = L('Min.', 'min');
+  const H = L('Std.', 'h');
+  if (min < 60) return `${min} ${M}`;
   const h = Math.floor(min / 60);
-  if (h < 48) return `${h} Std. ${min % 60} Min.`;
-  return `${Math.floor(h / 24)} Tage ${h % 24} Std.`;
+  if (h < 48) return `${h} ${H} ${min % 60} ${M}`;
+  return `${Math.floor(h / 24)} ${L('Tage', 'days')} ${h % 24} ${H}`;
 }
 
 /* ---------------- Automationen ---------------- */
@@ -1166,7 +1168,7 @@ async function autoProcess(ticket, now) {
   if (a.closeUnresponsive.enabled && ticket.alerted_at && now - ticket.alerted_at >= a.closeUnresponsive.hours * HOUR) {
     await closeTicket(channel, me);
     await channel
-      .send({ embeds: [embeds.warning(L('⏰ Automatisch geschlossen', '⏰ Closed automatically'), `Der Ersteller hat auf die Erinnerung nicht geantwortet (${a.closeUnresponsive.hours} Std.).`)] })
+      .send({ embeds: [embeds.warning(L('⏰ Automatisch geschlossen', '⏰ Closed automatically'), L('Der Ersteller hat auf die Erinnerung nicht geantwortet ({h} Std.).', 'The creator did not respond to the reminder ({h} h).', { h: a.closeUnresponsive.hours }))] })
       .catch(() => null);
     return;
   }
@@ -1183,7 +1185,7 @@ async function autoProcess(ticket, now) {
       await channel
         .send({
           content: `<@${ticket.claimed_by}>`,
-          embeds: [embeds.warning(L('⏰ Team-Erinnerung', '⏰ Team reminder'), `Dieses Ticket ist seit ${a.autoTeamAlert.hours} Std. inaktiv. Bitte kümmere dich darum – sonst wird es wieder freigegeben.`)],
+          embeds: [embeds.warning(L('⏰ Team-Erinnerung', '⏰ Team reminder'), L('Dieses Ticket ist seit {h} Std. inaktiv. Bitte kümmere dich darum – sonst wird es wieder freigegeben.', 'This ticket has been inactive for {h} h. Please take care of it – otherwise it will be unclaimed.', { h: a.autoTeamAlert.hours }))],
           allowedMentions: { users: [ticket.claimed_by] },
         })
         .catch(() => null);
@@ -1200,7 +1202,7 @@ async function autoProcess(ticket, now) {
     await channel
       .send({
         content: `<@${ticket.opener_id}>`,
-        embeds: [embeds.warning(L('⏰ Erinnerung', '⏰ Reminder'), `Dieses Ticket ist seit ${a.autoAlert.hours} Std. inaktiv. Brauchst du noch Hilfe? Schreibe eine Nachricht, sonst wird es eventuell geschlossen.`)],
+        embeds: [embeds.warning(L('⏰ Erinnerung', '⏰ Reminder'), L('Dieses Ticket ist seit {h} Std. inaktiv. Brauchst du noch Hilfe? Schreibe eine Nachricht, sonst wird es eventuell geschlossen.', 'This ticket has been inactive for {h} h. Do you still need help? Send a message, otherwise it may be closed.', { h: a.autoAlert.hours }))],
         allowedMentions: { users: [ticket.opener_id] },
       })
       .catch(() => null);
@@ -1232,7 +1234,7 @@ async function requestClose(channel, member) {
   );
   await channel.send({
     content: `<@${ticket.opener_id}>`,
-    embeds: [embeds.info(L('🔒 Kann dieses Ticket geschlossen werden?', '🔒 Can this ticket be closed?'), `<@${member.id}> möchte dieses Ticket schließen. Ist dein Anliegen gelöst?`)],
+    embeds: [embeds.info(L('🔒 Kann dieses Ticket geschlossen werden?', '🔒 Can this ticket be closed?'), L('{user} möchte dieses Ticket schließen. Ist dein Anliegen gelöst?', '{user} would like to close this ticket. Has your issue been resolved?', { user: `<@${member.id}>` }))],
     components: [row],
     allowedMentions: { users: [ticket.opener_id] },
   });
@@ -1258,7 +1260,7 @@ async function answerCloseRequest(channel, member, accept) {
   ticketsModel.setCloseRequest(ticket.id, null);
 
   if (!accept) {
-    await channel.send({ embeds: [embeds.info(L('❌ Close-Request abgelehnt', '❌ Close request declined'), `<@${member.id}> möchte, dass das Ticket offen bleibt.`)] }).catch(() => null);
+    await channel.send({ embeds: [embeds.info(L('❌ Close-Request abgelehnt', '❌ Close request declined'), L('{user} möchte, dass das Ticket offen bleibt.', '{user} would like the ticket to stay open.', { user: `<@${member.id}>` }))] }).catch(() => null);
     return 'declined';
   }
   const panel = ticket.panel_id ? ticketPanels.getPanel(ticket.panel_id) : null;
@@ -1268,7 +1270,7 @@ async function answerCloseRequest(channel, member, accept) {
     return 'closed';
   }
   await channel
-    .send({ embeds: [embeds.success(L('✅ Close-Request angenommen', '✅ Close request accepted'), `<@${member.id}> stimmt zu – das Team kann das Ticket jetzt schließen.`)] })
+    .send({ embeds: [embeds.success(L('✅ Close-Request angenommen', '✅ Close request accepted'), L('{user} stimmt zu – das Team kann das Ticket jetzt schließen.', '{user} agrees – the team can close the ticket now.', { user: `<@${member.id}>` }))] })
     .catch(() => null);
   return 'accepted';
 }
@@ -1303,7 +1305,7 @@ async function openOnBehalf(guild, staff, targetUser, categoryId) {
   if (!target) throw new Error(L('Das Mitglied ist nicht auf diesem Server.', 'The member is not on this server.'));
   const { channel, ticket } = await createTicket(guild, target, { categoryId });
   await channel
-    .send({ embeds: [embeds.info(L('📝 Im Auftrag erstellt', '📝 Created on behalf'), `Dieses Ticket wurde von <@${staff.id}> für <@${target.id}> geöffnet.`)] })
+    .send({ embeds: [embeds.info(L('📝 Im Auftrag erstellt', '📝 Created on behalf'), L('Dieses Ticket wurde von {staff} für {user} geöffnet.', 'This ticket was opened by {staff} for {user}.', { staff: `<@${staff.id}>`, user: `<@${target.id}>` }))] })
     .catch(() => null);
   return { channel, ticket };
 }

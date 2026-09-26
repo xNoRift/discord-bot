@@ -16,9 +16,19 @@ const { L } = require('../utils/i18n');
 const ACTIONS = ['timeout', 'untimeout', 'kick', 'ban', 'unban'];
 const MAX_TIMEOUT_MIN = 40320; // 28 Tage (Discord-Limit)
 
+/** Anzeigename einer Mod-Aktion in der Sprache des Servers. */
+const actionLabel = (a) =>
+  ({
+    timeout: L('Timeout', 'Timeout'),
+    untimeout: L('Timeout aufgehoben', 'Timeout removed'),
+    kick: L('Kick', 'Kick'),
+    ban: L('Bann', 'Ban'),
+    unban: L('Entbannung', 'Unban'),
+  })[a] || a;
+
 function assertBotCan(me, flag, label) {
   if (!me?.permissions.has(flag)) {
-    throw new Error(`Dem Bot fehlt die Berechtigung „${label}".`);
+    throw new Error(L('Dem Bot fehlt die Berechtigung „{perm}“.', 'The bot is missing the “{perm}” permission.', { perm: label }));
   }
 }
 
@@ -71,46 +81,49 @@ async function act(guild, { action, userId, reason, minutes, actorTag }) {
   let summary;
 
   if (action === 'timeout' || action === 'untimeout') {
-    assertBotCan(me, PermissionFlagsBits.ModerateMembers, 'Mitglieder timeouten');
+    assertBotCan(me, PermissionFlagsBits.ModerateMembers, L('Mitglieder timeouten', 'Timeout Members'));
     const member = await guild.members.fetch(userId).catch(() => null);
     if (!member) throw new Error(L('Mitglied ist nicht auf dem Server.', 'Member is not on the server.'));
     assertHierarchy(me, member);
     assertNotIgnored(cfg, member);
     if (action === 'untimeout') {
       await member.timeout(null, auditReason);
-      summary = `Timeout für ${member.user.tag} aufgehoben`;
+      summary = L('Timeout für {user} aufgehoben', 'Timeout removed for {user}', { user: member.user.tag });
     } else {
       const mins = Math.max(1, Math.min(MAX_TIMEOUT_MIN, Number.parseInt(minutes, 10) || 10));
       await member.timeout(mins * 60 * 1000, auditReason);
-      if (cfg.dmOnAction) await member.send(`Du wurdest auf **${guild.name}** für ${mins} Min. stummgeschaltet.
-Grund: ${why}`).catch(() => null);
-      summary = `${member.user.tag} für ${mins} Min. getimeoutet`;
+      if (cfg.dmOnAction) {
+        await member
+          .send(L('Du wurdest auf **{guild}** für {m} Min. stummgeschaltet.\nGrund: {why}', 'You have been muted on **{guild}** for {m} min.\nReason: {why}', { guild: guild.name, m: mins, why }))
+          .catch(() => null);
+      }
+      summary = L('{user} für {m} Min. getimeoutet', '{user} timed out for {m} min', { user: member.user.tag, m: mins });
     }
   } else if (action === 'kick') {
-    assertBotCan(me, PermissionFlagsBits.KickMembers, 'Mitglieder kicken');
+    assertBotCan(me, PermissionFlagsBits.KickMembers, L('Mitglieder kicken', 'Kick Members'));
     const member = await guild.members.fetch(userId).catch(() => null);
     if (!member) throw new Error(L('Mitglied ist nicht auf dem Server.', 'Member is not on the server.'));
     assertHierarchy(me, member);
     assertNotIgnored(cfg, member);
-    if (cfg.dmOnAction) await member.send(`Du wurdest von **${guild.name}** gekickt.\nGrund: ${why}`).catch(() => null);
+    if (cfg.dmOnAction) await member.send(L('Du wurdest von **{guild}** gekickt.\nGrund: {why}', 'You have been kicked from **{guild}**.\nReason: {why}', { guild: guild.name, why })).catch(() => null);
     await member.kick(auditReason);
-    summary = `${member.user.tag} gekickt`;
+    summary = L('{user} gekickt', '{user} kicked', { user: member.user.tag });
   } else if (action === 'ban') {
-    assertBotCan(me, PermissionFlagsBits.BanMembers, 'Mitglieder bannen');
+    assertBotCan(me, PermissionFlagsBits.BanMembers, L('Mitglieder bannen', 'Ban Members'));
     const member = await guild.members.fetch(userId).catch(() => null);
     if (member) {
       assertHierarchy(me, member);
       assertNotIgnored(cfg, member);
-      if (cfg.dmOnAction) await member.send(`Du wurdest von **${guild.name}** gebannt.\nGrund: ${why}`).catch(() => null);
+      if (cfg.dmOnAction) await member.send(L('Du wurdest von **{guild}** gebannt.\nGrund: {why}', 'You have been banned from **{guild}**.\nReason: {why}', { guild: guild.name, why })).catch(() => null);
     }
     await guild.bans.create(userId, { reason: auditReason, deleteMessageSeconds: 0 });
-    summary = `${member?.user.tag || userId} gebannt`;
+    summary = L('{user} gebannt', '{user} banned', { user: member?.user.tag || userId });
   } else if (action === 'unban') {
-    assertBotCan(me, PermissionFlagsBits.BanMembers, 'Mitglieder bannen');
+    assertBotCan(me, PermissionFlagsBits.BanMembers, L('Mitglieder bannen', 'Ban Members'));
     await guild.bans.remove(userId, auditReason).catch(() => {
       throw new Error(L('Dieser Nutzer ist nicht gebannt.', 'This user is not banned.'));
     });
-    summary = `Bann für ${userId} aufgehoben`;
+    summary = L('Bann für {user} aufgehoben', 'Ban lifted for {user}', { user: userId });
   }
 
   await logService
@@ -118,7 +131,7 @@ Grund: ${why}`).catch(() => null);
       guildId: guild.id,
       category: 'moderation',
       type: `mod_${action}`,
-      title: `🛡️ Moderation: ${action}`,
+      title: `🛡️ ${actionLabel(action)}`,
       color: config.branding.warning,
       fields: [
         { name: L('Nutzer', 'User'), value: `<@${userId}> (${userId})`, inline: false },
@@ -145,14 +158,17 @@ async function warn(guild, { userId, reason, moderatorId, actorTag }) {
   if (!member) throw new Error(L('Mitglied ist nicht auf dem Server.', 'Member is not on the server.'));
   assertNotIgnored(cfg, member);
   const count = modWarns.add(guild.id, userId, moderatorId, why);
-  if (cfg.dmOnAction) await member.send(`Du wurdest auf **${guild.name}** verwarnt (${count}. Verwarnung).
-Grund: ${why}`).catch(() => null);
+  if (cfg.dmOnAction) {
+    await member
+      .send(L('Du wurdest auf **{guild}** verwarnt ({n}. Verwarnung).\nGrund: {why}', 'You have been warned on **{guild}** (warning #{n}).\nReason: {why}', { guild: guild.name, n: count, why }))
+      .catch(() => null);
+  }
   await logService.log({
     guildId: guild.id, category: 'moderation', type: 'mod_warn', title: L('⚠️ Verwarnung', '⚠️ Warning'),
     color: config.branding.warning,
     fields: [
       { name: L('Nutzer', 'User'), value: `<@${userId}> (${userId})`, inline: false },
-      { name: 'Verwarnungen', value: String(count), inline: true },
+      { name: L('Verwarnungen', 'Warnings'), value: String(count), inline: true },
       { name: L('Grund', 'Reason'), value: why, inline: true },
       ...(actorTag ? [{ name: L('Von', 'From'), value: actorTag, inline: true }] : []),
     ],
@@ -162,14 +178,14 @@ Grund: ${why}`).catch(() => null);
   let limitHit = null;
   if (cfg.warnLimitEnabled && count >= cfg.warnLimit) {
     limitHit = cfg.warnLimitAction;
-    const note = `Warnlimit (${cfg.warnLimit}) erreicht`;
+    const note = L('Warnlimit ({n}) erreicht', 'Warning limit ({n}) reached', { n: cfg.warnLimit });
     await act(guild, {
       action: cfg.warnLimitAction === 'timeout' ? 'timeout' : cfg.warnLimitAction,
-      userId, reason: note, minutes: cfg.warnLimitTimeoutMinutes, actorTag: 'Warnlimit',
+      userId, reason: note, minutes: cfg.warnLimitTimeoutMinutes, actorTag: L('Warnlimit', 'Warning limit'),
     }).catch(() => { limitHit = null; });
     if (limitHit) modWarns.clear(guild.id, userId);
   }
-  return { summary: `${member.user.tag} verwarnt (${count}. Verwarnung)`, count, limitHit };
+  return { summary: L('{user} verwarnt ({n}. Verwarnung)', '{user} warned (warning #{n})', { user: member.user.tag, n: count }), count, limitHit: limitHit && actionLabel(limitHit) };
 }
 
 /**

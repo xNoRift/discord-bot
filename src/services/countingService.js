@@ -22,20 +22,20 @@ function buildPanelEmbed(state) {
     .setTitle(L('🔢 Zähl-Spiel', '🔢 Counting game'))
     .setDescription(
       [
-        'Zählt hier gemeinsam hoch! Schreibt einfach die **nächste Zahl** in den Chat.',
+        L('Zählt hier gemeinsam hoch! Schreibt einfach die **nächste Zahl** in den Chat.', 'Count up together here! Just type the **next number** in the chat.'),
         '',
-        `**Nächste Zahl:** \`${next}\``,
-        `**Rekord:** \`${state.best || 0}\``,
+        `**${L('Nächste Zahl', 'Next number')}:** \`${next}\``,
+        `**${L('Rekord', 'Record')}:** \`${state.best || 0}\``,
         '',
-        'Regeln:',
-        `• Immer nur **+1** – richtige Zahlen bekommen ${state.react_emoji || '✅'}`,
-        '• **Nicht** zweimal hintereinander zählen (auch nicht dieselbe Zahl doppelt)',
+        L('Regeln:', 'Rules:'),
+        L('• Immer nur **+1** – richtige Zahlen bekommen {emoji}', '• Always **+1** only – correct numbers get {emoji}', { emoji: state.react_emoji || '✅' }),
+        L('• **Nicht** zweimal hintereinander zählen (auch nicht dieselbe Zahl doppelt)', '• **Don\'t** count twice in a row (not even the same number twice)'),
         state.reset_on_fail
           ? L('• Ein Fehler setzt die Kette zurück auf **1**', '• A mistake resets the chain back to **1**')
           : L('• Bei einem Fehler geht es einfach weiter', '• After a mistake it simply continues'),
       ].join('\n'),
     )
-    .setFooter({ text: `Insgesamt gezählt: ${state.total_counts || 0}` });
+    .setFooter({ text: L('Insgesamt gezählt: {n}', 'Total counted: {n}', { n: state.total_counts || 0 }) });
 }
 
 async function botCanUse(channel, me, needManage = false) {
@@ -108,9 +108,9 @@ async function handleMessage(message) {
 
   let failReason = null;
   if (sameUser) {
-    failReason = 'Du darfst nicht zweimal hintereinander zählen – warte, bis jemand anderes weiterzählt.';
+    failReason = L('Du darfst nicht zweimal hintereinander zählen – warte, bis jemand anderes weiterzählt.', 'You can\'t count twice in a row – wait for someone else to continue.');
   } else if (number !== expected) {
-    failReason = `Falsche Zahl – als Nächstes kam **${expected}**.`;
+    failReason = L('Falsche Zahl – als Nächstes kam **{n}**.', 'Wrong number – the next one was **{n}**.', { n: expected });
   }
 
   try {
@@ -121,7 +121,7 @@ async function handleMessage(message) {
       await message.react(state.react_emoji || '✅').catch(() => null);
       if (next.best === number && number > 0 && number % 100 === 0) {
         await message.channel
-          .send({ embeds: [new EmbedBuilder().setColor(config.branding.success).setDescription(`🏆 Neuer Rekord: **${number}**!`)] })
+          .send({ embeds: [new EmbedBuilder().setColor(config.branding.success).setDescription(L('🏆 Neuer Rekord: **{n}**!', '🏆 New record: **{n}**!', { n: number }))] })
           .catch(() => null);
       }
       await updatePanel(message.guild, next);
@@ -139,15 +139,17 @@ async function handleFail(message, state, number, reason) {
     const embed = new EmbedBuilder()
       .setColor(config.branding.danger)
       .setDescription(
-        `${reason}\n**${message.author}** hat die Kette bei **${number}** zerstört. ` +
-          `Weiter geht's wieder bei **1**.\n🏆 Rekord: **${state.best}**`,
+        `${reason}\n` +
+          L('**{user}** hat die Kette bei **{n}** zerstört. Weiter geht\'s wieder bei **1**.\n🏆 Rekord: **{best}**', '**{user}** broke the chain at **{n}**. Starting again from **1**.\n🏆 Record: **{best}**', {
+            user: String(message.author), n: number, best: state.best,
+          }),
       );
     await message.reply({ embeds: [embed], allowedMentions: { repliedUser: false } }).catch(() => null);
     _panelThrottle.delete(message.guild.id); // Reset sofort im Panel zeigen
     await updatePanel(message.guild, after);
   } else {
     await message
-      .reply({ content: `${reason} Versuch's nochmal mit **${state.current + 1}**.`, allowedMentions: { repliedUser: false } })
+      .reply({ content: `${reason} ${L('Versuch\'s nochmal mit **{n}**.', 'Try again with **{n}**.', { n: state.current + 1 })}`, allowedMentions: { repliedUser: false } })
       .catch(() => null);
   }
 }

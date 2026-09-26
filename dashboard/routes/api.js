@@ -2097,10 +2097,10 @@ router.post('/guilds/:guildId/rules/sections/:id/move', (req, res) => {
 
 // Beispiel-Regeln als Startpunkt einfügen (hängt die Abschnitte an die vorhandenen an).
 router.post('/guilds/:guildId/rules/template', (req, res) => {
-  if (ruleSections.count(req.params.guildId) + rulesService.TEMPLATE.length > ruleSections.MAX_SECTIONS) {
+  if (ruleSections.count(req.params.guildId) + rulesService.template().length > ruleSections.MAX_SECTIONS) {
     return res.status(400).json({ error: 'Dafür ist nicht mehr genug Platz – lösche zuerst ein paar Abschnitte.' });
   }
-  for (const t of rulesService.TEMPLATE) ruleSections.create(req.params.guildId, t);
+  for (const t of rulesService.template()) ruleSections.create(req.params.guildId, t);
   res.json({ ok: true });
 });
 

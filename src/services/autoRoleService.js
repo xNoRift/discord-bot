@@ -83,7 +83,7 @@ async function applyToAll(guild) {
       const role = guild.roles.cache.get(roleId);
       if (!role || member.roles.cache.has(roleId)) continue;
       if (!botCanManageRole(guild, role).ok) continue;
-      await member.roles.add(role, 'Auto-Rolle (nachträglich)').then(() => {
+      await member.roles.add(role, L('Auto-Rolle (nachträglich)', 'Auto role (retroactive)')).then(() => {
         changed = true;
       }).catch(() => null);
     }
