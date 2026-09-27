@@ -408,8 +408,16 @@ function renderTab(tab) {
         ${switchBlock('Team markieren', 'Markiere das Team, wenn ein Ticket geöffnet wird', 'name', 's_team_ping', settings.ticket_team_ping !== 0)}
         <div class="set-block">
           <div class="set-block__title">Gleichzeitige Tickets-Limit</div>
-          <div class="set-block__desc">Anzahl, wie viele Tickets ein Nutzer gleichzeitig offen haben kann</div>
-          ${stepper('name', 's_max', settings.ticket_max_per_user ?? 1, { min: 0, max: 50 })}
+          <div class="set-block__desc">Anzahl, wie viele Tickets ein Nutzer gleichzeitig offen haben kann (0 = unbegrenzt)</div>
+          ${stepper('name', 's_max', settings.ticket_max_per_user ?? 0, { min: 0, max: 50 })}
+        </div>
+        <div class="set-block">
+          <div class="set-block__title">Spam-Schutz</div>
+          <div class="set-block__desc">Erstellt ein Nutzer so viele Tickets innerhalb dieser Minuten, wird es als Spam erkannt und blockiert (Tickets 0 = aus)</div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap">
+            <div><div class="field-hint">Tickets</div>${stepper('name', 's_spam_count', settings.ticket_spam_count ?? 5, { min: 0, max: 50 })}</div>
+            <div><div class="field-hint">in Minuten</div>${stepper('name', 's_spam_window', settings.ticket_spam_window_min ?? 3, { min: 1, max: 60 })}</div>
+          </div>
         </div>
         ${switchBlock('Ticket schließen einschränken', 'Nur Teammitglieder können Tickets schließen', 'name', 's_restrict', settings.ticket_close_restricted === 1)}
         <div class="set-block">
@@ -445,7 +453,9 @@ function renderTab(tab) {
       try {
         settings = await apiFor('PATCH', '/settings', {
           ticket_team_ping: f.s_team_ping.checked ? 1 : 0,
-          ticket_max_per_user: num(f.s_max.value, 1),
+          ticket_max_per_user: num(f.s_max.value, 0),
+          ticket_spam_count: num(f.s_spam_count.value, 5),
+          ticket_spam_window_min: num(f.s_spam_window.value, 3),
           ticket_close_restricted: f.s_restrict.checked ? 1 : 0,
           ticket_on_leave: f.s_leave.value,
         });

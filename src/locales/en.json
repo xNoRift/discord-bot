@@ -109,6 +109,7 @@
       "discord_category_gone": "The configured Discord category no longer exists.",
       "bot_missing_manage_channels": "The bot is missing the \"Manage Channels\" permission.",
       "max_open": "You already have {open} open ticket(s). Maximum: {max}.",
+      "spam": "Spam detected: you have already created {count} tickets in the last {minutes} minutes. Please wait a moment before opening another one.",
       "already_claimed": "Already claimed by <@{user}>.",
       "not_claimed": "This ticket is not claimed.",
       "already_closed": "The ticket is already closed.",

@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS guild_settings (
   ticket_support_role_id TEXT,
   ticket_log_channel_id  TEXT,
   ticket_name_format     TEXT DEFAULT 'ticket-{number}',
-  ticket_max_per_user    INTEGER DEFAULT 1,
+  ticket_max_per_user    INTEGER DEFAULT 0,
   ticket_welcome_message TEXT,
   ticket_panel_title     TEXT,
   ticket_panel_message   TEXT,

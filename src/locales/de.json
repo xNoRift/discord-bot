@@ -109,6 +109,7 @@
       "discord_category_gone": "Die hinterlegte Discord-Kategorie existiert nicht mehr.",
       "bot_missing_manage_channels": "Dem Bot fehlt die Berechtigung \"Kanäle verwalten\".",
       "max_open": "Du hast bereits {open} offene(s) Ticket(s). Maximum: {max}.",
+      "spam": "Spam erkannt: Du hast in den letzten {minutes} Minuten bereits {count} Tickets erstellt. Bitte warte kurz, bevor du ein weiteres öffnest.",
       "already_claimed": "Bereits übernommen von <@{user}>.",
       "not_claimed": "Dieses Ticket ist nicht übernommen.",
       "already_closed": "Das Ticket ist bereits geschlossen.",

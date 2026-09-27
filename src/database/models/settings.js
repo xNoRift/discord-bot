@@ -17,6 +17,8 @@ const EDITABLE_FIELDS = [
   'ticket_log_channel_id',
   'ticket_name_format',
   'ticket_max_per_user',
+  'ticket_spam_count',
+  'ticket_spam_window_min',
   'ticket_welcome_message',
   'ticket_panel_title',
   'ticket_panel_message',

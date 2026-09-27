@@ -35,7 +35,9 @@ function ensureColumn(table, column, definition) {
   if (!cols.some((c) => c.name === column)) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
     logger.info(`[db] Spalte ${table}.${column} ergänzt`);
+    return true;
   }
+  return false;
 }
 
 // Beispiele fuer zukuenftige, rueckwaertskompatible Ergaenzungen:
@@ -199,6 +201,17 @@ ensureColumn('guild_settings', 'giveaway_ticket_category_id', 'TEXT');
 ensureColumn('guild_settings', 'giveaway_ticket_support_role_id', 'TEXT');
 ensureColumn('guild_settings', 'giveaway_ticket_name_format', 'TEXT');
 ensureColumn('guild_settings', 'giveaway_ticket_welcome_message', 'TEXT');
+
+// Ticket-Spam-Schutz: X Tickets in Y Minuten (0 = aus)
+const spamColsNew = ensureColumn('guild_settings', 'ticket_spam_count', 'INTEGER DEFAULT 5');
+ensureColumn('guild_settings', 'ticket_spam_window_min', 'INTEGER DEFAULT 3');
+// Einmal-Migration: das alte Standard-Limit von 1 gleichzeitigen Ticket wird zu "unbegrenzt" –
+// vor Spam schützt jetzt der Spam-Schutz.
+if (spamColsNew) {
+  try {
+    db.exec('UPDATE guild_settings SET ticket_max_per_user = 0 WHERE ticket_max_per_user = 1');
+  } catch { /* ignore */ }
+}
 
 // Einmal-Migration: alte einzelne Giveaway-Ticket-Konfiguration (Spalten oben) -> erster Eintrag in giveaway_ticket_buttons
 try {

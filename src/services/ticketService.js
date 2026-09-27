@@ -546,7 +546,17 @@ async function createTicket(guild, member, opts = {}) {
     throw new Error(tg('tickets.errors.bot_missing_manage_channels'));
   }
 
-  const max = settings.ticket_max_per_user ?? 1;
+  // Spam-Schutz: zu viele neue Tickets in kurzer Zeit (gilt nicht für "im Auftrag" geöffnete Tickets)
+  const spamCount = settings.ticket_spam_count ?? 5;
+  const spamWindowMin = settings.ticket_spam_window_min ?? 3;
+  if (!opts.onBehalf && spamCount > 0 && spamWindowMin > 0) {
+    const recent = ticketsModel.countCreatedSince(guild.id, member.id, Date.now() - spamWindowMin * 60_000);
+    if (recent >= spamCount) {
+      throw new Error(tg('tickets.errors.spam', { count: recent, minutes: spamWindowMin }));
+    }
+  }
+
+  const max = settings.ticket_max_per_user ?? 0;
   if (max > 0) {
     const open = ticketsModel.countOpenByUser(guild.id, member.id);
     if (open >= max) {
@@ -1303,7 +1313,7 @@ async function openOnBehalf(guild, staff, targetUser, categoryId) {
   if (!allowed) throw new Error(L('Für diese Kategorie darfst du keine Tickets im Auftrag öffnen.', 'You are not allowed to open tickets on behalf of others in this category.'));
   const target = await guild.members.fetch(targetUser.id).catch(() => null);
   if (!target) throw new Error(L('Das Mitglied ist nicht auf diesem Server.', 'The member is not on this server.'));
-  const { channel, ticket } = await createTicket(guild, target, { categoryId });
+  const { channel, ticket } = await createTicket(guild, target, { categoryId, onBehalf: true });
   await channel
     .send({ embeds: [embeds.info(L('📝 Im Auftrag erstellt', '📝 Created on behalf'), L('Dieses Ticket wurde von {staff} für {user} geöffnet.', 'This ticket was opened by {staff} for {user}.', { staff: `<@${staff.id}>`, user: `<@${target.id}>` }))] })
     .catch(() => null);

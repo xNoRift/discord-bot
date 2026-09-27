@@ -116,6 +116,15 @@ function countOpenByUser(guildId, userId) {
     .get(guildId, userId).n;
 }
 
+/** Tickets, die ein Nutzer seit `sinceTs` erstellt hat (egal welcher Status) – für den Spam-Schutz. */
+function countCreatedSince(guildId, userId, sinceTs) {
+  return db
+    .prepare(
+      'SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND opener_id = ? AND created_at >= ? AND application_id IS NULL AND COALESCE(is_modmail, 0) = 0',
+    )
+    .get(guildId, userId, sinceTs).n;
+}
+
 /** Offene (und geschlossene, aber nicht gelöschte) Tickets einer Kategorie – für Auslastung. */
 function countOpenByCategory(categoryId) {
   return db
@@ -211,6 +220,7 @@ module.exports = {
   touchByChannel,
   listStaleOpen,
   countOpenByUser,
+  countCreatedSince,
   listOpenByUser,
   listByGuild,
   stats,

@@ -1123,7 +1123,9 @@ router.patch(
       if (Object.prototype.hasOwnProperty.call(req.body, key)) patch[key] = req.body[key];
     }
     // Numerische Felder saeubern
-    if ('ticket_max_per_user' in patch) patch.ticket_max_per_user = Math.max(0, num(patch.ticket_max_per_user, 1));
+    if ('ticket_max_per_user' in patch) patch.ticket_max_per_user = Math.max(0, num(patch.ticket_max_per_user, 0));
+    if ('ticket_spam_count' in patch) patch.ticket_spam_count = Math.min(50, Math.max(0, num(patch.ticket_spam_count, 5)));
+    if ('ticket_spam_window_min' in patch) patch.ticket_spam_window_min = Math.min(60, Math.max(1, num(patch.ticket_spam_window_min, 3)));
     if ('giveaway_winner_role_duration_ms' in patch) {
       const raw = patch.giveaway_winner_role_duration_ms;
       const ms = typeof raw === 'string' && !/^\d+$/.test(raw) ? parseDuration(raw) : num(raw, null);
