@@ -546,19 +546,23 @@ async function createTicket(guild, member, opts = {}) {
     throw new Error(tg('tickets.errors.bot_missing_manage_channels'));
   }
 
+  // Limit + Spam-Schutz: eigene Werte der Kategorie (gezählt nur in dieser Kategorie) oder Server-Werte
+  const catLimits = cat && ccfg.limitsOverride;
+  const limitCatId = catLimits ? cat.id : null;
+  const spamCount = catLimits ? ccfg.spamCount : settings.ticket_spam_count ?? 5;
+  const spamWindowMin = catLimits ? ccfg.spamWindowMin : settings.ticket_spam_window_min ?? 3;
+  const max = catLimits ? ccfg.maxPerUser : settings.ticket_max_per_user ?? 0;
+
   // Spam-Schutz: zu viele neue Tickets in kurzer Zeit (gilt nicht für "im Auftrag" geöffnete Tickets)
-  const spamCount = settings.ticket_spam_count ?? 5;
-  const spamWindowMin = settings.ticket_spam_window_min ?? 3;
   if (!opts.onBehalf && spamCount > 0 && spamWindowMin > 0) {
-    const recent = ticketsModel.countCreatedSince(guild.id, member.id, Date.now() - spamWindowMin * 60_000);
+    const recent = ticketsModel.countCreatedSince(guild.id, member.id, Date.now() - spamWindowMin * 60_000, limitCatId);
     if (recent >= spamCount) {
       throw new Error(tg('tickets.errors.spam', { count: recent, minutes: spamWindowMin }));
     }
   }
 
-  const max = settings.ticket_max_per_user ?? 0;
   if (max > 0) {
-    const open = ticketsModel.countOpenByUser(guild.id, member.id);
+    const open = ticketsModel.countOpenByUser(guild.id, member.id, limitCatId);
     if (open >= max) {
       throw new Error(tg('tickets.errors.max_open', { open, max }));
     }

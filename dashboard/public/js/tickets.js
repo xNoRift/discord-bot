@@ -728,6 +728,13 @@ function renderCategorySub(cb, body, c, sub) {
           </div>
         </div>
 
+        ${switchBlock('Eigenes Limit & Spam-Schutz', 'Eigene Werte nur für diese Kategorie – gezählt werden dann nur Tickets dieser Kategorie. Aus = es gelten die Werte unter „Allgemeines“.', 'data-cf', 'cfg.limitsOverride', cfg.limitsOverride, `
+          <div class="fgrid fgrid--3" data-showif="cfg.limitsOverride" style="margin-top:14px;">
+            <div class="field"><label>Gleichzeitige Tickets</label><div class="field-hint">Wie viele Tickets ein Nutzer hier gleichzeitig offen haben kann (0 = unbegrenzt)</div>${stepper('data-cf', 'cfg.maxPerUser', cfg.maxPerUser ?? 0, { min: 0, max: 50 })}</div>
+            <div class="field"><label>Spam: Tickets</label><div class="field-hint">So viele neue Tickets … (0 = Spam-Schutz aus)</div>${stepper('data-cf', 'cfg.spamCount', cfg.spamCount ?? 5, { min: 0, max: 50 })}</div>
+            <div class="field"><label>Spam: in Minuten</label><div class="field-hint">… innerhalb dieser Minuten gelten als Spam</div>${stepper('data-cf', 'cfg.spamWindowMin', cfg.spamWindowMin ?? 3, { min: 1, max: 60 })}</div>
+          </div>`)}
+
         <div class="field">
           <label>Eröffnungs-Nachricht</label><div class="field-hint">Begrüßung im Ticket (leer = Server-Standard). Platzhalter: {user}, {number}, {category}</div>
           <textarea data-cf="welcomeMessage" rows="3">${esc(c.welcome_message || '')}</textarea>

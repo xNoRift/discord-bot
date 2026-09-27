@@ -108,21 +108,22 @@ function listStaleOpen(beforeTs) {
     .all(beforeTs);
 }
 
-function countOpenByUser(guildId, userId) {
+/** Offene Tickets eines Nutzers – optional nur in einer Ticket-Kategorie. */
+function countOpenByUser(guildId, userId, categoryId = null) {
   return db
     .prepare(
-      "SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND opener_id = ? AND status IN ('open','closed') AND application_id IS NULL",
+      `SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND opener_id = ? AND status IN ('open','closed') AND application_id IS NULL${categoryId ? ' AND category_id = ?' : ''}`,
     )
-    .get(guildId, userId).n;
+    .get(guildId, userId, ...(categoryId ? [categoryId] : [])).n;
 }
 
 /** Tickets, die ein Nutzer seit `sinceTs` erstellt hat (egal welcher Status) – für den Spam-Schutz. */
-function countCreatedSince(guildId, userId, sinceTs) {
+function countCreatedSince(guildId, userId, sinceTs, categoryId = null) {
   return db
     .prepare(
-      'SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND opener_id = ? AND created_at >= ? AND application_id IS NULL AND COALESCE(is_modmail, 0) = 0',
+      `SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND opener_id = ? AND created_at >= ? AND application_id IS NULL AND COALESCE(is_modmail, 0) = 0${categoryId ? ' AND category_id = ?' : ''}`,
     )
-    .get(guildId, userId, sinceTs).n;
+    .get(guildId, userId, sinceTs, ...(categoryId ? [categoryId] : [])).n;
 }
 
 /** Offene (und geschlossene, aber nicht gelöschte) Tickets einer Kategorie – für Auslastung. */

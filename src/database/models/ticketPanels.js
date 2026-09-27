@@ -8,6 +8,8 @@ const price = require('../../utils/price');
 
 const SHOW_VALUES = ['creator', 'category', 'time'];
 const NULLABLE = new Set(['claimCategoryEnabled']);
+// Zahlen, bei denen 0 erlaubt ist (0 = unbegrenzt / aus)
+const ZERO_OK = new Set(['maxPerUser', 'spamCount']);
 
 const embedDefaults = () => ({ title: '', description: '', color: '', imageUrl: '', thumbnailUrl: '', footer: '' });
 const autoDefaults = () => ({
@@ -38,6 +40,11 @@ const categoryCfgDefaults = () => ({
   openEmbed: embedDefaults(),
   autoOverride: false,
   auto: autoDefaults(),
+  // Eigenes Ticket-Limit + Spam-Schutz nur für diese Kategorie (sonst gilt der Server-Wert)
+  limitsOverride: false,
+  maxPerUser: 0,
+  spamCount: 5,
+  spamWindowMin: 3,
 });
 
 function coerceLike(key, def, value) {
@@ -49,7 +56,7 @@ function coerceLike(key, def, value) {
   if (typeof def === 'boolean') return value === true || value === 'true' || value === 1 || value === '1';
   if (typeof def === 'number') {
     const n = Number.parseInt(value, 10);
-    return Number.isFinite(n) ? Math.min(720, Math.max(1, n)) : def;
+    return Number.isFinite(n) ? Math.min(720, Math.max(ZERO_OK.has(key) ? 0 : 1, n)) : def;
   }
   if (Array.isArray(def)) return Array.isArray(value) ? value.filter((x) => SHOW_VALUES.includes(x)) : def;
   if (def && typeof def === 'object') return applyPatch(def, value);
