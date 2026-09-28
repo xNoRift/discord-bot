@@ -555,6 +555,11 @@ function getRoles() {
   if (!_rolesPromise) _rolesPromise = apiFor('GET', '/roles');
   return _rolesPromise;
 }
+/** Rollen-Liste neu laden (z. B. nachdem der Bot Rollen erstellt hat). */
+function refreshRoles() {
+  _rolesPromise = null;
+  return getRoles();
+}
 
 /**
  * Fuellt alle <select data-type="text|category|role"> auf der Seite.
@@ -1231,6 +1236,7 @@ window.Dash = {
   saveBar,
   getChannels,
   getRoles,
+  refreshRoles,
   fillSelectors,
   readForm,
   applyToForm,

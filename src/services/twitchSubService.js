@@ -335,6 +335,35 @@ async function sweep() {
   }
 }
 
+/**
+ * Erstellt die fehlenden Sub-Rollen (nur für leere/gelöschte Felder) und trägt sie ein.
+ * Reihenfolge Stufe 3 → 2 → 1 → alle Subs, damit Stufe 3 in der Rollenliste oben steht.
+ */
+async function createRoles(guild, { any = false } = {}) {
+  const cfg = moduleSettings.get(guild.id, 'twitchsubs');
+  const me = guild.members.me ?? (await guild.members.fetchMe());
+  if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+    throw new Error('Dem Bot fehlt die Berechtigung „Rollen verwalten“.');
+  }
+  const missing = (id) => !id || !guild.roles.cache.has(id);
+  const plan = [
+    ['tier3RoleId', L('Twitch Sub · Stufe 3', 'Twitch Sub · Tier 3'), 0x6441a5],
+    ['tier2RoleId', L('Twitch Sub · Stufe 2', 'Twitch Sub · Tier 2'), 0x9146ff],
+    ['tier1RoleId', L('Twitch Sub · Stufe 1', 'Twitch Sub · Tier 1'), 0xb18cff],
+  ];
+  if (any) plan.push(['anyRoleId', L('Twitch Sub', 'Twitch Sub'), 0xa970ff]);
+  const patch = {};
+  const created = [];
+  for (const [field, name, color] of plan) {
+    if (!missing(cfg[field])) continue;
+    const role = await guild.roles.create({ name, colors: { primaryColor: color }, reason: 'Twitch-Sub-Rollen' });
+    patch[field] = role.id;
+    created.push(role.name);
+  }
+  if (created.length) moduleSettings.update(guild.id, 'twitchsubs', patch);
+  return created;
+}
+
 /* ------------------------------------------------------------------ *
  *  Nachricht mit Buttons
  * ------------------------------------------------------------------ */
@@ -382,4 +411,5 @@ module.exports = {
   onMemberJoin,
   sweep,
   postPanel,
+  createRoles,
 };

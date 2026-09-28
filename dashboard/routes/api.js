@@ -2080,6 +2080,20 @@ router.delete(
 );
 
 router.post(
+  '/guilds/:guildId/twitchsubs/create-roles',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      const created = await twitchSubService.createRoles(req.guild, { any: req.body?.any === true });
+      if (!created.length) return res.status(400).json({ error: 'Es fehlt keine Rolle – für alle Stufen ist schon eine gewählt.' });
+      res.json({ ok: true, created, settings: moduleSettings.get(req.guild.id, 'twitchsubs') });
+    } catch (err) {
+      res.status(400).json({ error: err?.code === 50013 ? 'Dem Bot fehlt die Berechtigung „Rollen verwalten“.' : discordErr(err) });
+    }
+  }),
+);
+
+router.post(
   '/guilds/:guildId/twitchsubs/post',
   actionLimiter,
   asyncHandler(async (req, res) => {

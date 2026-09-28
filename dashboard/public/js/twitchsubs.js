@@ -99,6 +99,26 @@ Dash.moduleForm('twitchsubs', document.getElementById('tsForm'), {
   on: 'Twitch-Sub-Rollen sind aktiv. Der Bot gleicht alle 10 Minuten ab.',
   off: 'Twitch-Sub-Rollen sind deaktiviert. Die Buttons in Discord reagieren nicht, und es werden keine Rollen verändert.',
 }).then((mf) => {
+  document.getElementById('tsCreateRoles').addEventListener('click', async (e) => {
+    const roleIds = new Set((await Dash.getRoles()).map((r) => r.id));
+    const unset = (n) => !mf.cfg[n] || !roleIds.has(mf.cfg[n]);
+    const missing = ['tier1RoleId', 'tier2RoleId', 'tier3RoleId'].filter(unset);
+    const opts = [];
+    if (missing.length) opts.push(`Stufe ${missing.map((n) => n[4]).join(', ')}`);
+    if (unset('anyRoleId')) opts.push('„alle Subs“');
+    if (!opts.length) return Dash.toast('Für alle Stufen ist schon eine Rolle gewählt. Leere ein Feld und speichere, um dafür eine neue Rolle erstellen zu lassen.', 'error');
+    const withAny = unset('anyRoleId') && await Dash.confirmModal('Soll der Bot zusätzlich eine Rolle für „alle Subs“ (egal welche Stufe) erstellen?', { confirmLabel: 'Ja, auch diese' });
+    if (!missing.length && !withAny) return;
+    e.currentTarget.disabled = true;
+    try {
+      const r = await Dash.apiFor('POST', '/twitchsubs/create-roles', { any: withAny });
+      await Dash.refreshRoles();
+      await mf.reload();
+      Dash.toast(`${r.created.length} Rolle(n) erstellt: ${r.created.join(', ')}`, 'success');
+    } catch (err) { Dash.toast(err.message, 'error'); }
+    document.getElementById('tsCreateRoles').disabled = false;
+  });
+
   document.getElementById('tsPost').addEventListener('click', async () => {
     const st = document.getElementById('tsPostMsg');
     try {
