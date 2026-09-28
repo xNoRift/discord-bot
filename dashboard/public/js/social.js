@@ -41,7 +41,9 @@ form.querySelectorAll('.social-plat input[type=checkbox]').forEach((cb) => {
 });
 
 function mentionOptionsHtml(selected) {
-  const roleOpts = ROLES.filter((r) => !r.managed)
+  // Gespeichert wird eine Rolle als "<@&ID>" – für die Auswahl nur die ID vergleichen
+  if (selected && /^<@&\d+>$/.test(selected)) selected = selected.replace(/\D/g, '');
+  const roleOpts = ROLES.filter((r) => !r.managed || r.id === selected)
     .map((r) => `<option value="${r.id}" ${selected === r.id ? 'selected' : ''}>Erwähnung: @${escapeHtml(r.name)}</option>`)
     .join('');
   const opt = (v, label) => `<option value="${v}" ${selected === v ? 'selected' : ''}>${label}</option>`;
