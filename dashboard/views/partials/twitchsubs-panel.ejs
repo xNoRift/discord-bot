@@ -39,7 +39,10 @@
     </div>
     <div class="setting-row">
       <div class="setting-row__text"><b>Rollen vom Bot erstellen lassen</b><span>Erstellt die Rollen für alle Stufen, bei denen noch keine Rolle gewählt ist (lila, sortiert: Stufe 3 oben), und trägt sie direkt ein.</span></div>
-      <button type="button" class="btn btn--primary btn--sm" id="tsCreateRoles"><%- icon('plus', 'icon--sm') %> Rollen erstellen</button>
+      <div class="row-inline" style="flex-wrap:wrap;justify-content:flex-end;">
+        <label class="muted" style="display:inline-flex;gap:6px;align-items:center;cursor:pointer;"><input type="checkbox" id="tsCreateAny" checked /> auch Rolle für alle Subs</label>
+        <button type="button" class="btn btn--primary btn--sm" id="tsCreateRoles"><%- icon('plus', 'icon--sm') %> Rollen erstellen</button>
+      </div>
     </div>
   </div>
 
