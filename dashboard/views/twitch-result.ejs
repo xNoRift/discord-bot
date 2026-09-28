@@ -1,0 +1,17 @@
+<%- include('partials/head', { title: title }) %>
+
+<div class="auth">
+  <div class="auth__card auth__card--sm">
+    <span class="auth__logo"><%- icon(ok ? 'check' : 'x') %></span>
+    <h1><%= title %></h1>
+    <p class="auth__lead"><%= message %></p>
+    <% if (typeof lines !== 'undefined' && lines.length) { %>
+      <ul class="auth__lead" style="text-align:left;margin:0 auto 18px;max-width:340px;">
+        <% lines.forEach(function (l) { %><li><%= l %></li><% }) %>
+      </ul>
+    <% } %>
+    <a class="btn btn--primary" href="<%= backUrl %>"><%= backLabel %></a>
+  </div>
+</div>
+
+<%- include('partials/foot') %>

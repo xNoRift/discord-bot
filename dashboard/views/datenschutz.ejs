@@ -10,6 +10,7 @@
     <li>OAuth-Tokens werden ausschließlich serverseitig gespeichert, in der Datenbank <b>verschlüsselt</b> (AES-256-GCM) und niemals an das Frontend übertragen.</li>
     <li>Beim Login werden IP-Adresse und Browser-Kennung im Login-Protokoll gespeichert (nur für den Bot-Besitzer sichtbar, zur Erkennung von Missbrauch).</li>
     <li>Pro Server: Konfiguration (Kanäle, Rollen, Texte), Tickets, Giveaways, Bewerbungen und ein Aktivitätsprotokoll.</li>
+    <li>Twitch-Sub-Rollen: Verknüpft ein Mitglied sein Twitch-Konto, werden Twitch-ID und -Name mit der Discord-ID gespeichert (ohne Rechte; das Twitch-Token wird sofort widerrufen) sowie die zuletzt erkannte Sub-Stufe. Über „Verknüpfung lösen“ wird die Verknüpfung gelöscht. Verbindet ein Server seinen Twitch-Kanal, wird dessen Token verschlüsselt gespeichert (nur Lesen der Abonnenten).</li>
   </ul>
   <h3>Speicherung</h3>
   <p class="muted">Alle Daten liegen in einer lokalen SQLite-Datenbank auf dem Server, auf dem der Bot läuft. Es findet keine Weitergabe an Dritte statt.</p>

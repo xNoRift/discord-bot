@@ -1,0 +1,73 @@
+<%- include('partials/head', { title: guild.name + ' – Twitch-Sub-Rollen' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <div class="page-head__row"><h1><%- icon('star') %> Twitch-Sub-Rollen</h1></div>
+  <p>Der Bot erkennt, wer deinen Twitch-Kanal abonniert hat, und vergibt automatisch Rollen für Stufe 1, 2 und 3. Läuft das Abo aus, wird die Rolle wieder entfernt.</p>
+</div>
+
+<div class="module-status" id="moduleStatus">
+  <span class="module-status__dot"></span>
+  <span class="module-status__text"><b id="msTitle">…</b><span id="msText"></span></span>
+  <button class="btn btn--ghost btn--sm" id="msToggle">…</button>
+</div>
+
+<div class="card" id="tsSetup" hidden>
+  <div class="card__head"><h2><%- icon('bot') %> Twitch noch nicht eingerichtet</h2></div>
+  <p class="card__sub">
+    Der Bot braucht eine kostenlose Twitch-App: auf <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener">dev.twitch.tv/console/apps</a>
+    „Register Your Application“ (Category „Chat Bot“), dann <code>TWITCH_CLIENT_ID</code> und <code>TWITCH_CLIENT_SECRET</code> in die <code>.env</code> des Servers und Bot neu starten.
+  </p>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('bell') %> 1. Twitch-Kanal verbinden</h2></div>
+  <p class="card__sub">Der Besitzer des Twitch-Kanals meldet sich einmal bei Twitch an und erlaubt dem Bot, die Abonnenten-Liste zu lesen. Mehr Rechte bekommt der Bot nicht.</p>
+  <div id="tsConn"><div class="loading">Lädt…</div></div>
+  <small class="muted" id="tsRedirect"></small>
+</div>
+
+<form id="tsForm" class="form">
+  <div class="card">
+    <div class="card__head"><h2><%- icon('users') %> 2. Rollen</h2></div>
+    <p class="card__sub">Wähle, welche Rolle es für welche Sub-Stufe gibt. Leer = keine Rolle für diese Stufe. <b>Diese Rollen verwaltet der Bot komplett</b> – wer kein Sub (mehr) ist, verliert sie beim nächsten Abgleich. Die Bot-Rolle muss über diesen Rollen stehen.</p>
+    <div class="col-2">
+      <div class="field"><label>Stufe 1 (Tier 1 / Prime)</label><select name="tier1RoleId" data-type="role"></select></div>
+      <div class="field"><label>Stufe 2 (Tier 2)</label><select name="tier2RoleId" data-type="role"></select></div>
+    </div>
+    <div class="col-2">
+      <div class="field"><label>Stufe 3 (Tier 3)</label><select name="tier3RoleId" data-type="role"></select></div>
+      <div class="field"><label>Rolle für alle Subs (optional)</label><select name="anyRoleId" data-type="role"></select><small>Bekommt jeder Sub, egal welche Stufe.</small></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-row__text"><b>Rollen stapeln</b><span>An: Stufe 3 bekommt auch die Rollen von Stufe 1 und 2. Aus: nur die Rolle der eigenen Stufe (fehlt sie, die nächstniedrigere).</span></div>
+      <label class="toggle"><input type="checkbox" name="stackRoles" /><span class="toggle__track"></span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__head"><h2><%- icon('send') %> 3. Nachricht zum Verknüpfen</h2></div>
+    <p class="card__sub">Mitglieder klicken in Discord auf den Button, melden sich bei Twitch an und bekommen sofort ihre Rolle. Außerdem gibt es „Status prüfen“ und „Verknüpfung lösen“.</p>
+    <div class="col-2">
+      <div class="field"><label>Kanal für die Nachricht</label><select name="channelId" data-type="text"></select></div>
+      <div class="field"><label>Button-Text</label><input name="buttonLabel" maxlength="40" /></div>
+    </div>
+    <div class="field"><label>Titel</label><input name="title" maxlength="256" data-emoji /></div>
+    <div class="field"><label>Text</label><textarea name="message" rows="3" maxlength="1500" data-emoji></textarea></div>
+    <div class="row-inline">
+      <button type="button" class="btn btn--primary btn--sm" id="tsPost"><%- icon('send', 'icon--sm') %> Nachricht senden / aktualisieren</button>
+      <span class="muted" id="tsPostMsg"></span>
+    </div>
+    <small class="muted">Erst speichern (Leiste unten), dann senden.</small>
+  </div>
+</form>
+
+<div class="card" id="tsMembersCard">
+  <div class="card__head"><h2><%- icon('users') %> Verknüpfte Mitglieder</h2></div>
+  <p class="card__sub">Alle Mitglieder dieses Servers, die ihr Twitch-Konto verknüpft haben, mit der zuletzt erkannten Sub-Stufe. Der Bot gleicht alle 10 Minuten ab.</p>
+  <div id="tsMembers"><div class="loading">Lädt…</div></div>
+</div>
+
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/twitchsubs.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

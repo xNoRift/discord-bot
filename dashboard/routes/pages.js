@@ -54,6 +54,7 @@ const NAV = [
     items: [
       { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
       { key: 'social', label: 'Social-Media', icon: 'bell', path: '/social' },
+      { key: 'twitchsubs', label: 'Twitch-Sub-Rollen', icon: 'star', path: '/twitchsubs' },
       { key: 'giveaways', label: 'Giveaways', icon: 'gift', path: '/giveaways' },
       { key: 'statistics', label: 'Statistik-Kanäle', icon: 'chart', path: '/statistics' },
     ],
@@ -91,6 +92,7 @@ const CRUMB = {
   logs: { crumb: 'Logs', crumbIcon: 'file' },
   suggestions: { crumb: 'Vorschläge', crumbIcon: 'bulb' },
   social: { crumb: 'Social-Media', crumbIcon: 'bell' },
+  twitchsubs: { crumb: 'Twitch-Sub-Rollen', crumbIcon: 'star' },
   protection: { crumb: 'Guild Protection', crumbIcon: 'lock' },
   levels: { crumb: 'Level', crumbIcon: 'star' },
   clubs: { crumb: 'Clubs', crumbIcon: 'users' },
@@ -179,6 +181,7 @@ const PAGES = [
   ['/logs', 'logs'],
   ['/suggestions', 'suggestions'],
   ['/social', 'social'],
+  ['/twitchsubs', 'twitchsubs'],
   ['/protection', 'protection'],
   ['/levels', 'levels'],
   ['/clubs', 'clubs'],

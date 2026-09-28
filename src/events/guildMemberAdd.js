@@ -3,6 +3,7 @@
 const autoRoleService = require('../services/autoRoleService');
 const welcomeService = require('../services/welcomeService');
 const protectionService = require('../services/protectionService');
+const twitchSubService = require('../services/twitchSubService');
 const logger = require('../utils/logger');
 
 module.exports = {
@@ -19,6 +20,8 @@ module.exports = {
     } catch (err) {
       logger.error('[guildMemberAdd] Auto-Rolle:', err.message);
     }
+
+    twitchSubService.onMemberJoin(member).catch((err) => logger.error('[guildMemberAdd] Twitch-Sub-Rollen:', err.message));
 
     // Bei aktivem Membership-Screening ist das Mitglied noch "pending" –
     // dann übernimmt guildMemberUpdate die Willkommensnachricht.

@@ -592,3 +592,38 @@ CREATE TABLE IF NOT EXISTS rule_sections (
   content  TEXT NOT NULL       -- die Regeln dieses Abschnitts
 );
 CREATE INDEX IF NOT EXISTS idx_rule_sections_guild ON rule_sections(guild_id, position);
+
+-- ---------- Twitch-Sub-Rollen ----------
+-- Verbundener Twitch-Kanal eines Servers (Streamer-Token, verschlüsselt)
+CREATE TABLE IF NOT EXISTS twitch_broadcasters (
+  guild_id       TEXT PRIMARY KEY,
+  twitch_user_id TEXT NOT NULL,
+  twitch_login   TEXT NOT NULL,
+  twitch_name    TEXT,
+  access_token   TEXT,
+  refresh_token  TEXT,
+  expires_at     INTEGER,
+  connected_by   TEXT,
+  connected_at   INTEGER,
+  last_sync_at   INTEGER,
+  last_error     TEXT,
+  sub_count      INTEGER
+);
+
+-- Verknüpfung Discord-Nutzer <-> Twitch-Konto (global, gilt auf allen Servern)
+CREATE TABLE IF NOT EXISTS twitch_links (
+  discord_user_id TEXT PRIMARY KEY,
+  twitch_user_id  TEXT NOT NULL UNIQUE,
+  twitch_login    TEXT NOT NULL,
+  twitch_name     TEXT,
+  linked_at       INTEGER
+);
+
+-- Zuletzt erkannte Sub-Stufe pro Server + Mitglied (0 = kein Sub)
+CREATE TABLE IF NOT EXISTS twitch_sub_status (
+  guild_id   TEXT NOT NULL,
+  user_id    TEXT NOT NULL,
+  tier       INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER,
+  PRIMARY KEY (guild_id, user_id)
+);

@@ -119,6 +119,19 @@ const SCHEMAS = {
     categoryId: ['', 'text:32'],
     maxClubsPerUser: [1, 'int:1:10'],
   },
+  twitchsubs: {
+    enabled: [false, 'bool'],
+    tier1RoleId: ['', 'text:32'],
+    tier2RoleId: ['', 'text:32'],
+    tier3RoleId: ['', 'text:32'],
+    anyRoleId: ['', 'text:32'],
+    stackRoles: [false, 'bool'],
+    channelId: ['', 'text:32'],
+    title: ['💜 Twitch-Sub-Rollen', 'text:256'],
+    message: ['Verknüpfe dein Twitch-Konto, um automatisch deine Sub-Rolle zu bekommen. Die Rolle wird regelmäßig geprüft und bei Ablauf des Abos wieder entfernt.', 'text:1500'],
+    buttonLabel: ['Twitch verknüpfen', 'text:40'],
+    messageId: ['', 'text:32'],
+  },
   // Eigene Emojis für die fest eingebauten Bot-Buttons (siehe utils/buttonEmojis.js)
   buttonEmojis: buttonEmojis.schema(),
   // Log-System: pro Ereignis an/aus (e_<typ>) und eigener Kanal (c_<typ>), Gruppen-Kanäle (g_<gruppe>)

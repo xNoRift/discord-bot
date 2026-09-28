@@ -34,6 +34,11 @@ const BUTTONS = {
   verification: [
     ['verify', 'Verifizieren', '✅'],
   ],
+  twitchsubs: [
+    ['link', 'Twitch verknüpfen', '🔗'],
+    ['check', 'Status prüfen', '🔄'],
+    ['unlink', 'Verknüpfung lösen', '✂️'],
+  ],
   tempvoice: [
     ['rename', 'Umbenennen', '✏️'],
     ['limit', 'Benutzerlimit', '👥'],

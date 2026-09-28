@@ -8,6 +8,7 @@ const maintenanceService = require('./maintenanceService');
 const statsChannelService = require('./statsChannelService');
 const tagRewardService = require('./tagRewardService');
 const applicationFlowService = require('./applicationFlowService');
+const twitchSubService = require('./twitchSubService');
 const logger = require('../utils/logger');
 
 /**
@@ -31,6 +32,7 @@ async function start() {
     ticketService.autoCloseSweep().catch((err) => logger.error('[scheduler] ticket autoclose:', err.message));
     socialService.sweep().catch((err) => logger.error('[scheduler] social sweep:', err.message));
     applicationFlowService.sweep().catch((err) => logger.error('[scheduler] application sweep:', err.message));
+    twitchSubService.sweep().catch((err) => logger.error('[scheduler] twitch subs sweep:', err.message));
   }, 60_000);
 
   // Langsamer Sweep (alle 10 Min.): Statistik-Kanäle, Server-Tag-Belohnung

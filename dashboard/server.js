@@ -22,6 +22,7 @@ const { csrfToken } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const pageRoutes = require('./routes/pages');
 const apiRoutes = require('./routes/api');
+const twitchRoutes = require('./routes/twitch');
 
 function createApp() {
   const app = express();
@@ -143,6 +144,7 @@ function createApp() {
 
   app.use('/auth', authRoutes);
   app.use('/api', apiRoutes);
+  app.use('/twitch', twitchRoutes);
   app.use('/', pageRoutes);
 
   app.get('/health', (req, res) => res.json({ ok: true, botReady: client.isReady() }));

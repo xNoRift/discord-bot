@@ -2031,6 +2031,67 @@ router.post(
   }),
 );
 
+/* ---------------- Twitch-Sub-Rollen ---------------- */
+
+const twitchSubs = require('../../src/database/models/twitchSubs');
+const twitchSubService = require('../../src/services/twitchSubService');
+
+router.get('/guilds/:guildId/twitchsubs/status', (req, res) => {
+  const b = twitchSubs.getBroadcaster(req.guild.id);
+  const members = twitchSubs.listStatus(req.guild.id)
+    .filter((r) => req.guild.members.cache.has(r.user_id))
+    .map((r) => {
+      const m = req.guild.members.cache.get(r.user_id);
+      return { userId: r.user_id, name: m.displayName, username: m.user.username, twitch: r.twitch_name || r.twitch_login, tier: r.tier, linkedAt: r.linked_at };
+    })
+    .sort((x, y) => y.tier - x.tier || x.name.localeCompare(y.name));
+  res.json({
+    configured: twitchSubService.configured(),
+    redirectUri: twitchSubService.redirectUri(),
+    broadcaster: b ? {
+      login: b.twitch_login, name: b.twitch_name || b.twitch_login, connectedAt: b.connected_at,
+      lastSyncAt: b.last_sync_at, lastError: b.last_error, subCount: b.sub_count,
+    } : null,
+    members,
+  });
+});
+
+router.post(
+  '/guilds/:guildId/twitchsubs/sync',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    if (!twitchSubs.getBroadcaster(req.guild.id)) return res.status(400).json({ error: 'Es ist noch kein Twitch-Kanal verbunden.' });
+    if (!moduleSettings.get(req.guild.id, 'twitchsubs').enabled) return res.status(400).json({ error: 'Das Modul ist deaktiviert.' });
+    try {
+      res.json({ ok: true, result: await twitchSubService.syncGuild(req.guild.id) });
+    } catch (err) {
+      res.status(400).json({ error: `Abgleich fehlgeschlagen: ${err.message}` });
+    }
+  }),
+);
+
+router.delete(
+  '/guilds/:guildId/twitchsubs/broadcaster',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    await twitchSubService.disconnectBroadcaster(req.guild.id);
+    res.json({ ok: true });
+  }),
+);
+
+router.post(
+  '/guilds/:guildId/twitchsubs/post',
+  actionLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      const msg = await twitchSubService.postPanel(req.guild);
+      res.json({ ok: true, url: msg.url });
+    } catch (err) {
+      res.status(400).json({ error: discordErr(err) });
+    }
+  }),
+);
+
 /* ---------------- Regeln ---------------- */
 
 const ruleSections = require('../../src/database/models/ruleSections');
