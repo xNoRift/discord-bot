@@ -1,15 +1,9 @@
-<%- include('partials/head', { title: guild.name + ' – Twitch-Sub-Rollen' }) %>
-<%- include('partials/app-shell-open') %>
+<p class="muted" style="margin:0 0 14px;">Der Bot erkennt, wer deinen Twitch-Kanal abonniert hat, und vergibt automatisch Rollen für Stufe 1, 2 und 3. Läuft das Abo aus, wird die Rolle wieder entfernt.</p>
 
-<div class="page-head">
-  <div class="page-head__row"><h1><%- icon('star') %> Twitch-Sub-Rollen</h1></div>
-  <p>Der Bot erkennt, wer deinen Twitch-Kanal abonniert hat, und vergibt automatisch Rollen für Stufe 1, 2 und 3. Läuft das Abo aus, wird die Rolle wieder entfernt.</p>
-</div>
-
-<div class="module-status" id="moduleStatus">
+<div class="module-status" id="tsStatus">
   <span class="module-status__dot"></span>
-  <span class="module-status__text"><b id="msTitle">…</b><span id="msText"></span></span>
-  <button class="btn btn--ghost btn--sm" id="msToggle">…</button>
+  <span class="module-status__text"><b>…</b><span></span></span>
+  <button class="btn btn--ghost btn--sm" type="button">…</button>
 </div>
 
 <div class="card" id="tsSetup" hidden>
@@ -67,7 +61,3 @@
   <p class="card__sub">Alle Mitglieder dieses Servers, die ihr Twitch-Konto verknüpft haben, mit der zuletzt erkannten Sub-Stufe. Der Bot gleicht alle 10 Minuten ab.</p>
   <div id="tsMembers"><div class="loading">Lädt…</div></div>
 </div>
-
-<%- include('partials/app-shell-close') %>
-<script src="/static/js/twitchsubs.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
-<%- include('partials/foot') %>

@@ -1,5 +1,20 @@
-/* global document, Dash */
+/* global document, window, Dash */
 'use strict';
+
+// Reiter auf der Social-Media-Seite
+function showTab(name) {
+  document.querySelectorAll('#socialTabs .tab').forEach((b) => b.classList.toggle('is-active', b.dataset.tab === name));
+  document.querySelectorAll('section[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== name; });
+}
+document.querySelectorAll('#socialTabs .tab').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    showTab(btn.dataset.tab);
+    const url = new URL(window.location.href);
+    if (btn.dataset.tab === 'subs') url.searchParams.set('tab', 'subs'); else url.searchParams.delete('tab');
+    window.history.replaceState(null, '', url);
+  });
+});
+if (new URLSearchParams(window.location.search).get('tab') === 'subs') showTab('subs');
 
 const connBox = document.getElementById('tsConn');
 const membersBox = document.getElementById('tsMembers');
@@ -80,6 +95,7 @@ async function loadStatus() {
 }
 
 Dash.moduleForm('twitchsubs', document.getElementById('tsForm'), {
+  statusId: 'tsStatus',
   on: 'Twitch-Sub-Rollen sind aktiv. Der Bot gleicht alle 10 Minuten ab.',
   off: 'Twitch-Sub-Rollen sind deaktiviert. Die Buttons in Discord reagieren nicht, und es werden keine Rollen verändert.',
 }).then((mf) => {

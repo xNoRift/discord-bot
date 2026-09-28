@@ -80,7 +80,7 @@ router.get('/callback', authLimiter, async (req, res, next) => {
       });
     }
     if (error || !code) {
-      if (pending.kind === 'broadcaster') return res.redirect(`/dashboard/${guildId}/twitchsubs`);
+      if (pending.kind === 'broadcaster') return res.redirect(`/dashboard/${guildId}/social?tab=subs`);
       return memberResult(res, guildId, {
         ok: false,
         title: () => L('Abgebrochen', 'Cancelled'),
@@ -108,7 +108,7 @@ router.get('/callback', authLimiter, async (req, res, next) => {
       });
       logger.info(`[twitchsubs] Server ${guildId} mit Twitch-Kanal ${me.login} verbunden (von ${userId})`);
       twitchSubService.syncGuild(guildId).catch((err) => logger.warn('[twitchsubs] Erst-Abgleich:', err.message));
-      return res.redirect(`/dashboard/${guildId}/twitchsubs`);
+      return res.redirect(`/dashboard/${guildId}/social?tab=subs`);
     }
 
     // Mitglied: nur die Twitch-ID wird gebraucht – Token sofort widerrufen

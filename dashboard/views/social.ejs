@@ -3,9 +3,15 @@
 
 <div class="page-head">
   <div class="page-head__row"><h1><%- icon('bell') %> Social-Media-Benachrichtigungen</h1></div>
-  <p>Der Bot postet automatisch in einen Kanal, wenn ein Twitch-Kanal live geht, ein neues YouTube-Video erscheint oder ein Feed (TikTok, Instagram, X …) etwas Neues hat.</p>
+  <p>Live- und Upload-Meldungen für Twitch, YouTube, TikTok & Feeds – und automatische Rollen für deine Twitch-Subs. Der Bot postet automatisch in einen Kanal, wenn ein Twitch-Kanal live geht, ein neues YouTube-Video erscheint oder ein Feed (TikTok, Instagram, X …) etwas Neues hat.</p>
 </div>
 
+<div class="tabs" id="socialTabs" style="margin-bottom:16px;">
+  <button type="button" class="tab is-active" data-tab="notify"><%- icon('bell', 'icon--sm') %> Benachrichtigungen</button>
+  <button type="button" class="tab" data-tab="subs"><%- icon('star', 'icon--sm') %> Twitch-Sub-Rollen</button>
+</div>
+
+<section data-panel="notify">
 <div class="card" id="twitchHint" hidden>
   <div class="card__head"><h2><%- icon('bot') %> Twitch noch nicht eingerichtet</h2></div>
   <p class="card__sub">
@@ -87,6 +93,12 @@
   <div id="subList"><div class="loading">Lädt…</div></div>
 </div>
 
+</section>
+
+<section data-panel="subs" hidden>
+<%- include('partials/twitchsubs-panel') %>
+</section>
+
 <style>
   .social-plats { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   @media (max-width:640px){ .social-plats { grid-template-columns:1fr; } }
@@ -101,4 +113,5 @@
 
 <%- include('partials/app-shell-close') %>
 <script src="/static/js/social.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<script src="/static/js/twitchsubs.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
 <%- include('partials/foot') %>

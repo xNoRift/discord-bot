@@ -54,7 +54,6 @@ const NAV = [
     items: [
       { key: 'messages', label: 'Nachrichten', icon: 'send', path: '/messages' },
       { key: 'social', label: 'Social-Media', icon: 'bell', path: '/social' },
-      { key: 'twitchsubs', label: 'Twitch-Sub-Rollen', icon: 'star', path: '/twitchsubs' },
       { key: 'giveaways', label: 'Giveaways', icon: 'gift', path: '/giveaways' },
       { key: 'statistics', label: 'Statistik-Kanäle', icon: 'chart', path: '/statistics' },
     ],
@@ -92,7 +91,6 @@ const CRUMB = {
   logs: { crumb: 'Logs', crumbIcon: 'file' },
   suggestions: { crumb: 'Vorschläge', crumbIcon: 'bulb' },
   social: { crumb: 'Social-Media', crumbIcon: 'bell' },
-  twitchsubs: { crumb: 'Twitch-Sub-Rollen', crumbIcon: 'star' },
   protection: { crumb: 'Guild Protection', crumbIcon: 'lock' },
   levels: { crumb: 'Level', crumbIcon: 'star' },
   clubs: { crumb: 'Clubs', crumbIcon: 'users' },
@@ -181,7 +179,6 @@ const PAGES = [
   ['/logs', 'logs'],
   ['/suggestions', 'suggestions'],
   ['/social', 'social'],
-  ['/twitchsubs', 'twitchsubs'],
   ['/protection', 'protection'],
   ['/levels', 'levels'],
   ['/clubs', 'clubs'],
@@ -194,6 +191,7 @@ const PAGES = [
 // Zusammengelegte Seiten: alte Links leiten weiter
 g.get('/news', (req, res) => res.redirect(301, `/dashboard/${req.params.guildId}/messages`));
 g.get('/team', (req, res) => res.redirect(301, `/dashboard/${req.params.guildId}`));
+g.get('/twitchsubs', (req, res) => res.redirect(301, `/dashboard/${req.params.guildId}/social?tab=subs`));
 
 for (const [path, view] of PAGES) {
   g.get(path, (req, res) => res.render(view, pageLocals(req, view)));
