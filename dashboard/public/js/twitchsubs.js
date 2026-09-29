@@ -15,6 +15,16 @@ document.querySelectorAll('#socialTabs .tab').forEach((btn) => {
   });
 });
 if (new URLSearchParams(window.location.search).get('tab') === 'subs') showTab('subs');
+{
+  // Rückkehr vom Twitch-Login: Meldung zeigen und Parameter aus der Adresse entfernen
+  const url = new URL(window.location.href);
+  const n = url.searchParams.get('connected');
+  if (n !== null) {
+    Dash.toast(Number(n) > 0 ? `Twitch verbunden – ${n} Rolle(n) wurden automatisch erstellt und eingetragen.` : 'Twitch verbunden.', 'success');
+    url.searchParams.delete('connected');
+    window.history.replaceState(null, '', url);
+  }
+}
 
 const connBox = document.getElementById('tsConn');
 const membersBox = document.getElementById('tsMembers');

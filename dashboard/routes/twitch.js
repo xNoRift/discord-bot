@@ -7,6 +7,7 @@ const { authLimiter } = require('../middleware/rateLimit');
 const guildAccess = require('../services/guildAccess');
 const twitchSubs = require('../../src/database/models/twitchSubs');
 const twitchSubService = require('../../src/services/twitchSubService');
+const client = require('../../src/core/client');
 const i18n = require('../../src/utils/i18n');
 const logger = require('../../src/utils/logger');
 
@@ -107,8 +108,16 @@ router.get('/callback', authLimiter, async (req, res, next) => {
         accessToken: token.access_token, refreshToken: token.refresh_token, expiresInSec: token.expires_in, connectedBy: userId,
       });
       logger.info(`[twitchsubs] Server ${guildId} mit Twitch-Kanal ${me.login} verbunden (von ${userId})`);
+      // Fehlende Stufen-Rollen gleich mit anlegen und eintragen (vorhandene bleiben unangetastet)
+      let created = [];
+      try {
+        created = await i18n.runFor(guildId, () => twitchSubService.createRoles(client.guilds.cache.get(guildId), { any: true }));
+      } catch (err) {
+        logger.warn('[twitchsubs] Rollen erstellen:', err.message);
+        twitchSubs.setSyncResult(guildId, { error: `Rollen konnten nicht automatisch erstellt werden: ${err.message}` });
+      }
       twitchSubService.syncGuild(guildId).catch((err) => logger.warn('[twitchsubs] Erst-Abgleich:', err.message));
-      return res.redirect(`/dashboard/${guildId}/social?tab=subs`);
+      return res.redirect(`/dashboard/${guildId}/social?tab=subs&connected=${created.length}`);
     }
 
     // Mitglied: nur die Twitch-ID wird gebraucht – Token sofort widerrufen

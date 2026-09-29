@@ -340,6 +340,7 @@ async function sweep() {
  * Reihenfolge Stufe 3 → 2 → 1 → alle Subs, damit Stufe 3 in der Rollenliste oben steht.
  */
 async function createRoles(guild, { any = false } = {}) {
+  if (!guild) throw new Error('Der Bot ist nicht auf diesem Server.');
   const cfg = moduleSettings.get(guild.id, 'twitchsubs');
   const me = guild.members.me ?? (await guild.members.fetchMe());
   if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
