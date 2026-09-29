@@ -45,6 +45,14 @@ async function loadStatus() {
     ? `Einmalig auf dev.twitch.tv bei deiner App als <b>OAuth Redirect URL</b> eintragen: <code>${esc(st.redirectUri)}</code>`
     : '';
 
+  const intBox = document.getElementById('tsIntegration');
+  intBox.innerHTML = st.integration.length
+    ? `<p class="muted" style="margin:0 0 8px;">✅ Erkannt – diese Discord-Rollen werden übertragen:</p>
+       <div class="table-wrap"><table class="table"><thead><tr><th>Discord-Rolle</th><th>zählt als</th><th>Mitglieder</th></tr></thead>
+       <tbody>${st.integration.map((r) => `<tr><td>${esc(r.name)}</td><td>${tierBadge(r.tier)}</td><td>${r.count}</td></tr>`).join('')}</tbody></table></div>
+       <div class="row-inline" style="margin-top:10px;"><button type="button" class="btn btn--primary btn--sm" data-ts-sync>${Dash.icon('refresh', 'icon--sm')} Jetzt abgleichen</button></div>`
+    : '<p class="muted" style="color:var(--amber);margin:0;">⚠ Noch keine Twitch-Integration gefunden. Richte sie wie oben beschrieben in den Servereinstellungen ein – danach hier neu laden.</p>';
+
   const b = st.broadcaster;
   if (!b) {
     connBox.innerHTML = `
@@ -64,20 +72,10 @@ async function loadStatus() {
       </div>
       ${b.lastError ? `<p class="muted" style="color:var(--red);margin:8px 0;">⚠ ${esc(b.lastError)}</p>` : ''}
       <div class="row-inline" style="flex-wrap:wrap;margin-top:10px;">
-        <button type="button" class="btn btn--primary btn--sm" id="tsSync">${Dash.icon('refresh', 'icon--sm')} Jetzt abgleichen</button>
+        <button type="button" class="btn btn--primary btn--sm" data-ts-sync>${Dash.icon('refresh', 'icon--sm')} Jetzt abgleichen</button>
         <a class="btn btn--ghost btn--sm" href="${connectUrl}">${Dash.icon('external', 'icon--sm')} Neu verbinden</a>
         <button type="button" class="btn btn--ghost btn--sm" id="tsDisconnect">${Dash.icon('x', 'icon--sm')} Trennen</button>
       </div>`;
-    const syncBtn = document.getElementById('tsSync');
-    syncBtn.addEventListener('click', async () => {
-      syncBtn.disabled = true;
-      try {
-        const r = await Dash.apiFor('POST', '/twitchsubs/sync', {}, { timeout: 120000 });
-        const x = r.result || {};
-        Dash.toast(`Abgeglichen: ${x.subs ?? 0} Subs, ${x.added ?? 0} Rollen vergeben, ${x.removed ?? 0} entfernt.`, 'success');
-      } catch (err) { Dash.toast(err.message, 'error'); }
-      loadStatus();
-    });
     document.getElementById('tsDisconnect').addEventListener('click', async () => {
       const ok = await Dash.confirmModal(
         'Twitch-Kanal trennen? Der Bot kann danach keine Abonnenten mehr prüfen. Bereits vergebene Rollen bleiben, die Verknüpfungen der Mitglieder bleiben erhalten.',
@@ -92,16 +90,27 @@ async function loadStatus() {
     });
   }
 
+  document.querySelectorAll('[data-ts-sync]').forEach((btn) => btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try {
+      const r = await Dash.apiFor('POST', '/twitchsubs/sync', {}, { timeout: 120000 });
+      const x = r.result;
+      if (!x) Dash.toast('Das Modul ist deaktiviert.', 'error');
+      else Dash.toast(`Abgeglichen: ${x.subs ?? 0} Subs, ${x.added ?? 0} Rollen vergeben, ${x.removed ?? 0} entfernt.`, 'success');
+    } catch (err) { Dash.toast(err.message, 'error'); }
+    loadStatus();
+  }));
+
   membersBox.innerHTML = st.members.length
     ? `<div class="table-wrap"><table class="table">
         <thead><tr><th>Mitglied</th><th>Twitch</th><th>Status</th><th>Verknüpft</th></tr></thead>
         <tbody>${st.members.map((m) => `<tr>
           <td><b>${esc(m.name)}</b> <span class="muted">@${esc(m.username)}</span></td>
-          <td>${esc(m.twitch)}</td>
+          <td>${m.twitch ? esc(m.twitch) : '<span class="muted">Discord-Integration</span>'}</td>
           <td>${tierBadge(m.tier)}</td>
           <td>${m.linkedAt ? esc(Dash.fmtDate(m.linkedAt)) : '–'}</td>
         </tr>`).join('')}</tbody></table></div>`
-    : '<div class="empty">Noch niemand hat sein Twitch-Konto verknüpft.</div>';
+    : '<div class="empty">Noch keine Subs erkannt.</div>';
 }
 
 Dash.moduleForm('twitchsubs', document.getElementById('tsForm'), {

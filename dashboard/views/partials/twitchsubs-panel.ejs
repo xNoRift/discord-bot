@@ -15,8 +15,18 @@
 </div>
 
 <div class="card">
-  <div class="card__head"><h2><%- icon('bell') %> 1. Twitch-Kanal verbinden</h2></div>
-  <p class="card__sub">Der Besitzer des Twitch-Kanals meldet sich einmal bei Twitch an und erlaubt dem Bot, die Abonnenten-Liste zu lesen. Mehr Rechte bekommt der Bot nicht.</p>
+  <div class="card__head"><h2><%- icon('sparkles') %> 1. Discord-Twitch-Integration <span class="badge badge--green">empfohlen</span></h2></div>
+  <p class="card__sub">
+    Damit reicht es, wenn Mitglieder Twitch in ihrem <b>Discord-Profil</b> verknüpft haben – kein Klick, kein Login.
+    So einrichten: Der Streamer verknüpft Twitch in seinem Discord-Profil, dann <b>Servereinstellungen → Integrationen → Twitch</b> → Kanal hinzufügen.
+    Discord vergibt dann eigene Rollen („Twitch Subscriber: Tier 1“ …) und der Bot überträgt sie sofort auf deine Rollen unten.
+  </p>
+  <div id="tsIntegration"><div class="loading">Lädt…</div></div>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2><%- icon('bell') %> Alternative: Twitch-Kanal per Login verbinden</h2></div>
+  <p class="card__sub">Nur nötig, wenn du die Discord-Integration nicht nutzen willst: Der Kanal-Besitzer meldet sich einmal bei Twitch an, und Mitglieder verknüpfen sich über den Button in Discord per Twitch-Login. Beide Wege können auch gleichzeitig laufen.</p>
   <div id="tsConn"><div class="loading">Lädt…</div></div>
   <small class="muted" id="tsRedirect"></small>
 </div>
@@ -64,7 +74,7 @@
 </form>
 
 <div class="card" id="tsMembersCard">
-  <div class="card__head"><h2><%- icon('users') %> Verknüpfte Mitglieder</h2></div>
-  <p class="card__sub">Alle Mitglieder dieses Servers, die ihr Twitch-Konto verknüpft haben, mit der zuletzt erkannten Sub-Stufe. Der Bot gleicht alle 10 Minuten ab.</p>
+  <div class="card__head"><h2><%- icon('users') %> Erkannte Mitglieder</h2></div>
+  <p class="card__sub">Alle erkannten Subs (über die Discord-Integration oder per Twitch-Login) und alle per Login verknüpften Mitglieder. Änderungen der Integration werden sofort übernommen, zusätzlich gleicht der Bot alle 10 Minuten ab.</p>
   <div id="tsMembers"><div class="loading">Lädt…</div></div>
 </div>

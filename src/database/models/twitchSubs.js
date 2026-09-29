@@ -84,16 +84,23 @@ function setStatus(guildId, userId, tier) {
   ).run(guildId, userId, tier, Date.now());
 }
 
+function getStatus(guildId, userId) {
+  return db.prepare('SELECT tier FROM twitch_sub_status WHERE guild_id = ? AND user_id = ?').get(guildId, userId)?.tier || 0;
+}
+
 /** Verknüpfte Mitglieder mit ihrer Sub-Stufe auf diesem Server (fürs Dashboard). */
 function listStatus(guildId) {
   return db.prepare(
     `SELECT l.discord_user_id AS user_id, l.twitch_login, l.twitch_name, l.linked_at, COALESCE(s.tier, 0) AS tier, s.updated_at
-     FROM twitch_links l LEFT JOIN twitch_sub_status s ON s.guild_id = ? AND s.user_id = l.discord_user_id`,
-  ).all(guildId);
+     FROM twitch_links l LEFT JOIN twitch_sub_status s ON s.guild_id = ? AND s.user_id = l.discord_user_id
+     UNION ALL
+     SELECT s.user_id, NULL, NULL, NULL, s.tier, s.updated_at
+     FROM twitch_sub_status s WHERE s.guild_id = ? AND s.user_id NOT IN (SELECT discord_user_id FROM twitch_links)`,
+  ).all(guildId, guildId);
 }
 
 module.exports = {
   getBroadcaster, listBroadcasters, saveBroadcaster, updateTokens, setSyncResult, deleteBroadcaster,
   getLink, listLinks, saveLink, deleteLink,
-  setStatus, listStatus,
+  setStatus, getStatus, listStatus,
 };

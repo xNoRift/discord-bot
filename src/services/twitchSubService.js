@@ -220,73 +220,137 @@ async function applyRoles(member, cfg, tier) {
 }
 
 /* ------------------------------------------------------------------ *
+ *  Quelle 1: Discords eigene Twitch-Integration
+ *  (Servereinstellungen → Integrationen → Twitch). Discord vergibt selbst
+ *  verwaltete Rollen wie "Twitch Subscriber: Tier 1" an alle, die Twitch im
+ *  Profil verknüpft haben – der Bot überträgt sie auf die eigenen Rollen.
+ * ------------------------------------------------------------------ */
+
+const integrationCache = new Map(); // guildId -> { ids: Set, at }
+
+/** IDs der Twitch-Integrationen eines Servers (10 Min. gecacht; ohne "Server verwalten" leer). */
+async function twitchIntegrationIds(guild) {
+  const c = integrationCache.get(guild.id);
+  if (c && Date.now() - c.at < 10 * 60_000) return c.ids;
+  let ids = new Set();
+  try {
+    const list = await guild.fetchIntegrations();
+    ids = new Set([...list.values()].filter((i) => i.type === 'twitch').map((i) => i.id));
+  } catch { /* fehlende Berechtigung -> Namens-Erkennung */ }
+  integrationCache.set(guild.id, { ids, at: Date.now() });
+  return ids;
+}
+
+function roleTier(role) {
+  const m = /(?:tier|stufe)\s*([123])/i.exec(role.name);
+  return m ? Number(m[1]) : 1;
+}
+
+/** Von der Discord-Twitch-Integration verwaltete Rollen: [{ role, tier }]. */
+async function integrationRoles(guild) {
+  const ids = await twitchIntegrationIds(guild);
+  return [...guild.roles.cache.values()]
+    .filter((r) => r.managed && r.tags?.integrationId && (ids.has(r.tags.integrationId) || /twitch/i.test(r.name)))
+    .map((role) => ({ role, tier: roleTier(role) }));
+}
+
+function integrationTierOf(member, intRoles) {
+  let tier = 0;
+  for (const { role, tier: t } of intRoles) if (member.roles.cache.has(role.id)) tier = Math.max(tier, t);
+  return tier;
+}
+
+/* ------------------------------------------------------------------ *
  *  Abgleich
  * ------------------------------------------------------------------ */
 
-/** Kompletter Abgleich eines Servers (alle verknüpften Mitglieder + alle Rollen-Inhaber). */
+/** Kompletter Abgleich eines Servers: Integrations-Rollen + (falls verbunden) Twitch-Abo-Liste. */
 async function syncGuild(guildId) {
   const guild = client.guilds.cache.get(guildId);
-  const b = twitchSubs.getBroadcaster(guildId);
-  if (!guild || !b || !configured()) return null;
+  if (!guild) return null;
   const cfg = moduleSettings.get(guildId, 'twitchsubs');
   if (!cfg.enabled) return null;
+  const b = configured() ? twitchSubs.getBroadcaster(guildId) : null;
 
   return i18n.runFor(guildId, async () => {
-    let subs;
-    try {
-      subs = await fetchAllSubs(b);
-    } catch (err) {
-      // Bei API-Fehlern NICHTS entfernen – sonst verliert jeder seine Rolle
-      twitchSubs.setSyncResult(guildId, { error: err.message });
-      throw err;
+    let subs = null;
+    if (b) {
+      try {
+        subs = await fetchAllSubs(b);
+      } catch (err) {
+        // Bei API-Fehlern NICHTS entfernen – sonst verliert jeder seine Rolle
+        twitchSubs.setSyncResult(guildId, { error: err.message });
+        throw err;
+      }
     }
     if (config.discord.intentGuildMembers) await guild.members.fetch().catch(() => null);
+    const intRoles = await integrationRoles(guild);
+    if (!subs && !intRoles.length) return { members: 0, added: 0, removed: 0, failed: 0, subs: 0, integration: false };
 
     const byDiscord = new Map(twitchSubs.listLinks().map((l) => [l.discord_user_id, l]));
     const managed = managedRoleIds(guild, cfg);
     const stats = { members: 0, added: 0, removed: 0, failed: 0 };
 
-    // Verknüpfte Mitglieder + alle, die gerade eine der Rollen haben
-    const userIds = new Set([...byDiscord.keys()].filter((id) => guild.members.cache.has(id)));
-    for (const roleId of managed) for (const id of guild.roles.cache.get(roleId)?.members.keys() || []) userIds.add(id);
+    // Verknüpfte Mitglieder + Inhaber der Integrations-Rollen + alle, die gerade eine unserer Rollen haben
+    const userIds = new Set(subs ? [...byDiscord.keys()].filter((id) => guild.members.cache.has(id)) : []);
+    for (const roleId of [...managed, ...intRoles.map((x) => x.role.id)]) {
+      for (const id of guild.roles.cache.get(roleId)?.members.keys() || []) userIds.add(id);
+    }
 
+    let subCount = 0;
     for (const userId of userIds) {
       const member = guild.members.cache.get(userId) || (await guild.members.fetch(userId).catch(() => null));
       if (!member || member.user.bot) continue;
       const link = byDiscord.get(userId);
-      const tier = link ? subs.get(link.twitch_user_id) || 0 : 0;
-      if (link) twitchSubs.setStatus(guildId, userId, tier);
+      const linkTier = subs && link ? subs.get(link.twitch_user_id) || 0 : 0;
+      const tier = Math.max(linkTier, integrationTierOf(member, intRoles));
+      if (tier) subCount++;
+      twitchSubs.setStatus(guildId, userId, tier);
       const r = await applyRoles(member, cfg, tier);
       stats.members++;
       stats.added += r.added;
       stats.removed += r.removed;
       stats.failed += r.failed;
     }
-    twitchSubs.setSyncResult(guildId, { subCount: subs.size });
-    if (stats.failed) twitchSubs.setSyncResult(guildId, { error: `${stats.failed} Rollen-Änderung(en) fehlgeschlagen – die Bot-Rolle muss über den Sub-Rollen stehen und „Rollen verwalten" haben.` });
-    return { ...stats, subs: subs.size };
+    if (b) {
+      twitchSubs.setSyncResult(guildId, { subCount: subs.size });
+      if (stats.failed) twitchSubs.setSyncResult(guildId, { error: `${stats.failed} Rollen-Änderung(en) fehlgeschlagen – die Bot-Rolle muss über den Sub-Rollen stehen und „Rollen verwalten“ haben.` });
+    }
+    return { ...stats, subs: subs ? subs.size : subCount, integration: intRoles.length > 0 };
   });
+}
+
+/** Stufe + Rollen eines Mitglieds auf einem Server neu berechnen. */
+async function syncMember(member, { checkTwitch = true } = {}) {
+  const guild = member.guild;
+  const cfg = moduleSettings.get(guild.id, 'twitchsubs');
+  if (!cfg.enabled || member.user.bot) return null;
+  const b = configured() ? twitchSubs.getBroadcaster(guild.id) : null;
+  const link = twitchSubs.getLink(member.id);
+  let linkTier = 0;
+  if (b && link) {
+    if (checkTwitch) linkTier = await fetchUserTier(b, link.twitch_user_id);
+    else linkTier = twitchSubs.getStatus(guild.id, member.id);
+  }
+  const tier = Math.max(linkTier, integrationTierOf(member, await integrationRoles(guild)));
+  twitchSubs.setStatus(guild.id, member.id, tier);
+  await applyRoles(member, cfg, tier);
+  return { tier, channel: b ? b.twitch_name || b.twitch_login : 'Twitch' };
 }
 
 /** Sofort-Abgleich eines Nutzers auf allen Servern mit aktivem Modul. Liefert [{ guildName, tier }]. */
 async function syncUser(userId) {
-  const link = twitchSubs.getLink(userId);
   const out = [];
-  for (const b of twitchSubs.listBroadcasters()) {
-    const guild = client.guilds.cache.get(b.guild_id);
-    if (!guild) continue;
-    const cfg = moduleSettings.get(guild.id, 'twitchsubs');
-    if (!cfg.enabled) continue;
+  for (const guild of client.guilds.cache.values()) {
+    if (!moduleSettings.get(guild.id, 'twitchsubs').enabled) continue;
     const member = guild.members.cache.get(userId) || (await guild.members.fetch(userId).catch(() => null));
     if (!member) continue;
     try {
-      const tier = link ? await fetchUserTier(b, link.twitch_user_id) : 0;
-      twitchSubs.setStatus(guild.id, userId, link ? tier : 0);
-      await applyRoles(member, cfg, tier);
-      out.push({ guildId: guild.id, guildName: guild.name, tier, channel: b.twitch_name || b.twitch_login });
+      const r = await syncMember(member);
+      if (r) out.push({ guildId: guild.id, guildName: guild.name, ...r });
     } catch (err) {
       logger.warn(`[twitchsubs] Nutzer-Abgleich ${userId} @ ${guild.id}:`, err.message);
-      out.push({ guildId: guild.id, guildName: guild.name, tier: null, channel: b.twitch_name || b.twitch_login, error: err.message });
+      out.push({ guildId: guild.id, guildName: guild.name, tier: null, channel: 'Twitch', error: err.message });
     }
   }
   return out;
@@ -299,7 +363,7 @@ async function linkAccount(discordUserId, twitchUser) {
   return syncUser(discordUserId);
 }
 
-/** Verknüpfung lösen und die Sub-Rollen überall abnehmen. */
+/** Verknüpfung lösen und die Sub-Rollen überall neu berechnen (Integrations-Rollen zählen weiter). */
 async function unlinkAccount(discordUserId) {
   twitchSubs.deleteLink(discordUserId);
   await syncUser(discordUserId).catch(() => null);
@@ -312,23 +376,32 @@ async function disconnectBroadcaster(guildId) {
   twitchSubs.deleteBroadcaster(guildId);
 }
 
-/** Neues Mitglied: ist es schon verknüpft, sofort die passende Rolle geben. */
+/** Neues Mitglied: Rollen sofort setzen (Verknüpfung oder Integrations-Rolle). */
 async function onMemberJoin(member) {
-  if (member.user.bot || !twitchSubs.getLink(member.id)) return;
-  const b = twitchSubs.getBroadcaster(member.guild.id);
-  if (!b || !configured() || !moduleSettings.get(member.guild.id, 'twitchsubs').enabled) return;
-  await syncUser(member.id);
+  if (member.user.bot || !moduleSettings.get(member.guild.id, 'twitchsubs').enabled) return;
+  await i18n.runFor(member.guild.id, () => syncMember(member));
+}
+
+/** Discord hat eine Twitch-Integrations-Rolle vergeben/entfernt -> sofort übertragen. */
+async function onMemberUpdate(oldMember, newMember) {
+  if (newMember.user.bot || !moduleSettings.get(newMember.guild.id, 'twitchsubs').enabled) return;
+  if (oldMember.partial) return; // ohne alten Stand nicht vergleichbar – der 10-Min-Abgleich holt es nach
+  const intRoles = await integrationRoles(newMember.guild);
+  if (!intRoles.length) return;
+  const changed = intRoles.some(({ role }) => oldMember.roles.cache.has(role.id) !== newMember.roles.cache.has(role.id));
+  if (changed) await i18n.runFor(newMember.guild.id, () => syncMember(newMember, { checkTwitch: false }));
 }
 
 let lastSweep = 0;
 let running = false;
 async function sweep() {
-  if (!configured() || running || Date.now() - lastSweep < SYNC_INTERVAL - 5000) return;
+  if (running || Date.now() - lastSweep < SYNC_INTERVAL - 5000) return;
   lastSweep = Date.now();
   running = true;
   try {
-    for (const b of twitchSubs.listBroadcasters()) {
-      await syncGuild(b.guild_id).catch((err) => logger.warn(`[twitchsubs] Abgleich ${b.guild_id}:`, err.message));
+    for (const guild of client.guilds.cache.values()) {
+      if (!moduleSettings.get(guild.id, 'twitchsubs').enabled) continue;
+      await syncGuild(guild.id).catch((err) => logger.warn(`[twitchsubs] Abgleich ${guild.id}:`, err.message));
     }
   } finally {
     running = false;
@@ -410,6 +483,9 @@ module.exports = {
   unlinkAccount,
   disconnectBroadcaster,
   onMemberJoin,
+  onMemberUpdate,
+  syncMember,
+  integrationRoles,
   sweep,
   postPanel,
   createRoles,

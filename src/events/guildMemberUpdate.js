@@ -2,6 +2,7 @@
 
 const autoRoleService = require('../services/autoRoleService');
 const welcomeService = require('../services/welcomeService');
+const twitchSubService = require('../services/twitchSubService');
 const logger = require('../utils/logger');
 
 /**
@@ -20,5 +21,7 @@ module.exports = {
     } catch (err) {
       logger.error('[guildMemberUpdate] Beitritt:', err.message);
     }
+    // Discord-Twitch-Integration hat eine Sub-Rolle vergeben/entfernt
+    twitchSubService.onMemberUpdate(oldMember, newMember).catch((err) => logger.error('[guildMemberUpdate] Twitch-Sub-Rollen:', err.message));
   },
 };

@@ -2049,13 +2049,14 @@ router.post(
 const twitchSubs = require('../../src/database/models/twitchSubs');
 const twitchSubService = require('../../src/services/twitchSubService');
 
-router.get('/guilds/:guildId/twitchsubs/status', (req, res) => {
+router.get('/guilds/:guildId/twitchsubs/status', asyncHandler(async (req, res) => {
   const b = twitchSubs.getBroadcaster(req.guild.id);
+  const intRoles = await twitchSubService.integrationRoles(req.guild);
   const members = twitchSubs.listStatus(req.guild.id)
     .filter((r) => req.guild.members.cache.has(r.user_id))
     .map((r) => {
       const m = req.guild.members.cache.get(r.user_id);
-      return { userId: r.user_id, name: m.displayName, username: m.user.username, twitch: r.twitch_name || r.twitch_login, tier: r.tier, linkedAt: r.linked_at };
+      return { userId: r.user_id, name: m.displayName, username: m.user.username, twitch: r.twitch_name || r.twitch_login || null, tier: r.tier, linkedAt: r.linked_at };
     })
     .sort((x, y) => y.tier - x.tier || x.name.localeCompare(y.name));
   res.json({
@@ -2066,14 +2067,14 @@ router.get('/guilds/:guildId/twitchsubs/status', (req, res) => {
       lastSyncAt: b.last_sync_at, lastError: b.last_error, subCount: b.sub_count,
     } : null,
     members,
+    integration: intRoles.map(({ role, tier }) => ({ id: role.id, name: role.name, tier, count: role.members.size })),
   });
-});
+}));
 
 router.post(
   '/guilds/:guildId/twitchsubs/sync',
   actionLimiter,
   asyncHandler(async (req, res) => {
-    if (!twitchSubs.getBroadcaster(req.guild.id)) return res.status(400).json({ error: 'Es ist noch kein Twitch-Kanal verbunden.' });
     if (!moduleSettings.get(req.guild.id, 'twitchsubs').enabled) return res.status(400).json({ error: 'Das Modul ist deaktiviert.' });
     try {
       res.json({ ok: true, result: await twitchSubService.syncGuild(req.guild.id) });
