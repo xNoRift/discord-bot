@@ -895,6 +895,13 @@ async function removeMemberFromTicket(channel, actor, targetUser) {
   });
 }
 
+/** Log-Feld mit Link zum gespeicherten Verlauf im Dashboard. */
+function transcriptField(ticket) {
+  if (!/^https?:\/\//i.test(config.dashboard.url)) return null;
+  const url = require('./transcriptService').viewUrl(ticket);
+  return { name: L('Verlauf', 'Transcript'), value: `[${L('📄 Im Dashboard ansehen', '📄 View in dashboard')}](${url})`, inline: false };
+}
+
 /**
  * @param {import('discord.js').TextChannel} channel
  * @param {import('discord.js').GuildMember} member
@@ -946,6 +953,7 @@ async function closeTicket(channel, member, opts = {}) {
       { name: L('Geschlossen von', 'Closed by'), value: `<@${member.id}>`, inline: true },
       ticket.claimed_by ? { name: L('Übernommen von', 'Claimed by'), value: `<@${ticket.claimed_by}>`, inline: true } : null,
       { name: L('Erstellt am', 'Created at'), value: discordTimestamp(ticket.created_at, 'F'), inline: true },
+      transcriptField(ticket),
       ...answerFields,
     ].filter(Boolean),
     actorId: member.id,
@@ -953,13 +961,16 @@ async function closeTicket(channel, member, opts = {}) {
     meta: { ticketId: ticket.id },
   });
 
-  // Transkript (wenn am Panel aktiviert)
+  // Verlauf immer speichern (im Dashboard lesbar), Transkript-Datei nur wenn am Panel aktiviert
+  const transcripts = require('./transcriptService');
+  const closedRow = ticketsModel.get(ticket.id);
+  const history = await transcripts.snapshot(channel, closedRow);
   const closePanel = ticket.panel_id ? ticketPanels.getPanel(ticket.panel_id) : null;
   // Bewerber-Chats haben kein Panel: Transkript geht immer in den Bewerbungs-Log-Kanal (falls gesetzt)
   const wantTranscript = closePanel ? ticketPanels.panelCfg(closePanel).transcripts : Boolean(ticket.application_id);
   if (wantTranscript) {
-    await require('./transcriptService')
-      .send(channel, ticketsModel.get(ticket.id))
+    await transcripts
+      .send(channel, closedRow, history ?? undefined)
       .catch((err) => logger.warn(`[ticket] Transkript #${ticket.number}: ${err.message}`));
   }
   if (closePanel && ticketPanels.panelCfg(closePanel).showLoad) scheduleLoadRefresh(channel.guild, closePanel.id);
@@ -1016,6 +1027,8 @@ async function deleteTicket(channel, member) {
   if (!ticket) throw new Error(tg('tickets.errors.not_a_ticket'));
 
   ticketsModel.markDeleted(ticket.id, member.id);
+  // Letzten Stand des Verlaufs sichern, bevor der Kanal verschwindet
+  await require('./transcriptService').snapshot(channel, ticketsModel.get(ticket.id));
 
   await ticketLog(ticket, {
     guildId: channel.guild.id,
@@ -1030,6 +1043,7 @@ async function deleteTicket(channel, member) {
       ticket.claimed_by ? { name: L('Übernommen von', 'Claimed by'), value: `<@${ticket.claimed_by}>`, inline: true } : null,
       { name: L('Erstellt am', 'Created at'), value: discordTimestamp(ticket.created_at, 'F'), inline: true },
       ticket.closed_at ? { name: L('Geschlossen am', 'Closed at'), value: discordTimestamp(ticket.closed_at, 'F'), inline: true } : null,
+      transcriptField(ticket),
     ].filter(Boolean),
     actorId: member.id,
     overrideChannelId: ticketLogOverride(ticket),

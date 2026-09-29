@@ -14,6 +14,7 @@ const settingsModel = require('../../src/database/models/settings');
 const commandSettingsModel = require('../../src/database/models/commandSettings');
 const ticketsModel = require('../../src/database/models/tickets');
 const ticketPanels = require('../../src/database/models/ticketPanels');
+const ticketTranscripts = require('../../src/database/models/ticketTranscripts');
 const optionEmbeds = require('../../src/utils/optionEmbeds');
 const priceUtil = require('../../src/utils/price');
 const giveawaysModel = require('../../src/database/models/giveaways');
@@ -1198,6 +1199,18 @@ router.get('/guilds/:guildId/activity', (req, res) => {
 });
 
 /* ---------------- Tickets ---------------- */
+
+router.get(
+  '/guilds/:guildId/tickets/:ticketId/transcript',
+  asyncHandler(async (req, res) => {
+    const ticket = ticketsModel.get(num(req.params.ticketId));
+    if (!ticket || ticket.guild_id !== req.params.guildId) return res.status(404).json({ error: 'Ticket nicht gefunden.' });
+    const t = ticketTranscripts.get(ticket.id);
+    if (!t) return res.status(404).json({ error: 'Für dieses Ticket wurde kein Verlauf gespeichert (Tickets, die vor diesem Update geschlossen wurden, oder noch offene Tickets).' });
+    const data = await require('../../src/services/transcriptService').refreshAttachmentUrls(ticket.id, ticket.guild_id, t.data);
+    res.json({ ticket, transcript: data, updatedAt: t.updated_at });
+  }),
+);
 
 router.get('/guilds/:guildId/tickets', (req, res) => {
   res.json(ticketsModel.listByGuild(req.params.guildId, { status: req.query.status, limit: 200 }));

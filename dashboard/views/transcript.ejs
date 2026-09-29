@@ -1,0 +1,27 @@
+<%- include('partials/head', { title: guild.name + ' – Ticket-Verlauf' }) %>
+<%- include('partials/app-shell-open') %>
+
+<div class="page-head">
+  <a class="tr-back" href="/dashboard/<%= guild.id %>/tickets"><%- icon('chevron', 'icon--sm') %> Zurück zu Tickets</a>
+  <div class="page-head__row"><h1 id="trTitle"><%- icon('file') %> Ticket-Verlauf</h1></div>
+  <p id="trSub">Der gespeicherte Chat-Verlauf des Tickets – so, wie er beim Schließen bzw. Löschen im Kanal stand.</p>
+</div>
+
+<div class="card" id="trMetaCard" hidden>
+  <div class="tr-meta" id="trMeta"></div>
+  <div class="tr-tools">
+    <input type="search" id="trSearch" placeholder="Im Verlauf suchen…" autocomplete="off" />
+    <span class="muted" id="trCount"></span>
+    <div class="spacer"></div>
+    <button class="btn btn--ghost btn--sm" id="trDownload" type="button"><%- icon('file', 'icon--sm') %> Als .txt speichern</button>
+  </div>
+</div>
+
+<div class="card tr-chat-card">
+  <div class="tr-chat" id="trChat"><div class="loading">Lädt…</div></div>
+</div>
+
+<script type="application/json" id="pageData">{ "ticketId": <%= ticketId %> }</script>
+<%- include('partials/app-shell-close') %>
+<script src="/static/js/transcript.js?v=<%= typeof assetVer !== "undefined" ? assetVer : "1" %>"></script>
+<%- include('partials/foot') %>

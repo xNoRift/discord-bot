@@ -197,6 +197,12 @@ for (const [path, view] of PAGES) {
   g.get(path, (req, res) => res.render(view, pageLocals(req, view)));
 }
 
+// Gespeicherter Verlauf eines Tickets
+g.get('/tickets/:ticketId/transcript', (req, res) => {
+  const ticketId = parseInt(req.params.ticketId, 10);
+  res.render('transcript', pageLocals(req, 'tickets', { ticketId: Number.isFinite(ticketId) ? ticketId : 0 }));
+});
+
 // Owner-only Seiten
 g.get('/members', requireOwner, (req, res) => res.render('members', pageLocals(req, 'members')));
 g.get('/structure', requireOwner, (req, res) => res.render('structure', pageLocals(req, 'structure')));

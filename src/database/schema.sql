@@ -191,6 +191,17 @@ CREATE INDEX IF NOT EXISTS idx_tickets_guild ON tickets(guild_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_channel ON tickets(channel_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(guild_id, status);
 
+-- Gespeicherter Chat-Verlauf eines Tickets (beim Schließen/Löschen), im Dashboard lesbar
+CREATE TABLE IF NOT EXISTS ticket_transcripts (
+  ticket_id     INTEGER PRIMARY KEY,
+  guild_id      TEXT NOT NULL,
+  data          TEXT NOT NULL,               -- JSON: meta, users, roles, channels, messages
+  message_count INTEGER DEFAULT 0,
+  created_at    INTEGER,
+  updated_at    INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_ticket_transcripts_guild ON ticket_transcripts(guild_id);
+
 -- ---------- Giveaways ----------
 CREATE TABLE IF NOT EXISTS giveaways (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,

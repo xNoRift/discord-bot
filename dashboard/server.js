@@ -49,7 +49,7 @@ function createApp() {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'https://cdn.discordapp.com', 'data:'],
+          imgSrc: ["'self'", 'https://cdn.discordapp.com', 'https://media.discordapp.net', 'data:'],
           connectSrc: ["'self'"],
           fontSrc: ["'self'"],
           objectSrc: ["'none'"],

@@ -1033,21 +1033,35 @@ const SB = {
 
 async function loadTickets() {
   const tb = document.querySelector('#ticketsTable tbody');
-  tb.innerHTML = '<tr><td colspan="6" class="loading">Lädt…</td></tr>';
+  tb.innerHTML = '<tr><td colspan="7" class="loading">Lädt…</td></tr>';
   try {
     const rows = await apiFor('GET', `/tickets${currentStatus ? '?status=' + currentStatus : ''}`);
-    tb.innerHTML = rows.length ? rows.map((t) => `<tr>
+    const base = `/dashboard/${window.location.pathname.split('/')[2]}/tickets`;
+    tb.innerHTML = rows.length ? rows.map((t) => {
+      const has = t.transcript_messages != null;
+      const href = `${base}/${t.id}/transcript`;
+      return `<tr${has ? ` class="is-link" data-href="${esc(href)}"` : ''}>
       <td>#${t.number ?? t.id}</td>
       <td>&lt;@${esc(t.opener_id)}&gt;</td>
       <td>${esc(t.category_label || '–')}</td>
       <td>${SB[t.status] || esc(t.status)}</td>
       <td>${t.claimed_by ? '&lt;@' + esc(t.claimed_by) + '&gt;' : '–'}</td>
-      <td>${esc(fmtDate(t.created_at))}</td></tr>`).join('')
-      : '<tr><td colspan="6" class="muted">Keine Tickets.</td></tr>';
+      <td>${esc(fmtDate(t.created_at))}</td>
+      <td>${has
+        ? `<a class="btn btn--ghost btn--sm" href="${esc(href)}">${icon('file', 'icon--sm')} Lesen <span class="muted">(${num(t.transcript_messages)})</span></a>`
+        : `<span class="muted" title="${t.status === 'open' ? 'Wird beim Schließen gespeichert.' : 'Vor diesem Update geschlossen – kein Verlauf gespeichert.'}">–</span>`}</td></tr>`;
+    }).join('')
+      : '<tr><td colspan="7" class="muted">Keine Tickets.</td></tr>';
   } catch (e) {
-    tb.innerHTML = `<tr><td colspan="6" class="muted">${esc(e.message)}</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="7" class="muted">${esc(e.message)}</td></tr>`;
   }
 }
+
+document.querySelector('#ticketsTable tbody').addEventListener('click', (e) => {
+  if (e.target.closest('a')) return;
+  const tr = e.target.closest('tr[data-href]');
+  if (tr) window.location.href = tr.dataset.href;
+});
 
 document.getElementById('ticketTabs').addEventListener('click', (e) => {
   const b = e.target.closest('.tab');

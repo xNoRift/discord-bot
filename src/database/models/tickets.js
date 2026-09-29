@@ -140,13 +140,14 @@ function listOpenByUser(guildId, userId) {
 }
 
 function listByGuild(guildId, { status, limit = 100 } = {}) {
+  const cols = 't.*, (SELECT message_count FROM ticket_transcripts x WHERE x.ticket_id = t.id) AS transcript_messages';
   if (status) {
     return db
-      .prepare('SELECT * FROM tickets WHERE guild_id = ? AND status = ? AND application_id IS NULL ORDER BY id DESC LIMIT ?')
+      .prepare(`SELECT ${cols} FROM tickets t WHERE t.guild_id = ? AND t.status = ? AND t.application_id IS NULL ORDER BY t.id DESC LIMIT ?`)
       .all(guildId, status, limit);
   }
   return db
-    .prepare('SELECT * FROM tickets WHERE guild_id = ? AND application_id IS NULL ORDER BY id DESC LIMIT ?')
+    .prepare(`SELECT ${cols} FROM tickets t WHERE t.guild_id = ? AND t.application_id IS NULL ORDER BY t.id DESC LIMIT ?`)
     .all(guildId, limit);
 }
 
