@@ -20,7 +20,7 @@ if (new URLSearchParams(window.location.search).get('tab') === 'subs') showTab('
   const url = new URL(window.location.href);
   const n = url.searchParams.get('connected');
   if (n !== null) {
-    Dash.toast(Number(n) > 0 ? `Twitch verbunden – ${n} Rolle(n) wurden automatisch erstellt und eingetragen.` : 'Twitch verbunden.', 'success');
+    Dash.toast(Number(n) > 0 ? `Twitch verbunden und Modul aktiviert – ${n} Rolle(n) wurden automatisch erstellt und eingetragen.` : 'Twitch verbunden – das Modul ist jetzt aktiv.', 'success');
     url.searchParams.delete('connected');
     window.history.replaceState(null, '', url);
   }

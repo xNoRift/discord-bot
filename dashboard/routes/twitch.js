@@ -8,6 +8,7 @@ const guildAccess = require('../services/guildAccess');
 const twitchSubs = require('../../src/database/models/twitchSubs');
 const twitchSubService = require('../../src/services/twitchSubService');
 const client = require('../../src/core/client');
+const moduleSettings = require('../../src/database/models/moduleSettings');
 const i18n = require('../../src/utils/i18n');
 const logger = require('../../src/utils/logger');
 
@@ -116,6 +117,8 @@ router.get('/callback', authLimiter, async (req, res, next) => {
         logger.warn('[twitchsubs] Rollen erstellen:', err.message);
         twitchSubs.setSyncResult(guildId, { error: `Rollen konnten nicht automatisch erstellt werden: ${err.message}` });
       }
+      // Modul beim Verbinden automatisch einschalten
+      moduleSettings.update(guildId, 'twitchsubs', { enabled: true });
       twitchSubService.syncGuild(guildId).catch((err) => logger.warn('[twitchsubs] Erst-Abgleich:', err.message));
       return res.redirect(`/dashboard/${guildId}/social?tab=subs&connected=${created.length}`);
     }
