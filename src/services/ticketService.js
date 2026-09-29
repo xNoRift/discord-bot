@@ -1027,8 +1027,10 @@ async function deleteTicket(channel, member) {
   if (!ticket) throw new Error(tg('tickets.errors.not_a_ticket'));
 
   ticketsModel.markDeleted(ticket.id, member.id);
-  // Letzten Stand des Verlaufs sichern, bevor der Kanal verschwindet
-  await require('./transcriptService').snapshot(channel, ticketsModel.get(ticket.id));
+  // Letzten Stand des Verlaufs sichern, bevor der Kanal verschwindet – und direkt an den Lösch-Log hängen
+  const transcripts = require('./transcriptService');
+  const deletedRow = ticketsModel.get(ticket.id);
+  const history = await transcripts.snapshot(channel, deletedRow);
 
   await ticketLog(ticket, {
     guildId: channel.guild.id,
@@ -1043,11 +1045,13 @@ async function deleteTicket(channel, member) {
       ticket.claimed_by ? { name: L('Übernommen von', 'Claimed by'), value: `<@${ticket.claimed_by}>`, inline: true } : null,
       { name: L('Erstellt am', 'Created at'), value: discordTimestamp(ticket.created_at, 'F'), inline: true },
       ticket.closed_at ? { name: L('Geschlossen am', 'Closed at'), value: discordTimestamp(ticket.closed_at, 'F'), inline: true } : null,
-      transcriptField(ticket),
+      history ? { name: L('Nachrichten', 'Messages'), value: String(history.length), inline: true } : null,
     ].filter(Boolean),
     actorId: member.id,
     overrideChannelId: ticketLogOverride(ticket),
     meta: { ticketId: ticket.id },
+    files: history ? [transcripts.textFile(deletedRow, history)] : undefined,
+    components: history ? transcripts.viewButtonRow(deletedRow) : undefined,
   });
 
   if (ticket.is_modmail) {

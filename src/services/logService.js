@@ -65,9 +65,11 @@ const mentions = (fields, description, id) =>
  * @param {object} [opts.meta]
  * @param {string} [opts.overrideChannelId]  spezieller Kanal (z. B. Ticket-Panel), wird vom Ereignis-Kanal übersteuert
  * @param {boolean} [opts.suppressDiscord]   nur Verlauf, keine Discord-Nachricht (z. B. Panel hat Logs aus)
+ * @param {Array}  [opts.files]           Anhänge für die Discord-Nachricht (z. B. Ticket-Transkript)
+ * @param {Array}  [opts.components]      Button-Reihen für die Discord-Nachricht
  */
 async function log(opts) {
-  const { guildId, category = 'general', type, title, description, fields = [], color, actorId, targetId, meta, overrideChannelId, suppressDiscord } = opts;
+  const { guildId, category = 'general', type, title, description, fields = [], color, actorId, targetId, meta, overrideChannelId, suppressDiscord, files, components } = opts;
 
   // 1) Dashboard-Verlauf
   try {
@@ -101,7 +103,15 @@ async function log(opts) {
     }
     if (allFields.length) embed.addFields(allFields.slice(0, 25));
 
-    await channel.send({ embeds: [embed], allowedMentions: { parse: [] } }).catch((err) => {
+    const payload = { embeds: [embed], allowedMentions: { parse: [] }, components: components ?? [] };
+    if (files?.length) payload.files = files;
+    await channel.send(payload).catch(async (err) => {
+      // z. B. fehlendes „Dateien anhängen“ – dann wenigstens das Embed ohne Datei senden
+      if (payload.files) {
+        delete payload.files;
+        const ok = await channel.send(payload).then(() => true).catch(() => false);
+        if (ok) return logger.warn(`[log] Datei-Anhang in ${channelId} nicht möglich: ${err.message}`);
+      }
       logger.warn(`[log] Konnte nicht in Log-Channel ${channelId} senden: ${err.message}`);
     });
   } catch (err) {

@@ -225,6 +225,13 @@ function viewButtonRow(ticket) {
   ];
 }
 
+/** Transkript als .txt-Anhang. */
+function textFile(ticket, messages) {
+  return new AttachmentBuilder(Buffer.from(buildText(ticket, messages), 'utf8'), {
+    name: `transkript-${String(ticket.number).padStart(4, '0')}.txt`,
+  });
+}
+
 /**
  * Erstellt das Transkript und sendet es. Gibt die gesendete Nachricht zurück (oder null).
  * @param {import('discord.js').TextChannel} channel
@@ -248,8 +255,7 @@ async function send(channel, ticket, messages) {
   }
 
   if (!messages) messages = await fetchAll(channel);
-  const text = buildText(ticket, messages);
-  const file = new AttachmentBuilder(Buffer.from(text, 'utf8'), { name: `transkript-${String(ticket.number).padStart(4, '0')}.txt` });
+  const file = textFile(ticket, messages);
   const embed = new EmbedBuilder()
     .setColor(config.branding.color)
     .setTitle(ticket.application_id ? `📄 Transkript – Bewerber-Chat #${ticket.application_id}` : `📄 Transkript – Ticket #${ticket.number}`)
@@ -262,4 +268,4 @@ async function send(channel, ticket, messages) {
   return target.send({ embeds: [embed], files: [file], components: viewButtonRow(ticket) });
 }
 
-module.exports = { send, snapshot, buildText, viewUrl, refreshAttachmentUrls };
+module.exports = { send, snapshot, buildText, textFile, viewButtonRow, viewUrl, refreshAttachmentUrls };
