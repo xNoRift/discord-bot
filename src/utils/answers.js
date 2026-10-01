@@ -24,7 +24,7 @@ function blocks(answers, o = {}) {
     const ans = a.answer && String(a.answer).trim() ? String(a.answer).trim() : o.noAnswer || L('*(keine Angabe)*', '*(no answer)*');
     return `**${q}**\n${quote(ans)}`;
   });
-  if (o.priced) out.push(`💰 **${L('Preis', 'Price')}:** __**${o.priced.total}**__ · ${o.priced.detail}`);
+  if (o.priced) out.push(`💰 **${L('Preis', 'Price')}:** __**${o.priced.total}**__${o.priced.detail ? ` · ${o.priced.detail}` : ''}`);
   return out;
 }
 

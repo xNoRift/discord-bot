@@ -912,9 +912,7 @@ function wireOptionEmbeds(row) {
   };
 }
 
-const PRICE_RE = /^\d+(?:[.,]\d+)?[kmbt]?$/i;
-
-/** Button „Preise“: Preis pro Option (z. B. 14.2M, 500k, 2500). */
+/** Button „Preise“: Preis pro Option – beliebiger Text (z. B. 14.2M, 500k Coins, 5,99 €, Kostenlos). */
 function wireOptionPrices(row) {
   const hidden = row.querySelector('[data-qf="optionPrices"]');
   if (!hidden) return;
@@ -932,23 +930,18 @@ function wireOptionPrices(row) {
     const map = JSON.parse(hidden.value || '{}');
     const { modal, close } = openModal(`
       <h2>Preise pro Option</h2>
-      <p class="muted" style="margin-top:-8px;">Zahl mit optionalem Kürzel: <code>2500</code>, <code>500k</code>, <code>14.2M</code>, <code>1.5B</code>. Leer = kein Preis.
-        Im Ticket steht dann <b>Menge × Preis</b> – die Menge kommt aus einem Textfeld mit aktiviertem „Mengenfeld“ (sonst 1). Platzhalter für Embeds: <code>{price}</code></p>
-      ${opts.length ? `<div class="form">${opts.map((o, i) => `<div class="field"><label>${esc(o)}</label><input data-pi="${i}" maxlength="20" value="${esc(map[o] || '')}" placeholder="z. B. 14.2M"></div>`).join('')}</div>`
+      <p class="muted" style="margin-top:-8px;">Beliebiger Text, z. B. <code>14.2M</code>, <code>500k Coins</code>, <code>5,99 €</code>, <code>$20</code>, <code>2.500 Gold</code> oder <code>Kostenlos</code>. Leer = kein Preis.
+        Enthält der Preis eine Zahl, steht im Ticket <b>Menge × Preis</b> (Einheit/Währung bleibt erhalten) – die Menge kommt aus einem Textfeld mit aktiviertem „Mengenfeld“ (sonst 1). Ohne Zahl wird der Text unverändert angezeigt. Platzhalter für Embeds: <code>{price}</code></p>
+      ${opts.length ? `<div class="form">${opts.map((o, i) => `<div class="field"><label>${esc(o)}</label><input data-pi="${i}" maxlength="60" value="${esc(map[o] || '')}" placeholder="z. B. 14.2M Coins"></div>`).join('')}</div>`
         : '<div class="empty">Trage zuerst Optionen ein (eine pro Zeile).</div>'}
       <div class="modal__actions"><button type="button" class="btn btn--ghost" data-act="cancel">Abbrechen</button><button type="button" class="btn btn--primary" data-act="ok"${opts.length ? '' : ' disabled'}>Übernehmen</button></div>`);
     modal.querySelector('[data-act="cancel"]').onclick = close;
     modal.querySelector('[data-act="ok"]').onclick = () => {
       const out = {};
-      let bad = '';
       modal.querySelectorAll('[data-pi]').forEach((inp) => {
-        const v = inp.value.trim().replace(/\s+/g, '');
-        inp.classList.toggle('is-invalid', Boolean(v) && !PRICE_RE.test(v));
-        if (!v) return;
-        if (!PRICE_RE.test(v)) { bad = opts[Number(inp.dataset.pi)]; return; }
-        out[opts[Number(inp.dataset.pi)]] = v;
+        const v = inp.value.replace(/\s+/g, ' ').trim();
+        if (v) out[opts[Number(inp.dataset.pi)]] = v;
       });
-      if (bad) { toast(`Ungültiger Preis bei „${bad}“.`, 'error'); return; }
       hidden.value = JSON.stringify(out);
       hidden.dispatchEvent(new Event('input', { bubbles: true }));
       refresh();
