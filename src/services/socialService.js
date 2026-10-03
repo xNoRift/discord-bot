@@ -323,7 +323,10 @@ function feedTitle(xml) {
   return pickTag('<x ' + head + '</x>', 'title');
 }
 
-async function tiktokLatestFromPage(handle) {
+const tiktokSecUids = new Map(); // handle -> secUid (ändert sich nie)
+
+/** Profilseite lesen -> { secUid, nickname }. Die Videoliste liefert die Seite nicht mehr mit. */
+async function tiktokUser(handle) {
   const html = await httpText(`https://www.tiktok.com/@${handle}`, {
     headers: { 'Accept-Language': 'en-US,en;q=0.9' },
     timeout: 12000,
@@ -332,21 +335,39 @@ async function tiktokLatestFromPage(handle) {
   if (!m) throw new Error('TikTok-Seite nicht lesbar.');
   let data;
   try { data = JSON.parse(m[1]); } catch { throw new Error('TikTok-Daten nicht lesbar.'); }
-  const info = data?.['__DEFAULT_SCOPE__']?.['webapp.user-detail']?.userInfo;
-  const item = info?.itemList?.[0];
-  if (!item?.id) {
-    // TikTok liefert die Videoliste inzwischen meist nur per JS nach -> nicht abrufbar
+  const detail = data?.['__DEFAULT_SCOPE__']?.['webapp.user-detail'];
+  const user = detail?.userInfo?.user;
+  if (!user?.secUid) {
+    const e = new Error(`TikTok-Account @${handle} nicht gefunden (Status ${detail?.statusCode ?? '?'}).`);
+    e.notFound = true;
+    throw e;
+  }
+  tiktokSecUids.set(handle, user.secUid);
+  return { secUid: user.secUid, nickname: user.nickname || null, avatar: user.avatarThumb || null };
+}
+
+async function tiktokLatest(handle) {
+  const secUid = tiktokSecUids.get(handle) || (await tiktokUser(handle)).secUid;
+  const url =
+    'https://www.tiktok.com/api/creator/item_list/?aid=1988&count=10&type=1' +
+    `&cursor=${Date.now()}&secUid=${encodeURIComponent(secUid)}`;
+  const json = await httpJson(url, { headers: { Referer: `https://www.tiktok.com/@${handle}` }, timeout: 12000 });
+  const items = Array.isArray(json?.itemList) ? json.itemList : [];
+  if (!items.length) {
+    // privater Account / noch keine Videos -> kein Fehler zählen
     const e = new Error('tiktok-no-items');
     e.soft = true;
     throw e;
   }
+  // neuestes Video nach Zeit (angepinnte Videos können sonst vorne stehen)
+  const item = items.reduce((a, b) => (Number(b.createTime) > Number(a.createTime) ? b : a));
   return {
     id: String(item.id),
     title: (item.desc || 'Neues TikTok').slice(0, 200),
     url: `https://www.tiktok.com/@${handle}/video/${item.id}`,
     publishedAt: item.createTime ? Number(item.createTime) * 1000 : null,
     image: item.video?.cover || null,
-    author: info?.user?.nickname || '@' + handle,
+    author: item.author?.nickname || '@' + handle,
   };
 }
 
@@ -359,7 +380,7 @@ async function pollFeedPlatform(platform) {
       let latest;
       const isUrl = /^https?:\/\//i.test(sub.account);
       if (platform === 'tiktok' && !isUrl) {
-        latest = await tiktokLatestFromPage(sub.account).catch((err) => {
+        latest = await tiktokLatest(sub.account).catch((err) => {
           if (err.soft) return null; // stiller No-Op, kein Fehlerzähler
           throw err;
         });
@@ -494,7 +515,14 @@ async function resolveAccount(platform, input) {
     }
     const name = value.replace(/^@/, '').replace(/[/?].*$/, '').toLowerCase();
     if (!/^[a-z0-9._]{2,30}$/.test(name)) throw new Error('Ungültiger TikTok-Name.');
-    return { account: name, label: '@' + name };
+    try {
+      const user = await tiktokUser(name);
+      return { account: name, label: user.nickname ? `${user.nickname} (@${name})` : '@' + name };
+    } catch (err) {
+      if (err.notFound) throw new Error(`TikTok-Account @${name} wurde nicht gefunden.`);
+      // TikTok gerade nicht erreichbar -> trotzdem anlegen, der Poller versucht es später
+      return { account: name, label: '@' + name };
+    }
   }
 
   if (platform === 'rss') {
